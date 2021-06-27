@@ -22,3 +22,8 @@ requires_nix_shell:
 	@ [ "($IN_NIX_SHELL)" ] || echo "The $(MAKECMDGOALS) target must be run from inside nix-shell"
 	@ [ "($IN_NIX_SHELL)" ] || (echo "    run 'nix-shell --pure' first" && false)
 
+exec-lendex-demo:
+	stack build --no-nix --system-ghc --exec lendex-demo
+
+exec-demo-frontend:
+	cd ./demo-frontend && npm run dev
