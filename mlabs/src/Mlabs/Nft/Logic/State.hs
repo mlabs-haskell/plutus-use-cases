@@ -29,11 +29,15 @@ type St = PlutusState Nft
 -----------------------------------------------------------
 -- common functions
 
+{-# INLINABLE getCurrentOwner #-}
+getCurrentOwner :: St UserId
+getCurrentOwner = do gets nft'owner
+
 {-# INLINABLE isOwner #-}
 -- | Check if user is owner of NFT
 isOwner :: UserId -> St ()
 isOwner uid = do
-  owner <- gets nft'owner
+  owner <- getCurrentOwner
   guardError "Not an owner" $ uid == owner
 
 {-# INLINABLE isRightPrice #-}

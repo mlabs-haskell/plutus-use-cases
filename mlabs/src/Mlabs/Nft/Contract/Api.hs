@@ -11,6 +11,7 @@
 -- | Contract API for Lendex application
 module Mlabs.Nft.Contract.Api(
     Buy(..)
+  , CurrentOwner(..)
   , SetPrice(..)
   , StartParams(..)
   , UserSchema
@@ -25,7 +26,7 @@ import PlutusTx.Prelude ( Show, Integer, Maybe, ByteString )
 import qualified Prelude as Hask
 
 import Mlabs.Data.Ray (Ray)
-import Mlabs.Nft.Logic.Types ( UserAct(BuyAct, SetPriceAct) )
+import Mlabs.Nft.Logic.Types ( UserAct(BuyAct, CurrentOwnerAct, SetPriceAct) )
 import Mlabs.Plutus.Contract ( Call, IsEndpoint(..) )
 
 ----------------------------------------------------------------------
@@ -48,6 +49,10 @@ data SetPrice = SetPrice
   deriving stock (Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
+-- jozef: Does not work without foo, cannot derive ToSchema.
+newtype CurrentOwner = CurrentOwner ()
+  deriving stock (Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
 -- author endpoints
 
 -- | Parameters to init NFT
@@ -67,6 +72,7 @@ type UserSchema =
   BlockchainActions
     .\/ Call Buy
     .\/ Call SetPrice
+    .\/ Call CurrentOwner
 
 -- | Schema for the author of NFT
 type AuthorSchema =
@@ -81,6 +87,7 @@ class IsUserAct a where
 
 instance IsUserAct Buy      where { toUserAct Buy{..} = BuyAct buy'price buy'newPrice }
 instance IsUserAct SetPrice where { toUserAct SetPrice{..} = SetPriceAct setPrice'newPrice }
+instance IsUserAct CurrentOwner where { toUserAct CurrentOwner{} = CurrentOwnerAct }
 
 instance IsEndpoint Buy where
   type EndpointSymbol Buy = "buy-nft"
@@ -90,4 +97,7 @@ instance IsEndpoint SetPrice where
 
 instance IsEndpoint StartParams where
   type EndpointSymbol StartParams = "start-nft"
+
+instance IsEndpoint CurrentOwner where
+  type EndpointSymbol CurrentOwner = "get-current-owner-for-nft"
 

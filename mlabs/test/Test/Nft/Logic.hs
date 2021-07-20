@@ -11,7 +11,7 @@ import Test.Tasty.HUnit (testCase)
 import Mlabs.Emulator.App (checkWallets, noErrors, someErrors )
 import Mlabs.Emulator.Blockchain (BchWallet(..) )
 import Mlabs.Emulator.Types (adaCoin, UserId(UserId) )
-import Mlabs.Nft.Logic.App (buy, defaultAppCfg, runNftApp, setPrice, Script )
+import Mlabs.Nft.Logic.App (buy, currentOwner, defaultAppCfg, runNftApp, setPrice, Script )
 
 -- | Test suite for a logic of lending application
 test :: TestTree
@@ -21,6 +21,7 @@ test = testGroup "Logic"
   , testCase "Sets price without ownership"  testFailToSetPrice
   , testCase "Buy locked NFT"                testBuyLocked
   , testCase "Buy not enough price"          testBuyNotEnoughPrice
+  , testCase "Buy, check owner"              testCurrentOwner
   ]
   where
     testBuy               = testWallets     buyWallets      buyScript
@@ -28,6 +29,7 @@ test = testGroup "Logic"
     testBuyLocked         = testWalletsFail initWallets     failToBuyLocked
     testBuyNotEnoughPrice = testWalletsFail initWallets     failToBuyNotEnoughPrice
     testBuyTwice          = testWallets     buyTwiceWallets buyTwiceScript
+    testCurrentOwner      = testWallets     buyWallets      buyCurrentOwnerScript
 
     testWallets wals script = do
       noErrors app
@@ -56,6 +58,16 @@ buyScript :: Script
 buyScript = do
   setPrice user1 (Just 100)
   buy user2 100 Nothing
+  setPrice user2 (Just 500)
+
+buyCurrentOwnerScript :: Script 
+buyCurrentOwnerScript = do
+  setPrice user1 (Just 100)
+  -- somehow test user1 is current owner of nft
+  currentOwner user1
+  buy user2 100 Nothing
+  -- somehow test user2 is current owner of nft 
+  currentOwner user2
   setPrice user2 (Just 500)
 
 -- * User 1 sets the price to 100

@@ -102,6 +102,8 @@ data UserAct
     { act'newPrice :: Maybe Integer -- ^ new price for NFT (Nothing locks NFT)
     }
   -- ^ Set new price for NFT
+  | CurrentOwnerAct
+  -- ^ Find out current owner of NFT
   deriving stock (Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON)
 

@@ -21,7 +21,7 @@ import Plutus.V1.Ledger.Api (Datum)
 import Plutus.Contract (Contract, logError, ownPubKey, tell, throwError, utxoAt)
 
 import Mlabs.Emulator.Types (ownUserId)
-import Mlabs.Nft.Contract.Api (AuthorSchema, Buy, IsUserAct, SetPrice, toUserAct, StartParams(..), UserSchema)
+import Mlabs.Nft.Contract.Api (AuthorSchema, Buy, CurrentOwner, IsUserAct, SetPrice, toUserAct, StartParams(..), UserSchema)
 import qualified Mlabs.Nft.Contract.StateMachine as SM
 import Mlabs.Nft.Logic.Types (Act(UserAct), initNft, NftId, toNftId)
 import Mlabs.Plutus.Contract (getEndpoint, readDatum, selects)
@@ -40,6 +40,7 @@ userEndpoints :: NftId -> UserContract ()
 userEndpoints nid = forever $ selects
   [ act $ getEndpoint @Buy
   , act $ getEndpoint @SetPrice
+  , act $ getEndpoint @CurrentOwner
   ]
   where
     act :: IsUserAct a => UserContract a -> UserContract ()

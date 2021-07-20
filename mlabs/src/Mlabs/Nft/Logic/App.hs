@@ -17,6 +17,7 @@ module Mlabs.Nft.Logic.App(
   --- * Script
   , Script
   , buy
+  , currentOwner
   , setPrice
 ) where
 
@@ -33,7 +34,7 @@ import qualified Mlabs.Data.Ray as R
 import qualified Mlabs.Emulator.Script as S
 import Mlabs.Emulator.Types (adaCoin, UserId(..))
 import Mlabs.Nft.Logic.React (react)
-import Mlabs.Nft.Logic.Types (initNft, Act(..), Nft, UserAct(SetPriceAct, BuyAct))
+import Mlabs.Nft.Logic.Types (initNft, Act(..), Nft, UserAct(BuyAct, CurrentOwnerAct, SetPriceAct))
 
 -- | NFT test emulator. We use it test the logic.
 type NftApp = App Nft Act
@@ -84,3 +85,5 @@ buy uid price newPrice = S.putAct $ UserAct uid (BuyAct price newPrice)
 setPrice :: UserId -> Maybe Integer -> Script
 setPrice uid newPrice = S.putAct $ UserAct uid (SetPriceAct newPrice)
 
+currentOwner :: UserId -> Script
+currentOwner uid = S.putAct $ UserAct uid CurrentOwnerAct
