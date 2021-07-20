@@ -16,6 +16,7 @@ import qualified Mlabs.Lending.Logic.Types as Types
 import           Mlabs.Lending.Logic.Types (Wallet(..), Reserve(..), ReserveInterest(..))
 
 {-# INLINABLE updateReserveInterestRates #-}
+-- |
 updateReserveInterestRates :: Integer -> Types.Reserve -> Types.Reserve
 updateReserveInterestRates currentTime reserve = reserve { reserve'interest = nextInterest reserve }
   where

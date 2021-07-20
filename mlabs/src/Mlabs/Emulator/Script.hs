@@ -44,13 +44,15 @@ instance Monoid (St a) where
   mempty = St mempty mempty
 
 -- | Extract list of acts from the script
-runScript :: Script act-> [act]
+runScript :: Script act -> [act]
 runScript (Script actions) =
   toList $ st'acts $ Strict.execState actions (St empty 0)
 
+-- | Get current timestamp of action
 getCurrentTime :: ScriptM act Integer
 getCurrentTime = Strict.gets (getSum . st'time)
 
+-- | Put action with timestamp set to beginning
 putAct :: act -> Script act
 putAct act =
   Strict.modify' (<> St (singleton act) (Sum 1))

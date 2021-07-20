@@ -38,6 +38,7 @@ import qualified Mlabs.Emulator.Script     as Script
 import           Mlabs.Lending.Logic.React (react)
 import qualified Mlabs.Lending.Logic.Types as Types
 
+-- | Application type for lending contract.
 type LendingApp = App Types.LendingPool Types.Act
 
 runLendingApp :: AppConfig -> Script -> LendingApp
@@ -104,6 +105,7 @@ defaultAppConfig = AppConfig reserves users curSym admins oracles
 
     toAToken name = Value.tokenName $ "a" <> name
 
+-- | Coin constructor from ByteStringß
 toCoin :: ByteString -> Types.Coin
 toCoin str = Value.AssetClass (Value.currencySymbol str, Value.tokenName str)
 

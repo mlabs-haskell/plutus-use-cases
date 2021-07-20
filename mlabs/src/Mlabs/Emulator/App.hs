@@ -62,6 +62,7 @@ runApp react app acts = foldl' go app (runScript acts)
 ---------------------------------------------------
 -- test functions
 
+-- | Assert there are no errors in application log.
 noErrors :: (Show act, Show st) => App st act -> Assertion
 noErrors app = case app'log app of
   [] -> assertBool "no errors" True
@@ -74,6 +75,7 @@ noErrors app = case app'log app of
       pPrint lp
       print msg
 
+-- | Assert there are some errors in application log.
 someErrors :: App st act -> Assertion
 someErrors app = assertBool "Script fails" $ not $ null (app.app'log)
 

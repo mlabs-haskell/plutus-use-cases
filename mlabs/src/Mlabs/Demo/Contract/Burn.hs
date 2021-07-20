@@ -47,8 +47,10 @@ burnInst = Scripts.validator @Burning
 burnValidator :: Validator
 burnValidator = Scripts.validatorScript burnInst
 
+-- | Burning - validator script address.
 burnValHash :: Ledger.ValidatorHash
 burnValHash = validatorHash burnValidator
 
+-- | Burning - script instance address.
 burnScrAddress :: Ledger.Address
 burnScrAddress = Scripts.scriptAddress burnInst

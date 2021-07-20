@@ -4,7 +4,6 @@ module Main (main) where
 
 --------------------------------------------------------------------------------
 
-import GHC.Generics
 import Prelude
 
 --------------------------------------------------------------------------------
@@ -22,6 +21,7 @@ import Data.Map qualified as Map
 import Data.Row (type Empty, type (.\\))
 import Data.Semigroup qualified as Semigroup
 import Data.Text.Prettyprint.Doc (Pretty (..), viaShow)
+import GHC.Generics (Generic)
 
 --------------------------------------------------------------------------------
 
@@ -65,7 +65,7 @@ import qualified Mlabs.Lending.Logic.Types as Lendex
 import Mlabs.Lending.Logic.Types (Coin, UserAct(..), UserId(..))
 --------------------------------------------------------------------------------
 
-
+-- | Console demo for Aave contracts with simulator.
 main :: IO ()
 main = void $
   Simulator.runSimulationWith handlers $ do

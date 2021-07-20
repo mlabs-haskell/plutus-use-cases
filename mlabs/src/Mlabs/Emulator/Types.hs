@@ -41,6 +41,7 @@ instance Eq UserId where
   _ == _ = False
 
 {-# INLINABLE adaCoin #-}
+-- | Ada coin represenation
 adaCoin :: Coin
 adaCoin = AssetClass (Ada.adaSymbol, Ada.adaToken)
 

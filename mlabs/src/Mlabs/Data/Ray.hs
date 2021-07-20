@@ -74,6 +74,7 @@ fromRational :: Rational -> Ray
 fromRational r = Ray $ (R.numerator r * base) `divide` R.denominator r
 
 {-# INLINABLE toRational #-}
+-- | Convert into Rational.
 toRational :: Ray -> Rational
 toRational (Ray a) = R.reduce a base
 
@@ -90,8 +91,9 @@ round :: Ray -> Integer
 round (Ray a) = a `divide` base
 
 {-# INLINABLE properFraction #-}
+-- | Simultaneous div and mod (mod wrapped in Ray)
 properFraction :: Ray -> (Integer, Ray)
 properFraction (Ray a) = (d, Ray m)
   where
-    (d, m) = divMod a base
+    (d, m) = R.divMod a base
 

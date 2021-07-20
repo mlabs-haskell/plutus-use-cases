@@ -89,12 +89,13 @@ mkPolicy burnAddr ctx =
   isForgeValid = all isValid forged
     where isValid (_, _, amt) = amt > 0
 
-
+-- | Monetary policy for minting contract.
 curPolicy :: MonetaryPolicy
 curPolicy = mkMonetaryPolicyScript $
   $$(PlutusTx.compile [|| Scripts.wrapMonetaryPolicy . mkPolicy ||])
     `PlutusTx.applyCode` PlutusTx.liftCode burnScrAddress
 
+-- | The currency symbol of minting monetary policy.
 curSymbol :: CurrencySymbol
 curSymbol = Ledger.scriptCurrencySymbol curPolicy
 
@@ -105,12 +106,14 @@ tokenToLovelaceXR = 1_000_000
 ------------------------------------------------------------------------------
 -- Off-chain code.
 
+-- | Datum for minting contract.
 data MintParams = MintParams
   { mpTokenName :: !TokenName
   , mpAmount    :: !Integer
   }
   deriving (Generic, ToJSON, FromJSON, ToSchema)
 
+-- | Schema of minting contract.
 type MintSchema = 
   BlockchainActions
     .\/ Endpoint "mint" MintParams
@@ -133,5 +136,6 @@ mintContract mp = do
   ledgerTx <- submitTxConstraintsWith @Void lookups tx
   void $ awaitTxConfirmed $ Ledger.txId ledgerTx
 
+-- | Endpoints for minting contract
 mintEndpoints :: Contract () MintSchema Text ()
 mintEndpoints = mint >> mintEndpoints where mint = endpoint @"mint" >>= mintContract

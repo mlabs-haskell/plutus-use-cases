@@ -151,11 +151,13 @@ validate lendexId ctx = case (getInState, getOutState) of
 
 -------------------------------------------------------------------------------
 
+-- | Monetary policy of lending contract.
 currencyPolicy :: Types.LendexId -> MonetaryPolicy
 currencyPolicy lid = Scripts.mkMonetaryPolicyScript $
   $$(PlutusTx.compile [|| Scripts.wrapMonetaryPolicy . validate ||])
   `PlutusTx.applyCode` (PlutusTx.liftCode lid)
 
+-- | Currency symbol of lending policy.
 currencySymbol :: Types.LendexId -> CurrencySymbol
 currencySymbol lid = Contexts.scriptCurrencySymbol (currencyPolicy lid)
 

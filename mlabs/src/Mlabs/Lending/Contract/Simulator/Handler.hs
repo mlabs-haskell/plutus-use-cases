@@ -47,6 +47,7 @@ data LendexContracts
 instance Pretty LendexContracts where
   pretty = viaShow
 
+-- | Monadic representation of initial lendex contract
 type InitContract = Contract (Last CurrencySymbol) BlockchainActions Server.LendexError ()
 
 handleLendexContracts ::

@@ -6,6 +6,7 @@ module Mlabs.Data.Maybe(
 import PlutusTx.Prelude ( Monad(return), Maybe(..) )
 
 {-# INLINABLE mapM_ #-}
+-- | Perform side effect on `Maybe`, return unit `Monad`.
 mapM_ :: Monad f => (a -> f ()) -> Maybe a -> f ()
 mapM_ f = \case
   Nothing -> return ()

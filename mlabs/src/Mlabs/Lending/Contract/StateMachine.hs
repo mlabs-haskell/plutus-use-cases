@@ -27,11 +27,13 @@ import           Mlabs.Lending.Logic.React    (react)
 import qualified Mlabs.Lending.Logic.Types    as Types
 import qualified Mlabs.Plutus.Contract.StateMachine as MlabsSM
 
+-- | State machine representatoin of lending contract.
 type Lendex = SM.StateMachine (Types.LendexId, Types.LendingPool) Types.Act
 
 -- | Error type
 type LendexError = SM.SMContractError
 
+-- | Construct LendexError from String
 toLendexError :: String -> LendexError
 toLendexError = SM.SMCContractError . fromString
 
@@ -62,6 +64,7 @@ client lid = SM.mkStateMachineClient $ SM.StateMachineInstance (machine lid) (sc
 lendexValidatorHash :: Types.LendexId -> Ledger.ValidatorHash
 lendexValidatorHash lid = Scripts.scriptHash (scriptInstance lid)
 
+-- | Address of lendex contract.
 lendexAddress :: Types.LendexId -> Ledger.Address
 lendexAddress lid = Ledger.scriptHashAddress (lendexValidatorHash lid)
 

@@ -112,10 +112,12 @@ toConstraints = \case
   _ -> mempty
 
 {-# INLINABLE updateRespValue #-}
+-- | Combine `Resp`s into Value, then update it with another Value 
 updateRespValue :: [Resp] -> Value -> Value
 updateRespValue rs val = foldMap toRespValue rs <> val
 
 {-# INLINABLE toRespValue #-}
+-- | Representation of Resp as Value
 toRespValue :: Resp -> Value
 toRespValue = \case
   Move Self coin amount -> assetClassValue coin amount

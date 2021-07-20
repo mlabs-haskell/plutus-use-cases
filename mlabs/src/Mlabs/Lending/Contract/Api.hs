@@ -131,6 +131,7 @@ data AddReserve = AddReserve Types.CoinCfg
   deriving stock (Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
+-- | Parameters to init lending contract
 data StartParams = StartParams
   { sp'coins     :: [Types.CoinCfg] -- ^ supported coins with ratios to ADA
   , sp'initValue :: Value           -- ^ init value deposited to the lending app
@@ -183,11 +184,13 @@ type AdminSchema =
 newtype InterestRateFlag = InterestRateFlag Integer
   deriving newtype (Show, Hask.Eq, FromJSON, ToJSON, ToSchema)
 
+-- | Conversion between flag and rate (0 -> stable, 1 -> variable)
 fromInterestRateFlag :: InterestRateFlag -> Types.InterestRate
 fromInterestRateFlag (InterestRateFlag n)
   | n == 0    = Types.StableRate
   | otherwise = Types.VariableRate
 
+-- | Conversion between rate and flag (opposite of fromInterestRateFlag)
 toInterestRateFlag :: Types.InterestRate -> InterestRateFlag
 toInterestRateFlag = InterestRateFlag . \case
   Types.StableRate   -> 0
