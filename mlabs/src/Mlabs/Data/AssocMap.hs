@@ -8,6 +8,7 @@ import PlutusTx.AssocMap (Map)
 import qualified PlutusTx.AssocMap as M
 import qualified PlutusTx.Prelude as Plutus (filter)
 
+-- | Create new map where values satisfy predicate `f`
 filter :: (v -> Bool) -> Map k v -> Map k v
 filter f m = M.fromList $ Plutus.filter (f . snd) $ M.toList m
 

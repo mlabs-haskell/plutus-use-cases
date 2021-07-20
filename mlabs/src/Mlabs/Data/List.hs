@@ -92,6 +92,7 @@ sortBy cmp = mergeAll . sequences
 
 
 {-# INLINABLE mapM_ #-}
+-- | Perform side effects on `[]` sequentially, return unit `Monad`.
 mapM_ :: Monad f => (a -> f ()) -> [a] -> f ()
 mapM_ f = \case
   []   -> return ()
