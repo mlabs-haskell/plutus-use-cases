@@ -10,17 +10,17 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  
+  stack-build: # Job 1
     runs-on: ubuntu-latest
-
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
-    
-      - name: Set correct ghc.
-        run : |
-          ghcup install 8.10.4
-          ghcup set 8.10.4
+      - uses: actions/checkout@v2 # Checks-out your repository under $GITHUB_WORKSPACE.
+      
+      # No need for now. Stack builds independently of GHC.
+      #- name: Set correct ghc.
+      #  run : |
+      #    ghcup install 8.10.4
+      #    ghcup set 8.10.4
           
       - name: Update Stack.
         run: stack update
@@ -29,3 +29,14 @@ jobs:
         run: |
           cd $(echo $GITHUB_WORKSPACE)/mlabs 
           stack build
+  
+  cabal-build: # Job 2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2 # Checks-out your repository under $GITHUB_WORKSPACE.
+      - name: Set correct ghc.
+        run : |
+          ghcup install 8.10.4
+          ghcup set 8.10.4
+      - name: Run cabal build.
+        run : cabal new-build
