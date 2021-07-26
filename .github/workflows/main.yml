@@ -16,12 +16,10 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-      
-      # Install Stack
-      #- name: Install Stack.
-      #  run: curl -sSL https://get.haskellstack.org/ | sh
+    
+      - name: Update Stack.
+        run: stack update
         
-      # Runs a single command using the runners shell
       - name: Build With Stack.
         run: |
           cd $(echo $GITHUB_WORKSPACE)/mlabs 
