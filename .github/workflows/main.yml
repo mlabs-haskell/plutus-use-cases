@@ -18,8 +18,8 @@ jobs:
       - uses: actions/checkout@v2
       
       # Install Stack
-      - name: Install Stack.
-        run: curl -sSL https://get.haskellstack.org/ | sh
+      #- name: Install Stack.
+      #  run: curl -sSL https://get.haskellstack.org/ | sh
         
       # Runs a single command using the runners shell
       - name: Build With Stack.
