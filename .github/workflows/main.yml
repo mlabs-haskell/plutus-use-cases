@@ -1,0 +1,28 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Stack-Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+      
+      # Install Stack
+      - name: Install Stack.
+        run: curl -sSL https://get.haskellstack.org/ | sh
+        
+      # Runs a single command using the runners shell
+      - name: Build With Stack.
+        run: |
+          cd $(echo $GITHUB_WORKSPACE}/mlabs 
+          stack build
