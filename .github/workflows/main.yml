@@ -39,4 +39,6 @@ jobs:
           ghcup install 8.10.4
           ghcup set 8.10.4
       - name: Run cabal build.
-        run : cabal new-build
+        run : | 
+          cd $(echo $GITHUB_WORKSPACE)/mlabs 
+          cabal new-build
