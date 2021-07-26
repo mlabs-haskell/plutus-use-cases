@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    container: haskell:8.10.4
+    runs-on: haskell:8.10.4
 
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
