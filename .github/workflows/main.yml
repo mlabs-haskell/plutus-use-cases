@@ -1,44 +1,79 @@
-# This is a basic workflow to help you get started with Actions
-
-name: Stack-Build
-
 on:
   push:
-    branches: [ main ]
+    paths:
+      - '**.hs'
+      - '**.nix'
+      - 'mlabs/nix/sources.json'
+      - '**.cabal'
+    branches:
+      - main
+      - staging
   pull_request:
-    branches: [ main ]
-  workflow_dispatch:
-
+    paths:
+      - '**.hs'
+      - '**.nix'
+      - 'mlabs/nix/sources.json'
+      - 'mlabs/'
 jobs:
-  
-  stack-build: # Job 1
+  check-formatting:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2 # Checks-out your repository under $GITHUB_WORKSPACE.
-      
-      # No need for now. Stack builds independently of GHC.
-      #- name: Set correct ghc.
-      #  run : |
-      #    ghcup install 8.10.4
-      #    ghcup set 8.10.4
-          
-      - name: Update Stack.
-        run: stack update
+      - uses: actions/checkout@v2
+
+      - uses: actions/cache@v2.1.4
+        name: Cache Stack
+        with:
+          path: ~/.stack
+          key: ${{ runner.os }}-stack-formatting
+          restore-keys: ${{ runner.os }}-stack-
+
+      - run: stack install fourmolu
+        name: Setup
+
+      - run: ./.github/format.sh
+        name: "Run fourmolu"
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/cache@v2.1.4
+        name: Cache Stack
+        with:
+          path: ~/.stack
+          key: ${{ runner.os }}-stack-lint
+          restore-keys: ${{ runner.os }}-stack-
+
+      - run: stack install hlint
+        name: Setup
+
+      - run: ~/.local/bin/hlint $(git ls-tree -r HEAD --full-tree --name-only | grep -E '.*\.hs')
+        name: Lint
         
-      - name: Build With Stack.
-        run: |
-          cd $(echo $GITHUB_WORKSPACE)/mlabs 
-          stack build
-  
-  cabal-build: # Job 2
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2 # Checks-out your repository under $GITHUB_WORKSPACE.
-      - name: Set correct ghc.
-        run : |
-          ghcup install 8.10.4
-          ghcup set 8.10.4
-      - name: Run cabal build.
-        run : | 
-          cd $(echo $GITHUB_WORKSPACE)/mlabs 
-          cabal new-build
+      - uses: actions/checkout@v2
+      - uses: cachix/install-nix-action@v13
+        name: Set up nix and IOHK cache
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ= iohk.cachix.org-1:DpRUyj7h7V830dp/i6Nti+NEO2/nhblbov/8MW7Rqoo= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+            substituters = https://hydra.iohk.io https://iohk.cachix.org https://cache.nixos.org/
+      - uses: cachix/cachix-action@v10
+        with:
+          name: mlabs
+          authToken: '${{ secrets.CACHIXKEY }}'
+      - name: Cache cabal folder
+        id: cabal
+        uses: actions/cache@v2.1.4
+        with:
+          path: |
+            ~/.cabal/packages
+            ~/.cabal/store
+            dist-newstyle
+          key: ${{ runner.os }}-cabal
+      - name: Build the full ci derivation
+        run: nix-build ./mlabs/nix/ci.nix
