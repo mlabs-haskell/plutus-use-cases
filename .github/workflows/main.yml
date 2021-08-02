@@ -17,6 +17,9 @@ on:
       - '**.nix'
       - 'mlabs/nix/sources.json'
       - 'mlabs/'
+    branches:
+      - main
+      - staging
 jobs:
   check-formatting:
     runs-on: ubuntu-latest
