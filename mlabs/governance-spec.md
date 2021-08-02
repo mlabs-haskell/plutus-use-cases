@@ -47,27 +47,46 @@ if user does not have provided amount of xGOV,  error.
 
 user cannot provide negative inputs
 
-### ProvideRewards
-Prerequisites:
-user must have all the tokens and amounts in the specified Value
+### CreatePoolFactory 
+Prerequisites: 
+none
 
-input: PlutusTx.Value
+input: { factoryParams :: FactoryParams }
 
-behaviors:
-move all rewards from user wallet, divided as evenly as possible to all stakers of GOV tokens, send these tokens directly to the stakers
-error out if there are no GOV tokens staked
-return any remainder tokens to the caller (only for smallest possible units)
+behaviour: 
+initiate the contract, create the PoolFactory seeded with this CurrencySymbol. 
+factoryParams are the minimum open slot range, maximum open slot range, how many slots are required to not overlap (i.e. be after the last Pool), whitelist of 'admins' allowed to create pools (empty means anyone can create them) -- this also gives a unique (up to hash collisions) address to the PoolFactory.
 
-(we may create an alternative version where stakers can claim their rewards within the contract, as this is more conducive to futures markets (similar to xGOV tokens).
+comments:
+FactoryParams is the only reason as to why we wouldn't just have Governance be merged with PoolFactory, unless we want to have govenance be paramtrised by them
 
-### QueryBalance
+## PoolFactory Contract
+is this the right name for it?
 
-input: { address :: PubKey }
+### CreatePool
+prerequisites:
+none
 
-returns { amount :: Integer }
+input: { poolType :: VotingPool VotingDSL + RewardPool Value, openRange :: SlotRange, poolParams :: PoolParams }
 
-returns the total number of GOV tokens currently stored under the specified address. (may include multiple deposits, partial or full withdrawals may have occured)
+behaviour: assumption is that we only want to have fancy systems for voting, not distribution (which is direct and proportional). This simplifies the DSL.
+the openRange must be at valid for at least N slots after the last created pool, to allow everyone to participate in all votes/rewards.
+this instantiates the appropriate Pool contract
 
-this is used for determining vote weight in democratic procedures
+each of the AssetClass'es in Value is distributed independently of all others (otherwise we need to query exhanges to see how much of one is worth the other etc, too much work and may not even have an exchange rate)
 
+## Pool Contract
 
+### Participate
+prerequisites:
+user provides the amount of xGOV (AssetClass, check that it's xGOV) that was specified
+
+input: { tokens :: AssetClass }
+
+### Close
+prerequisites: 
+`from now` intersect `slotRange` is empty
+
+input: none
+
+output: distributes the xGOV to their original owners, alongside proportional rewards, if it was a RewardPool
