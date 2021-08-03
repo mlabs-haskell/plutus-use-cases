@@ -2,8 +2,8 @@ module NFT.API where
 
 import Prelude
 import Data.Argonaut as A
-import Data.Maybe
-import Effect
+import Data.Maybe (Maybe(..))
+import Effect (Effect)
 import Effect.Aff (Aff, runAff_)
 import Effect.Console (log)
 import Effect.Class (liftEffect)
@@ -16,28 +16,52 @@ type Buy =
   , buy'newPrice  :: Maybe String
   }
 
+type SetPrice = 
+ { setPrice'newPrice :: Maybe String
+}
+
 buyNft :: PABConnectionInfo 
   -> ContractInstanceId 
   -> Buy
   -> Aff Unit
 buyNft ci cii buy = do 
-    json <- callEndpoint ci cii "Buy" buy
+    json <- callEndpoint ci cii "buy-nft" buy
     liftEffect $ log $ A.stringify json
     pure unit
 
+setNftPrice :: PABConnectionInfo 
+  -> ContractInstanceId 
+  -> SetPrice
+  -> Aff Unit
+setNftPrice ci cii set = do 
+    json <- callEndpoint ci cii "set-price-for-nft" set
+    liftEffect $ log $ A.stringify json
+    pure unit
+
+
 instanceId :: ContractInstanceId
-instanceId = { unContractInstanceId: "44c6bb8c-67a3-4efa-97c0-c3d468cef7d7" }
+instanceId = { unContractInstanceId: "9da4a174-a094-4a36-ad11-3396cf05a93a" }
 
 connectionInfo :: PABConnectionInfo
 connectionInfo = {
-    baseURL: "localhost:8080"
+    baseURL: "http://localhost:8080"
 }
 
 testBuy :: Buy
 testBuy = {
     buy'price: "1000",
-    buy'newPrice: Just $ "5000"
+    buy'newPrice: Nothing
 }
 
 testBuyNft :: Effect Unit
-testBuyNft = runAff_ $ buyNft connectionInfo instanceId testBuy
+testBuyNft = runAff_ (log <<< show) $ buyNft connectionInfo instanceId testBuy
+
+testSetPrice :: SetPrice
+testSetPrice = {
+    setPrice'newPrice: Just $ "5000"
+}
+
+testSetPrice_ :: Effect Unit
+testSetPrice_ = runAff_ (log <<< show) $ setNftPrice connectionInfo instanceId testSetPrice
+
+-- start-nft

@@ -37,8 +37,9 @@ import Foreign (Foreign)
 import Foreign.Class (class Decode, class Encode, encode)
 import Foreign.Generic (decodeJSON, encodeJSON)
 import PAB.Types (ContractActivationArgs, ContractInstanceClientState, ContractInstanceId)
-import Prelude (bind, not, pure, show, ($), (<>))
+import Prelude
 import Wallet.Emulator.Wallet (Wallet)
+import Debug.Trace
 
 --------------------------------------------------------------------------------
 
@@ -72,12 +73,12 @@ walletInstances pab { getWallet } =
 callEndpoint 
   :: forall payload
    . A.EncodeJson payload 
-  => PABConnectionInfo 
+  => PABConnectionInfo
   -> ContractInstanceId 
   -> String
   -> payload
   -> Aff A.Json
-callEndpoint pab { unContractInstanceId } endpoint payload =
+callEndpoint pab { unContractInstanceId } endpoint payload = do
   let 
     url = 
       joinWith ""
@@ -87,7 +88,7 @@ callEndpoint pab { unContractInstanceId } endpoint payload =
         , "/endpoint/" 
         , endpoint
         ]
-  in
+  traceM "PAB API line 91"
   postJSON url payload
 getStatus
   :: PABConnectionInfo
@@ -139,7 +140,10 @@ postJSON
   -> payload 
   -> Aff resp
 postJSON url payload = do
+  let jsonPayload = A.encodeJson payload
+  _ <- pure $ spy "payload json" jsonPayload
   result <- AX.post AJRF.json url $ Just $ AJRB.Json $ A.encodeJson payload
+  _ <- pure $ spy "result" result
   case result of
     Left err -> Error.throwAffJaxError ("While calling POST on '" <> url <> "'") err
     Right response -> do

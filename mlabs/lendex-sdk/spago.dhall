@@ -7,7 +7,6 @@ You can edit this file as you like.
   [ "aff"
   , "aff-promise"
   , "affjax"
-  , "aff-promise"
   , "argonaut"
   , "argonaut-codecs"
   , "arrays"
@@ -42,8 +41,6 @@ You can edit this file as you like.
   , "web-socket"
   , "web-uievents"
   , "web-xhr"
-  , "datetime"
-  , "foldable-traversable"
   ]
 , packages = ./packages.dhall
 , sources =
