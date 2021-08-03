@@ -2,10 +2,16 @@
 module Main where
 
 import Prelude
+import Control.Monad (forever)
+import Control.Monad.Freer (Eff)
 import Control.Monad.IO.Class
 import Data.Functor
+import Data.Kind
+import Plutus.V1.Ledger.Value qualified as Value
 import PlutusTx.Prelude (ByteString)
+import Wallet.Emulator.Wallet qualified as Wallet
 
+import Plutus.PAB.Core qualified as PAB
 import Plutus.PAB.Simulator qualified as Simulator
 import Playground.Contract
 import Plutus.Contract
@@ -13,11 +19,15 @@ import Plutus.Contract
 import Mlabs.Nft.Logic.Types
 import Mlabs.Nft.Contract.Simulator.Handler
 import qualified Mlabs.Nft.Contract as Nft
-import qualified Mlabs.Data.Ray as R
 
+import qualified Mlabs.Data.Ray as R
 import Mlabs.Plutus.PAB
 import Mlabs.System.Console.PrettyLogger
 import Mlabs.System.Console.Utils
+
+-- logWalletBalance :: forall (t :: Type).Wallet -> Eff (PAB.PABEffects t (Simulator.SimulatorState t)) ()
+logWalletBalance w =
+   logBalance (show w) =<< Simulator.valueAt (Wallet.walletAddress w)
 
 -- | Main function to run simulator
 main :: IO ()
@@ -39,6 +49,13 @@ main = runSimulator startParams $ do
   test "User 2 sets the sale price to 500 Lovelace, User 3 buys The Mona Lisa from User 2 for 500 Lovelace setting the new sale price to 1000 Lovelace, User 1 receives a royalty from the sale" [1, 2, 3] $ do
     setPrice u2 (Just 500)
     buy u3 500 (Just 1000)
+  
+  -- toggle below code in for demo
+  _ <- forever $ do
+    _ <- Simulator.waitNSlots 10
+    logAction $ "updated wallets"
+    logWalletBalance $ Wallet 2
+    pure ()
 
   liftIO $ putStrLn "Fin (Press enter to Exit)"
   where
