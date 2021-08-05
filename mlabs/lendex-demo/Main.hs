@@ -3,15 +3,18 @@ module Main where
 
 import Prelude
 
-import Control.Monad (when)
+import Control.Monad (when, forever)
+import Control.Monad.Freer (Eff)
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Data.Functor (void)
+import Plutus.PAB.Core qualified as PAB
 import Data.Monoid (Last(..))
 
 import Ledger.Constraints (mustPayToPubKey)
 import Playground.Contract (TokenName, Wallet(..))
 import Plutus.Contract hiding (when)
 import Plutus.Contracts.Currency qualified as Currency
+import Plutus.PAB.Core qualified as PAB
 import Plutus.PAB.Simulator qualified as Simulator
 import Plutus.V1.Ledger.Crypto (PubKeyHash(..))
 import Plutus.V1.Ledger.Contexts (pubKeyHash)
@@ -19,13 +22,17 @@ import Plutus.V1.Ledger.Tx (txId)
 import Plutus.V1.Ledger.Value qualified as Value
 import Wallet.Emulator.Wallet qualified as Wallet
 
-import Mlabs.Data.Ray qualified as R
+import qualified Mlabs.Data.Ray as R
 import Mlabs.Plutus.PAB ( call, printBalance, waitForLast )
 import Mlabs.Lending.Contract qualified as Contract
 import Mlabs.Lending.Contract.Simulator.Handler qualified as Handler
 import Mlabs.Lending.Logic.Types hiding (Wallet(..), User(..))
 import Mlabs.System.Console.PrettyLogger ( logNewLine )
-import Mlabs.System.Console.Utils ( logAction, logMlabs )
+import Mlabs.System.Console.Utils ( logAction, logMlabs, logBalance )
+
+-- logWalletBalance :: forall (t :: Type).Wallet -> Eff (PAB.PABEffects t (Simulator.SimulatorState t)) ()
+logWalletBalance w =
+  logBalance (show w) =<< Simulator.valueAt (Wallet.walletAddress w)
 
 -- | Console demo for Lendex with simulator
 main :: IO ()
@@ -77,6 +84,13 @@ main = Handler.runSimulator lendexId initContract $ do
 
   test "User 1 repays 20 coins of the loan" $ do
     call user1 $ Contract.Repay 20 coin1 (Contract.toInterestRateFlag StableRate)
+  
+   -- toggle below code in for demo
+  _ <- forever $ do
+    _ <- Simulator.waitNSlots 10
+    logAction $ "updated wallets"
+    logWalletBalance $ Wallet 2
+    pure ()
 
   liftIO $ putStrLn "Fin (Press enter to Exit)"
   where
