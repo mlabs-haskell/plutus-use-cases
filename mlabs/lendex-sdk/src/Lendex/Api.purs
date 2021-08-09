@@ -12,7 +12,7 @@ import PAB.Api (PABConnectionInfo, callEndpoint)
 import PAB.Types (ContractInstanceId)
 
 instanceId :: ContractInstanceId
-instanceId = { unContractInstanceId: "ba60d693-c038-4557-bcc5-8096a44fce72" }
+instanceId = { unContractInstanceId: "708fc50c-afb9-4b32-8731-c05c874c20b0" }
 
 connectionInfo :: PABConnectionInfo
 connectionInfo = {
@@ -23,7 +23,6 @@ type Deposit =
     { deposit'amount :: Int
   , deposit'asset :: Maybe Int
   }
-
 deposit :: PABConnectionInfo 
   -> ContractInstanceId 
   -> Deposit
@@ -41,3 +40,56 @@ testDeposit = {
 
 testDeposit_ :: Effect Unit
 testDeposit_ = runAff_ (log <<< show) $ deposit connectionInfo instanceId testDeposit
+
+
+type Borrow = {
+  borrow'amount :: Int
+  , borrow'asset :: Int
+  , borrow'rate  :: Int
+}
+
+borrow :: PABConnectionInfo 
+  -> ContractInstanceId 
+  -> Borrow
+  -> Aff Unit
+borrow ci cii borrow = do 
+    json <- callEndpoint ci cii "borrow" borrow
+    liftEffect $ log $ A.stringify json
+    pure unit
+
+testBorrow :: Borrow
+testBorrow = {
+   borrow'amount: 200000
+  , borrow'asset: 100000
+  , borrow'rate: 2000000
+}
+
+testBorrow_ :: Effect Unit
+testBorrow_ = runAff_ (log <<< show) $ borrow connectionInfo instanceId testBorrow
+
+
+type Repay = { 
+  repay'amount :: Int
+  , repay'asset :: Int
+  , repay'rate :: Int
+  }
+
+
+repay :: PABConnectionInfo 
+  -> ContractInstanceId 
+  -> Repay
+  -> Aff Unit
+repay ci cii repay = do 
+    json <- callEndpoint ci cii "repay" repay
+    liftEffect $ log $ A.stringify json
+    pure unit
+
+testRepay :: Repay
+testRepay = {
+   repay'amount: 200000
+  , repay'asset: 100000
+  , repay'rate: 2000000
+}
+
+testRepay_ :: Effect Unit
+testRepay_ = runAff_ (log <<< show) $ repay connectionInfo instanceId testRepay
