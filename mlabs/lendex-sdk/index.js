@@ -1,3 +1,3 @@
 const NFT = require('./output/Lendex.API');
 
-NFT.testRepay_();
+NFT.testSwapBorrowRateModel_();

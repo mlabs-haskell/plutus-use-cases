@@ -12,7 +12,7 @@ import PAB.Api (PABConnectionInfo, callEndpoint)
 import PAB.Types (ContractInstanceId)
 
 instanceId :: ContractInstanceId
-instanceId = { unContractInstanceId: "708fc50c-afb9-4b32-8731-c05c874c20b0" }
+instanceId = { unContractInstanceId: "0c2257d8-f1c4-42b3-a63b-3e5bdf148e4a" }
 
 connectionInfo :: PABConnectionInfo
 connectionInfo = {
@@ -93,3 +93,51 @@ testRepay = {
 
 testRepay_ :: Effect Unit
 testRepay_ = runAff_ (log <<< show) $ repay connectionInfo instanceId testRepay
+
+type SwapBorrowRateModel = { 
+  swapRate'asset :: Int
+  , swapRate'rate :: Int
+}
+
+swapBorrowRateModel :: PABConnectionInfo 
+  -> ContractInstanceId 
+  -> SwapBorrowRateModel
+  -> Aff Unit
+swapBorrowRateModel ci cii swapBorrowRateModel = do 
+    json <- callEndpoint ci cii "swap-borrow-rate-model" swapBorrowRateModel
+    liftEffect $ log $ A.stringify json
+    pure unit
+
+testSwapBorrowRateModel :: SwapBorrowRateModel
+testSwapBorrowRateModel = {
+   swapRate'asset: 200000
+  , swapRate'rate: 100000
+}
+
+testSwapBorrowRateModel_ :: Effect Unit
+testSwapBorrowRateModel_ = runAff_ (log <<< show) $ swapBorrowRateModel connectionInfo instanceId testSwapBorrowRateModel
+
+type SetUserReserveAsCollateral = { 
+  setCollateral'asset :: Int
+  , setCollateral'useAsCollateral :: Int
+  ,  setCollateral'portion :: Int
+}
+
+setUserReserveAsCollateral :: PABConnectionInfo 
+  -> ContractInstanceId 
+  -> SetUserReserveAsCollateral
+  -> Aff Unit
+setUserReserveAsCollateral ci cii setUserReserveAsCollateral = do 
+    json <- callEndpoint ci cii "set-user-reserve-as-collateral" setUserReserveAsCollateral
+    liftEffect $ log $ A.stringify json
+    pure unit
+
+testSetUserReserveAsCollateral :: SetUserReserveAsCollateral
+testSetUserReserveAsCollateral = {
+   setCollateral'asset : 200000
+  , setCollateral'useAsCollateral: 100000
+  , setCollateral'portion: 300000
+}
+
+testSetUserReserveAsCollateral_ :: Effect Unit
+testSetUserReserveAsCollateral_ = runAff_ (log <<< show) $ setUserReserveAsCollateral connectionInfo instanceId testSetUserReserveAsCollateral
