@@ -9,6 +9,6 @@ pkgs.mkShell {
   buildInputs = builtins.attrValues {
     inherit (pkgs) gnumake nodejs;
     inherit (pkgs_master.nodePackages) purescript-language-server;
-    inherit (easy-ps) purs pulp purp psc-package dhall-simple spago psa pscid spago2nix zephyr;
+    inherit (easy-ps) spago purs-0_13_6;
   };
 }
