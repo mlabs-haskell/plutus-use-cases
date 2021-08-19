@@ -6,10 +6,10 @@ module Mlabs.Governance.Contract.Server (
   governanceEndpoints,
 ) where
 
-import PlutusTx.Prelude hiding (toList)
-import Prelude (String, show, uncurry)
+import PlutusTx.Prelude hiding (toList, mconcat)
+import Prelude as Hask (String, show, uncurry, mconcat)
 
-import Control.Monad (forever, void)
+import Control.Monad (forever, void, forM)
 import Data.List.Extra (maximumOn)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
@@ -82,9 +82,7 @@ deposit gov (Api.Deposit amnt) = do
 withdraw :: AssetClassGov -> Api.Withdraw -> GovernanceContract ()
 withdraw gov (Api.Withdraw assets) = do
   ownPkh <- pubKeyHash <$> Contract.ownPubKey
-  let trav f ~(x NE.:| xs) = (NE.:|) <$> f x <*> traverse f xs
-  -- for some reason NonEmpty doesn't have a Traversible instance in scope
-  (tx, lookups) <- fmap sconcat . flip trav (NE.fromList assets) $ \ac -> do
+  (tx, lookups) <- fmap Hask.mconcat . forM assets $ \ac -> do
     g <- findGovernance (fst ac) gov
     case g of
       Nothing -> Contract.throwError "not found governance to withdraw from"
@@ -93,20 +91,19 @@ withdraw gov (Api.Withdraw assets) = do
           let valxGov = Validation.xgovSingleton gov (fst ac) (snd ac)
               valGov = Validation.govSingleton gov (snd ac)
               scriptBalance = txOutValue $ txOutTxOut utxo
-           in ( sconcat
+           in ( Hask.mconcat
                   [ Constraints.mustPayToTheScript datum $ scriptBalance - valGov
                   , Constraints.mustPayToPubKey ownPkh valGov
                   , Constraints.mustMintValue (negate valxGov)
                   , Constraints.mustSpendScriptOutput oref (Redeemer . toBuiltinData . GRWithdraw $ snd ac)
                   ]
-              , sconcat
+              , Hask.mconcat
                   [ Constraints.typedValidatorLookups $ Validation.govInstance gov
                   , Constraints.otherScript $ Validation.govValidator gov
                   , Constraints.mintingPolicy $ Validation.xGovMintingPolicy gov
                   , Constraints.unspentOutputs $ Map.singleton oref utxo
                   ]
               )
-
   ledgerTx <- Contract.submitTxConstraintsWith @Validation.Governance lookups tx
   void $ Contract.awaitTxConfirmed $ txId ledgerTx
   Contract.logInfo @String $ printf "withdrew %s GOV tokens" (show . sum $ map snd assets)

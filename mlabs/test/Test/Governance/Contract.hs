@@ -77,6 +77,7 @@ test =
         , testPartialWithdraw
         , testCantWithdrawNegativeAmount
         , testCantWithdrawMoreThandeposited
+        , testWithdrawNoAssets
         , testTradeAndWithdraw
         ]
     ]
@@ -271,13 +272,30 @@ testCantWithdrawNegativeAmount =
           void $ callEndpoint' @Withdraw hdl (Withdraw $ Test.xgovEP wallet (negate 1))
           next
 
+testWithdrawNoAssets :: TestTree
+testWithdrawNoAssets =
+  let (wallet, _, _, activateWallet) = setup Test.fstWalletWithGOV
+   in checkPredicateOptions
+        Test.checkOptions
+        "Withdraw of empty asset does nothing"
+        ( assertNoFailedTransactions
+            .&&. walletFundsChange
+              wallet
+              mempty
+            .&&. valueAtAddress Test.scriptAddress (== mempty)
+        )
+        $ do
+          hdl <- activateWallet
+          void $ callEndpoint' @Withdraw hdl (Withdraw [])
+          next
+
 testTradeAndWithdraw :: TestTree
 testTradeAndWithdraw = 
   let (wallet1, _, _, activateWallet1) = setup Test.fstWalletWithGOV
       (wallet2, _, _, activateWallet2) = setup Test.sndWalletWithGOV
   in checkPredicateOptions
      Test.checkOptions
-     "Trade"
+     "Trade xGOV and withdraw"
      ( assertNoFailedTransactions
        .&&. walletFundsChange
               wallet1
