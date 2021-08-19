@@ -24,10 +24,12 @@ import Plutus.Contract.Test as PT (
  )
 
 import Mlabs.Plutus.Contract (callEndpoint')
+import Plutus.Contract.Test (walletPubKey)
 import Plutus.Trace.Emulator (ContractInstanceTag)
 import Plutus.Trace.Emulator qualified as Trace
 import Plutus.Trace.Emulator.Types (ContractHandle)
 import Plutus.V1.Ledger.Scripts (ScriptError (EvaluationError))
+import Ledger (PubKeyHash, pubKeyHash)
 
 import Control.Monad.Freer (Eff, Member)
 import Data.Semigroup (Last)
@@ -74,6 +76,8 @@ test =
         [ testFullWithdraw
         , testPartialWithdraw
         , testCantWithdrawNegativeAmount
+        , testCantWithdrawMoreThandeposited
+        , testTradeAndWithdraw
         ]
     ]
 
@@ -222,14 +226,27 @@ testPartialWithdraw =
           void $ callEndpoint' @Withdraw hdl (Withdraw $ Test.xgovEP wallet withdrawAmt)
           next
 
-{- What behaviour expected here:
-    - failed transaction
-    - contract error
-    - withdraw all available
-    ?
--}
 testCantWithdrawMoreThandeposited :: TestTree
-testCantWithdrawMoreThandeposited = error "TBD"
+testCantWithdrawMoreThandeposited =
+  let (wallet, contract, tag, activateWallet) = setup Test.fstWalletWithGOV
+      depoAmt = 20
+      withdrawAmt = 50
+      errCheck = ("InsufficientFunds" `T.isInfixOf`)
+   in checkPredicateOptions
+        Test.checkOptions
+        "Cant withdraw more than deposited"
+        ( assertNoFailedTransactions
+            .&&. assertContractError contract tag errCheck "Should fail with `InsufficientFunds`"
+            .&&. walletFundsChange wallet (Test.gov (negate depoAmt) <> Test.xgov wallet depoAmt)
+            .&&. valueAtAddress Test.scriptAddress (== Test.gov depoAmt)
+        )
+        $ do
+          hdl <- activateWallet
+          next
+          void $ callEndpoint' @Deposit hdl (Deposit depoAmt)
+          next
+          void $ callEndpoint' @Withdraw hdl (Withdraw $ Test.xgovEP wallet withdrawAmt)
+          next
 
 testCantWithdrawNegativeAmount :: TestTree
 testCantWithdrawNegativeAmount =
@@ -254,5 +271,36 @@ testCantWithdrawNegativeAmount =
           void $ callEndpoint' @Withdraw hdl (Withdraw $ Test.xgovEP wallet (negate 1))
           next
 
-testCanWithdrawOnlyxGov :: TestTree
-testCanWithdrawOnlyxGov = error "TBD"
+testTradeAndWithdraw :: TestTree
+testTradeAndWithdraw = 
+  let (wallet1, _, _, activateWallet1) = setup Test.fstWalletWithGOV
+      (wallet2, _, _, activateWallet2) = setup Test.sndWalletWithGOV
+  in checkPredicateOptions
+     Test.checkOptions
+     "Trade"
+     ( assertNoFailedTransactions
+       .&&. walletFundsChange
+              wallet1
+              (Test.gov (negate 50) + Test.xgov wallet1 35)
+       .&&. walletFundsChange 
+              wallet2
+              (Test.xgov wallet2 5 + Test.xgov wallet1 5 + Test.gov 5)
+     )
+     $ do
+       h1 <- activateWallet1
+       h2 <- activateWallet2
+       void $ callEndpoint' @Deposit h1 (Deposit 50)
+       void $ callEndpoint' @Deposit h2 (Deposit 40)
+       next
+       void $ payXGov wallet1 wallet2 15
+       next
+       void $ callEndpoint' @Withdraw h2 $ Withdraw 
+                                            [ (walletPKH wallet2, 35)
+                                            , (walletPKH wallet1, 10)
+                                            ]
+       next                 
+
+walletPKH = pubKeyHash . walletPubKey
+
+payXGov wallet1 wallet2 walletOneXGovAmt = 
+  Trace.payToWallet wallet1 wallet2 $ Test.xgov wallet1 walletOneXGovAmt
