@@ -112,6 +112,8 @@ withdraw gov (Api.Withdraw assets) = do
   Contract.logInfo @String $ printf "withdrew %s GOV tokens" (show . sum $ map snd assets)
 
 -- TODO fix (works but transaction sizes are HUGE)
+-- fix - could break the TX into chunks of size N
+-- needs to have a safe N, to be determined by the testnet
 provideRewards :: AssetClassGov -> Api.ProvideRewards -> GovernanceContract ()
 provideRewards gov (Api.ProvideRewards val) = do
   depositMap <- depositMapC
