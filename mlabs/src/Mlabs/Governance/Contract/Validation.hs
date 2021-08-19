@@ -62,7 +62,7 @@ data GovernanceRedeemer
   deriving (Hask.Show)
 
 instance Eq GovernanceRedeemer where
-  {-# INLINEABLE (==) #-}
+  {-# INLINABLE (==) #-}
   (GRDeposit n1) == (GRDeposit n2) = n1 == n2
   (GRWithdraw n1) == (GRWithdraw n2) = n1 == n2
   _ == _ = False
@@ -75,6 +75,11 @@ data GovernanceDatum = GovernanceDatum
   , gdxGovCurrencySymbol :: !CurrencySymbol
   }
   deriving (Hask.Show)
+
+instance Eq GovernanceDatum where
+  {-# INLINABLE (==) #-}
+  (GovernanceDatum p1 c1) == (GovernanceDatum p2 c2) =
+    p1 == p2 && c1 == c2
 
 PlutusTx.unstableMakeIsData ''GovernanceDatum
 PlutusTx.makeLift ''GovernanceDatum
@@ -100,19 +105,25 @@ mkValidator gov datum redeemer ctx =
       Just o -> o
       Nothing -> traceError "no self in input"
 
-    ownOutput :: Contexts.TxOut
-    ownOutput = case Contexts.getContinuingOutputs ctx of
-      [o] -> o -- this may crash here, may need to filter by pkh
-      _ -> traceError "expected exactly one continuing output"
-
-    outputDatum :: GovernanceDatum
-    outputDatum = case txOutDatumHash ownOutput of
+    -- ANY governance is required to have the datum
+    -- could relax this later if we want to allow some unforeseen usecases
+    getDatum :: Contexts.TxOut -> GovernanceDatum
+    getDatum utxo = case txOutDatumHash utxo of
       Nothing -> traceError "no datum hash on governance"
       Just h -> case findDatum h info of
         Nothing -> traceError "no datum on governance"
         Just (Datum d) -> case PlutusTx.fromBuiltinData d of
           Nothing -> traceError "no datum parse"
           Just gd -> gd
+
+    -- if there are many-pkh-one-pkh on input, they need to merge into one
+    ownOutput :: Contexts.TxOut 
+    ownOutput = case filter ((==datum) . getDatum) $ Contexts.getContinuingOutputs ctx of
+      [o] -> o
+      _   -> traceError "expected unique datums on output"
+
+    outputDatum :: GovernanceDatum
+    outputDatum = getDatum ownOutput
 
     valueIn :: Value
     valueIn = txOutValue $ txInInfoResolved ownInput
