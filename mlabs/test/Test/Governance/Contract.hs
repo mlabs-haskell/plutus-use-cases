@@ -294,10 +294,9 @@ testTradeAndWithdraw =
        next
        void $ payXGov wallet1 wallet2 15
        next
-       void $ callEndpoint' @Withdraw h2 $ Withdraw 
-                                            [ (walletPKH wallet2, 35)
-                                            , (walletPKH wallet1, 10)
-                                            ]
+       void $ callEndpoint' @Withdraw h2 $ Withdraw $
+                                            Test.xgovEP wallet2 35
+                                            <> Test.xgovEP wallet1 10
        next                 
 
 walletPKH = pubKeyHash . walletPubKey
