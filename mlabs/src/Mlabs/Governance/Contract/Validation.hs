@@ -48,7 +48,7 @@ data AssetClassGov = AssetClassGov
   deriving (Hask.Show, Hask.Eq, Generic, ToJSON, FromJSON, ToSchema)
 
 instance Eq AssetClassGov where
-  {-# INLINEABLE (==) #-}
+  {-# INLINABLE (==) #-}
   n1 == n2 =
     acGovCurrencySymbol n1 == acGovCurrencySymbol n2
       && acGovTokenName n1 == acGovTokenName n2
@@ -90,8 +90,7 @@ instance Validators.ValidatorTypes Governance where
   type RedeemerType Governance = GovernanceRedeemer
 
 -- | governance validator
-{-# INLINEABLE govValidator #-}
-
+{-# INLINABLE mkValidator #-}
 mkValidator :: AssetClassGov -> GovernanceDatum -> GovernanceRedeemer -> ScriptContext -> Bool
 mkValidator gov datum redeemer ctx =
   traceIfFalse "incorrect value from redeemer" checkCorrectValue
@@ -232,8 +231,7 @@ mkPolicy vh AssetClassGov {..} _ ctx =
     checkMintedSubsetGovDeposits = foldr memb True (map (first coerce) mintedDeposit)
       where
         memb pair b = (b &&) . foldr (||) False $ map (== pair) differenceGovDeposits
-
--- yes, I've only done it ^this way so that it compiles
+        -- yes, I've only done it ^this way so that it compiles
 
 xGovMintingPolicy :: AssetClassGov -> MintingPolicy
 xGovMintingPolicy gov =
