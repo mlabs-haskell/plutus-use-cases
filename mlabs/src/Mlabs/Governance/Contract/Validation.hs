@@ -19,6 +19,7 @@ module Mlabs.Governance.Contract.Validation (
   GovernanceDatum (..),
   GovernanceRedeemer (..),
   AssetClassGov (..),
+  mkValidator
 ) where
 
 import PlutusTx.Prelude hiding (Semigroup (..), unless)
@@ -92,69 +93,79 @@ instance Validators.ValidatorTypes Governance where
 -- | governance validator
 {-# INLINABLE mkValidator #-}
 mkValidator :: AssetClassGov -> GovernanceDatum -> GovernanceRedeemer -> ScriptContext -> Bool
-mkValidator gov datum redeemer ctx =
-  traceIfFalse "incorrect value from redeemer" checkCorrectValue
-    && traceIfFalse "incorrect minting script involvenment" checkForging
-    && traceIfFalse "invalid datum update" checkCorrectDatumUpdate
+mkValidator gov datum redeemer ctx = traceError "no self in input"
+  -- see PLAN.md
+  -- True
+  -- traceIfFalse "incorrect value from redeemer" checkCorrectValue
+  --   && traceIfFalse "incorrect minting script involvenment" checkForging
+  --   && traceIfFalse "invalid datum update" checkCorrectDatumUpdate
   where
     info = scriptContextTxInfo ctx
 
-    ownInput :: Contexts.TxInInfo
-    ownInput = case findOwnInput ctx of
-      Just o -> o
-      Nothing -> traceError "no self in input"
+    -- ownInput :: Contexts.TxInInfo
+    -- ownInput = case findOwnInput ctx of
+    --   Just o -> o
+    --   Nothing -> traceError "no self in input"
 
-    -- ANY governance is required to have the datum
-    -- could relax this later if we want to allow some unforeseen usecases
-    getDatum :: Contexts.TxOut -> GovernanceDatum
-    getDatum utxo = case txOutDatumHash utxo of
-      Nothing -> traceError "no datum hash on governance"
-      Just h -> case findDatum h info of
-        Nothing -> traceError "no datum on governance"
-        Just (Datum d) -> case PlutusTx.fromBuiltinData d of
-          Nothing -> traceError "no datum parse"
-          Just gd -> gd
+    ownInput :: Maybe Contexts.TxInInfo
+    ownInput = findOwnInput ctx 
 
-    -- if there are many-pkh-one-pkh on input, they need to merge into one
-    ownOutput :: Contexts.TxOut 
-    ownOutput = case filter ((==datum) . getDatum) $ Contexts.getContinuingOutputs ctx of
-      [o] -> o
-      _   -> traceError "expected unique datums on output"
+    -- -- ANY governance is required to have the datum
+    -- -- could relax this later if we want to allow some unforeseen usecases
+    -- getDatum :: Contexts.TxOut -> GovernanceDatum
+    -- getDatum utxo = case txOutDatumHash utxo of
+    --   Nothing -> traceError "no datum hash on governance"
+    --   Just h -> case findDatum h info of
+    --     Nothing -> traceError "no datum on governance"
+    --     Just (Datum d) -> case PlutusTx.fromBuiltinData d of
+    --       Nothing -> traceError "no datum parse"
+    --       Just gd -> gd
 
-    outputDatum :: GovernanceDatum
-    outputDatum = getDatum ownOutput
+    -- -- if there are many-pkh-one-pkh on input, they need to merge into one
+    -- ownOutput :: Contexts.TxOut 
+    -- ownOutput = case filter ((==datum) . getDatum) $ Contexts.getContinuingOutputs ctx of
+    --   [o] -> o
+    --   _   -> traceError "expected unique datums on output"
 
-    valueIn :: Value
-    valueIn = txOutValue $ txInInfoResolved ownInput
+    -- outputDatum :: GovernanceDatum
+    -- outputDatum = getDatum ownOutput
 
-    valueOut :: Value
-    valueOut = txOutValue ownOutput
+    valueIn :: Maybe Value
+    valueIn = (txOutValue . txInInfoResolved) <$> ownInput
 
-    pkh :: PubKeyHash
-    pkh = gdPubKeyHash datum
+    -- valueOut :: Value
+    -- valueOut = txOutValue ownOutput
 
-    xGov :: CurrencySymbol
-    xGov = gdxGovCurrencySymbol datum
+    -- pkh :: PubKeyHash
+    -- pkh = gdPubKeyHash datum
+
+    -- xGov :: CurrencySymbol
+    -- xGov = gdxGovCurrencySymbol datum
 
     --- checks
 
-    checkForging :: Bool
-    checkForging = case AssocMap.lookup xGov . Value.getValue $ txInfoForge info of
-      Nothing -> False
-      Just mp -> case (redeemer, AssocMap.lookup (coerce pkh) mp) of
-        (GRDeposit n, Just m) -> n == m
-        (GRWithdraw n, Just m) -> n == negate m
-        _ -> False
+    -- checkForging :: Bool
+    -- checkForging = case AssocMap.lookup xGov . Value.getValue $ txInfoForge info of
+    --   Nothing -> False
+    --   Just mp -> case (redeemer, AssocMap.lookup (coerce pkh) mp) of
+    --     (GRDeposit n, Just m) -> n == m
+    --     (GRWithdraw n, Just m) -> n == negate m
+    --     _ -> False
 
     checkCorrectValue :: Bool
     checkCorrectValue = case redeemer of
-      GRDeposit n -> n > 0 && valueIn + govSingleton gov n == valueOut
-      GRWithdraw n -> n > 0 && valueIn - govSingleton gov n == valueOut
+      -- GRDeposit n -> n > 0  && valueIn + govSingleton gov n == valueOut
+      -- GRWithdraw n -> n > 0 && valueIn - govSingleton gov n == valueOut
+      GRDeposit n -> n > 0  
+                     && case valueIn of 
+                          Just v -> v == govSingleton gov n
+                          _      -> False
+      GRWithdraw n -> n > 0 
 
-    checkCorrectDatumUpdate :: Bool
-    checkCorrectDatumUpdate =
-      pkh == gdPubKeyHash outputDatum
-        && xGov == gdxGovCurrencySymbol outputDatum
+    -- checkCorrectDatumUpdate :: Bool
+    -- checkCorrectDatumUpdate =
+    --   pkh == gdPubKeyHash outputDatum
+    --     && xGov == gdxGovCurrencySymbol outputDatum
 
 govInstance :: AssetClassGov -> Validators.TypedValidator Governance
 govInstance gov =

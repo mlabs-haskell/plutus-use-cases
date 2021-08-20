@@ -209,6 +209,7 @@ Test-suite mlabs-plutus-use-cases-tests
     Test.Demo.Contract.Mint
     Test.Governance.Contract
     Test.Governance.Init
+    Test.Governance.Validator
     Test.Lending.Contract
     Test.Lending.Init
     Test.Lending.Logic
@@ -217,6 +218,7 @@ Test-suite mlabs-plutus-use-cases-tests
     Test.Nft.Init
     Test.Nft.Logic
     Test.Utils
+    Test.ValidatorTestFramework
                      
   default-extensions:
     RecordWildCards
