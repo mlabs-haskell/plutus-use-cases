@@ -12,7 +12,7 @@ import PAB.Api (PABConnectionInfo, callEndpoint)
 import PAB.Types (ContractInstanceId)
 
 instanceId :: ContractInstanceId
-instanceId = { unContractInstanceId: "5ffcf001-ef4c-4408-bb6b-f867fb7195b4" }
+instanceId = { unContractInstanceId: "0a31659c-6edc-4e2f-a284-f94f6d2d3627" }
 
 connectionInfo :: PABConnectionInfo
 connectionInfo = {
