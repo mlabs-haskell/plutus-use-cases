@@ -19,7 +19,7 @@ Hs-Source-Dirs:      src/
 
 
 library
-  Ghc-Options:    -Wall
+  Ghc-Options:    -Wall -fplugin=RecordDotPreprocessor
   build-depends:       base >=4.14 && <4.15
                      , aeson
                      , ansi-terminal
@@ -39,6 +39,8 @@ library
                      , plutus-use-cases
                      , prettyprinter
                      , pretty-show
+                     , record-dot-preprocessor
+                     , record-hasfield
                      , row-types
                      , stm
                      , lens
@@ -57,6 +59,8 @@ library
         Mlabs.Data.Maybe
         Mlabs.Data.Ray
         Mlabs.Data.Ord
+        Mlabs.Demo.Contract.Burn
+        Mlabs.Demo.Contract.Mint
         Mlabs.Emulator.App
         Mlabs.Emulator.Blockchain
         Mlabs.Emulator.Scene
@@ -236,12 +240,50 @@ executable lendex-demo
                      , row-types
                      , vector
   default-language:    Haskell2010
-  default-extensions: AllowAmbiguousTypes BlockArguments BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveAnyClass DeriveFunctor DeriveGeneric DerivingStrategies DerivingVia DuplicateRecordFields EmptyCase ExplicitNamespaces FlexibleContexts FlexibleInstances GeneralizedNewtypeDeriving InstanceSigs LambdaCase MultiParamTypeClasses MultiWayIf NamedFieldPuns NoImplicitPrelude NumericUnderscores OverloadedLabels OverloadedStrings PatternSynonyms RecordWildCards ScopedTypeVariables StandaloneDeriving TemplateHaskell TupleSections TypeApplications TypeFamilies TypeOperators TypeSynonymInstances UndecidableInstances ViewPatterns ImportQualifiedPost RoleAnnotations
-
+  default-extensions: AllowAmbiguousTypes
+                      BlockArguments
+                      BangPatterns
+                      ConstraintKinds
+                      DataKinds
+                      DefaultSignatures
+                      DeriveAnyClass
+                      DeriveFunctor
+                      DeriveGeneric
+                      DerivingStrategies
+                      DerivingVia
+                      DuplicateRecordFields
+                      EmptyCase
+                      ExplicitNamespaces
+                      FlexibleContexts
+                      FlexibleInstances
+                      GeneralizedNewtypeDeriving
+                      InstanceSigs
+                      LambdaCase
+                      MultiParamTypeClasses
+                      MultiWayIf
+                      NamedFieldPuns
+                      NoImplicitPrelude
+                      NumericUnderscores
+                      OverloadedLabels
+                      OverloadedStrings
+                      PatternSynonyms
+                      RecordWildCards
+                      ScopedTypeVariables
+                      StandaloneDeriving
+                      TemplateHaskell
+                      TupleSections
+                      TypeApplications
+                      TypeFamilies
+                      TypeOperators
+                      TypeSynonymInstances
+                      UndecidableInstances
+                      ViewPatterns
+                      ImportQualifiedPost
+                      RoleAnnotations
 
 Test-suite mlabs-plutus-use-cases-tests
   Type:                exitcode-stdio-1.0
-  Ghc-options:         -Wall -threaded -rtsopts
+  Ghc-options:         -Wall -threaded -rtsopts -fplugin=RecordDotPreprocessor
   Default-Language:    Haskell2010
   Build-Depends:       base              >=4.9 && <5
                      , data-default
@@ -263,6 +305,8 @@ Test-suite mlabs-plutus-use-cases-tests
                      , plutus-contract
                      , prettyprinter
                      , pretty-show
+                     , record-dot-preprocessor
+                     , record-hasfield
                      , tasty
                      , tasty-hunit
                      , tasty-expected-failure
@@ -272,6 +316,7 @@ Test-suite mlabs-plutus-use-cases-tests
   hs-source-dirs:      test
   Main-is:             Main.hs
   Other-modules:
+                       Test.Demo.Contract.Mint
                        Test.Lending.Contract
                        Test.Lending.Init
                        Test.Lending.Logic
@@ -285,4 +330,3 @@ Test-suite mlabs-plutus-use-cases-tests
     OverloadedStrings
     QuasiQuotes
     TupleSections
-

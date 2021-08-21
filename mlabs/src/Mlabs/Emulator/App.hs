@@ -1,3 +1,13 @@
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
+{-# LANGUAGE UndecidableInstances  #-}
+
 -- | Lending app emulator
 module Mlabs.Emulator.App(
     App(..)
@@ -8,21 +18,18 @@ module Mlabs.Emulator.App(
   , checkWallets
 ) where
 
-import Test.Tasty.HUnit
-import Text.Show.Pretty
-
 import PlutusTx.Prelude
-import Control.Monad.State.Strict hiding (Functor(..))
 
+import Control.Monad.State.Strict ( foldM )
+import Data.Map.Strict qualified as M
 import Data.List (foldl')
+import Test.Tasty.HUnit ( Assertion, (@=?), assertBool, assertFailure )
+import Text.Show.Pretty ( pPrint )
 
-import Mlabs.Emulator.Blockchain
-import Mlabs.Emulator.Script
-import Mlabs.Emulator.Types
-
-import Mlabs.Control.Monad.State
-
-import qualified Data.Map.Strict as M
+import Mlabs.Control.Monad.State ( runStateT, PlutusState )
+import Mlabs.Emulator.Blockchain ( applyResp, BchState(..), BchWallet, Resp )
+import Mlabs.Emulator.Script ( runScript, Script )
+import Mlabs.Emulator.Types ( UserId )
 
 -- | Prototype application
 data App st act = App
@@ -68,7 +75,7 @@ noErrors app = case app'log app of
       print msg
 
 someErrors :: App st act -> Assertion
-someErrors app = assertBool "Script fails" $ not $ null (app'log app)
+someErrors app = assertBool "Script fails" $ not $ null (app.app'log)
 
 -- | Check that we have those wallets after script was run.
 checkWallets :: (Show act, Show st) => [(UserId, BchWallet)] -> App st act -> Assertion

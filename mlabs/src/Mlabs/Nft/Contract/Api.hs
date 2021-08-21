@@ -1,3 +1,13 @@
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
+{-# LANGUAGE UndecidableInstances  #-}
+
 -- | Contract API for Lendex application
 module Mlabs.Nft.Contract.Api(
     Buy(..)
@@ -8,17 +18,15 @@ module Mlabs.Nft.Contract.Api(
   , IsUserAct(..)
 ) where
 
+import GHC.Generics (Generic)
+import Playground.Contract (ToSchema, ToJSON, FromJSON)
+import Plutus.Contract (type (.\/), BlockchainActions)
+import PlutusTx.Prelude ( Show, Integer, Maybe, ByteString )
 import qualified Prelude as Hask
-import PlutusTx.Prelude
-
-import GHC.Generics
-
-import Plutus.Contract
-import Playground.Contract
 
 import Mlabs.Data.Ray (Ray)
-import Mlabs.Plutus.Contract
-import Mlabs.Nft.Logic.Types
+import Mlabs.Nft.Logic.Types ( UserAct(BuyAct, SetPriceAct) )
+import Mlabs.Plutus.Contract ( Call, IsEndpoint(..) )
 
 ----------------------------------------------------------------------
 -- NFT endpoints

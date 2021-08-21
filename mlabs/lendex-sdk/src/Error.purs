@@ -9,7 +9,6 @@ where
 
 import Prelude
 
-import Data.Argonaut as A
 import Affjax as AX
 import Data.Maybe (Maybe(..))
 import Data.String (joinWith)

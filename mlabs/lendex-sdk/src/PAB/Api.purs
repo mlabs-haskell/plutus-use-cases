@@ -88,7 +88,6 @@ callEndpoint pab { unContractInstanceId } endpoint payload = do
         , "/endpoint/" 
         , endpoint
         ]
-  traceM "PAB API line 91"
   postJSON url payload
 getStatus
   :: PABConnectionInfo

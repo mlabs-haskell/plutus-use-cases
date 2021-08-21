@@ -6,6 +6,17 @@
 {-# OPTIONS_GHC -fno-ignore-interface-pragmas #-}
 {-# OPTIONS_GHC -fno-omit-interface-pragmas #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
+{-# LANGUAGE UndecidableInstances  #-}
+
 -- | Datatypes for NFT state machine.
 module Mlabs.Nft.Logic.Types(
     Nft(..)
@@ -16,15 +27,15 @@ module Mlabs.Nft.Logic.Types(
   , UserAct(..)
 ) where
 
-import Data.Aeson (FromJSON, ToJSON)
-
-import qualified Prelude as Hask
-import qualified PlutusTx as PlutusTx
 import PlutusTx.Prelude
-import Plutus.V1.Ledger.Value (TokenName(..), tokenName)
-import GHC.Generics
+
+import Data.Aeson (FromJSON, ToJSON)
+import GHC.Generics (Generic)
 import Playground.Contract (TxOutRef, ToSchema)
-import Plutus.V1.Ledger.TxId
+import Plutus.V1.Ledger.Value (TokenName(..), tokenName)
+import Plutus.V1.Ledger.TxId (TxId(TxId))
+import qualified PlutusTx
+import qualified Prelude as Hask
 
 import Mlabs.Emulator.Types (UserId(..))
 import Mlabs.Data.Ray (Ray)
@@ -45,7 +56,7 @@ data Nft = Nft
 data NftId = NftId
   { nftId'token  :: TokenName     -- ^ token name is identified by content of the NFT (it's hash of it)
   , nftId'outRef :: TxOutRef      -- ^ TxOutRef that is used for minting of NFT,
-                                  -- with it we can guarantee unqiqueness of NFT
+                                  -- with it we can guarantee uniqueness of NFT
   }
   deriving stock (Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)

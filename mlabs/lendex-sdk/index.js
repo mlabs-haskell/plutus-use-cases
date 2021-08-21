@@ -1,3 +1,3 @@
-const NFT = require('./output/NFT.API');
+const NFT = require('./output/Lendex.API');
 
-NFT.testSetPrice_();
+NFT.testwithdrawal_();

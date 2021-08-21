@@ -6,6 +6,17 @@
 {-# OPTIONS_GHC -fno-ignore-interface-pragmas #-}
 {-# OPTIONS_GHC -fno-omit-interface-pragmas #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
+{-# LANGUAGE UndecidableInstances  #-}
+
 -- | Types for lending app
 --
 -- inspired by aave spec. See
@@ -41,18 +52,18 @@ module Mlabs.Lending.Logic.Types(
   , fromAToken
 ) where
 
-import Data.Aeson (FromJSON, ToJSON)
-
-import qualified Prelude as Hask
-import qualified PlutusTx as PlutusTx
 import PlutusTx.Prelude hiding ((%))
+
+import Data.Aeson (FromJSON, ToJSON)
+import GHC.Generics ( Generic )
+import Playground.Contract (ToSchema)
 import Plutus.V1.Ledger.Value (AssetClass(..), TokenName(..), CurrencySymbol(..))
+import qualified PlutusTx
 import PlutusTx.AssocMap (Map)
 import qualified PlutusTx.AssocMap as M
-import Playground.Contract (ToSchema)
-import GHC.Generics
+import qualified Prelude as Hask
 
-import Mlabs.Emulator.Types
+import Mlabs.Emulator.Types ( adaCoin, Coin, UserId(..) )
 import Mlabs.Data.Ray (Ray, (%))
 import qualified Mlabs.Data.Ray as R
 
@@ -163,7 +174,7 @@ initLendingPool curSym coinCfgs admins oracles =
     , lp'trustedOracles = oracles
     }
   where
-    reserves = M.fromList $ fmap (\cfg -> (coinCfg'coin cfg, initReserve cfg)) coinCfgs
+    reserves = M.fromList $ fmap (\cfg -> (cfg.coinCfg'coin, initReserve cfg)) coinCfgs
     coinMap  = M.fromList $ fmap (\(CoinCfg coin _ aToken _ _) -> (aToken, coin)) coinCfgs
 
 {-# INLINABLE initReserve #-}

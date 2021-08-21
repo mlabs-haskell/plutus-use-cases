@@ -1,4 +1,4 @@
-{ pkgs ? import <nixpkgs> {} }:
+ pkgs ? import <nixpkgs> {} }:
 let
   sources = import ./nix/sources.nix {};
   easy-ps = import sources.easy-purescript-nix {};
