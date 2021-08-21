@@ -143,25 +143,25 @@ testSetUserReserveAsCollateral_ :: Effect Unit
 testSetUserReserveAsCollateral_ = runAff_ (log <<< show) $ setUserReserveAsCollateral connectionInfo instanceId testSetUserReserveAsCollateral
 
 
-type Withdrawal = { 
-  withdrawal'asset :: Int,  
-  withdrawal'amount :: Int
+type Withdraw = { 
+  withdraw'asset :: Int,  
+  withdraw'amount :: Int
 }
 
-withdrawal :: PABConnectionInfo 
+withdraw :: PABConnectionInfo 
   -> ContractInstanceId 
-  -> Withdrawal
+  -> Withdraw
   -> Aff Unit
-withdrawal ci cii withdrawal = do 
-    json <- callEndpoint ci cii "withdrawal" withdrawal
+withdraw ci cii withdraw = do 
+    json <- callEndpoint ci cii "withdraw" withdraw
     liftEffect $ log $ A.stringify json
     pure unit
 
-testwithdrawal :: Withdrawal
-testwithdrawal = {
-   withdrawal'asset : 200000, 
-   withdrawal'amount: 30000
+testwithdraw :: Withdraw
+testwithdraw = {
+   withdraw'asset : 200000, 
+   withdraw'amount: 30000
 }
 
-testwithdrawal_ :: Effect Unit
-testwithdrawal_ = runAff_ (log <<< show) $ withdrawal connectionInfo instanceId testwithdrawal
+testwithdraw_ :: Effect Unit
+testwithdraw_ = runAff_ (log <<< show) $ withdraw connectionInfo instanceId testwithdraw
