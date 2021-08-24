@@ -5,7 +5,6 @@
   "main": "index.js",
   "dependencies": {
     "big-integer": "^1.6.48",
-    "purescript": "^0.13.6",
     "xhr2": "^0.2.1"
   },
   "devDependencies": {

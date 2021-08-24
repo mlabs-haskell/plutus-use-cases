@@ -12,7 +12,7 @@ import PAB.Api (PABConnectionInfo, callEndpoint)
 import PAB.Types (ContractInstanceId)
 
 instanceId :: ContractInstanceId
-instanceId = { unContractInstanceId: "9fe7819c-c842-4fe9-8ef7-62b6ece8abba" }
+instanceId = { unContractInstanceId: "0e3ad549-b524-456e-a12c-f8bee3836e7a" }
 
 connectionInfo :: PABConnectionInfo
 connectionInfo = {
@@ -156,14 +156,15 @@ withdraw ci cii withdraw = do
     liftEffect $ log $ A.stringify json
     pure unit
 
-testWithdraw :: Withdraw
-testWithdraw = {
-   withdraw'amount : 200000
-  , withdraw'asset: 100000
+testwithdraw :: Withdraw
+testwithdraw = { 
+   withdraw'asset : 20000,
+   withdraw'amount: 3000
 }
 
-testWithdraw_ :: Effect Unit
-testWithdraw_ = runAff_ (log <<< show) $ withdraw connectionInfo instanceId testWithdraw
+testwithdraw_ :: Effect Unit
+testwithdraw_ = runAff_ (log <<< show) $ withdraw connectionInfo instanceId testwithdraw
+
 
 type LiquidationCall =   { 
   liquidationCall'collateral :: Int 
@@ -194,3 +195,23 @@ testLiquidationCall = {
 
 testLiquidationCall_ :: Effect Unit
 testLiquidationCall_ = runAff_ (log <<< show) $ liquidationCall connectionInfo instanceId testLiquidationCall
+
+-- type SetAssetPrice = { 
+--   setAssetPrice'amount :: Int
+--   , setAssetPrice'asset :: Int
+-- }
+
+-- setAssetPrice :: PABConnectionInfo 
+--   -> ContractInstanceId 
+--   -> SetAssetPrice
+--   -> Aff Unit
+-- setAssetPrice ci cii withdraw = do 
+--     json <- callEndpoint ci cii "setAssetPrice" setAssetPrice
+--     liftEffect $ log $ A.stringify json
+--     pure unit
+
+-- testSetAssetPrice :: SetAssetPrice
+-- testSetAssetPrice = { 
+--    withdraw'asset : 20000,
+--    withdraw'amount: 3000
+-- }
