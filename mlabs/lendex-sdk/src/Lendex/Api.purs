@@ -12,7 +12,7 @@ import PAB.Api (PABConnectionInfo, callEndpoint)
 import PAB.Types (ContractInstanceId)
 
 instanceId :: ContractInstanceId
-instanceId = { unContractInstanceId: "0a31659c-6edc-4e2f-a284-f94f6d2d3627" }
+instanceId = { unContractInstanceId: "9fe7819c-c842-4fe9-8ef7-62b6ece8abba" }
 
 connectionInfo :: PABConnectionInfo
 connectionInfo = {
@@ -142,10 +142,9 @@ testSetUserReserveAsCollateral = {
 testSetUserReserveAsCollateral_ :: Effect Unit
 testSetUserReserveAsCollateral_ = runAff_ (log <<< show) $ setUserReserveAsCollateral connectionInfo instanceId testSetUserReserveAsCollateral
 
-
 type Withdraw = { 
-  withdraw'asset :: Int,  
   withdraw'amount :: Int
+  , withdraw'asset :: Int
 }
 
 withdraw :: PABConnectionInfo 
@@ -157,11 +156,41 @@ withdraw ci cii withdraw = do
     liftEffect $ log $ A.stringify json
     pure unit
 
-testwithdraw :: Withdraw
-testwithdraw = {
-   withdraw'asset : 200000, 
-   withdraw'amount: 30000
+testWithdraw :: Withdraw
+testWithdraw = {
+   withdraw'amount : 200000
+  , withdraw'asset: 100000
 }
 
-testwithdraw_ :: Effect Unit
-testwithdraw_ = runAff_ (log <<< show) $ withdraw connectionInfo instanceId testwithdraw
+testWithdraw_ :: Effect Unit
+testWithdraw_ = runAff_ (log <<< show) $ withdraw connectionInfo instanceId testWithdraw
+
+type LiquidationCall =   { 
+  liquidationCall'collateral :: Int 
+  , liquidationCall'debtUser :: Int
+  , liquidationCall'debtAsset :: Int
+  , liquidationCall'debtToCover :: Int
+  , liquidationCall'receiveAToken  :: Int
+  }
+
+
+liquidationCall :: PABConnectionInfo 
+  -> ContractInstanceId 
+  -> LiquidationCall
+  -> Aff Unit
+liquidationCall ci cii liquidationCall = do 
+    json <- callEndpoint ci cii "liquidation-call" liquidationCall
+    liftEffect $ log $ A.stringify json
+    pure unit
+
+testLiquidationCall :: LiquidationCall
+testLiquidationCall = {
+  liquidationCall'collateral: 10000
+  , liquidationCall'debtUser: 150000
+  , liquidationCall'debtAsset: 1900000
+  , liquidationCall'debtToCover: 1000000
+  , liquidationCall'receiveAToken: 10000
+}
+
+testLiquidationCall_ :: Effect Unit
+testLiquidationCall_ = runAff_ (log <<< show) $ liquidationCall connectionInfo instanceId testLiquidationCall
