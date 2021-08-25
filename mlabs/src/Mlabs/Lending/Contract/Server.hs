@@ -4,6 +4,7 @@ module Mlabs.Lending.Contract.Server (
   UserContract,
   OracleContract,
   AdminContract,
+  QueryContract,
 
   -- * Endpoints
   userEndpoints,

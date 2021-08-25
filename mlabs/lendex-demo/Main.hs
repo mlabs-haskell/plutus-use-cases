@@ -12,7 +12,7 @@ module Main (
 
 import Prelude
 
-import Control.Monad (when)
+import Control.Monad (when, forever)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Functor (void)
 import Data.Monoid (Last (..))
@@ -36,8 +36,11 @@ import Mlabs.Lending.Contract.Simulator.Handler qualified as Handler
 import Mlabs.Lending.Logic.Types hiding (User (..), Wallet (..))
 import Mlabs.Plutus.PAB (call, printBalance, waitForLast)
 import Mlabs.System.Console.PrettyLogger (logNewLine)
-import Mlabs.System.Console.Utils (logAction, logMlabs)
+import Mlabs.System.Console.Utils (logAction, logMlabs, logBalance)
 import PlutusTx.Ratio qualified as R
+
+logWalletBalance w =
+  logBalance (show w) =<< Simulator.valueAt (Wallet.walletAddress w)
 
 -- | Console demo for Lendex with simulator
 main :: IO ()
@@ -50,11 +53,12 @@ main = Handler.runSimulator lendexId initContract $ do
 
   let [user1, user2, user3] = users
       [coin1, coin2, coin3] = fmap (toCoin cur) [token1, token2, token3]
-
+  
   call admin . StartLendex $ startParams cur
   next
 
   logMlabs
+  
   test "Init users" (pure ())
 
   test
@@ -67,7 +71,7 @@ main = Handler.runSimulator lendexId initContract $ do
       call user1 $ Contract.Deposit 100 coin1
       call user2 $ Contract.Deposit 100 coin2
       call user3 $ Contract.Deposit 100 coin3
-
+  
   test "User 1 borrows 60 Euros" $ do
     call user1 $
       Contract.AddCollateral
@@ -105,8 +109,9 @@ main = Handler.runSimulator lendexId initContract $ do
     logAction $ "updated wallets"
     logWalletBalance $ Wallet 2
     pure ()
-
+  
   liftIO $ putStrLn "Fin (Press enter to Exit)"
+
   where
     next = do
       logNewLine

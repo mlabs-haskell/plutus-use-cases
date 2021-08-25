@@ -25,9 +25,11 @@ import Plutus.PAB.Effects.Contract.Builtin qualified as Builtin
 import Plutus.PAB.Monitoring.PABLogMsg (PABMultiAgentMsg (..))
 import Plutus.PAB.Simulator (Simulation, SimulatorEffectHandlers)
 import Plutus.PAB.Simulator qualified as Simulator
-import Plutus.PAB.Types (PABError (..))
+import Plutus.PAB.Types 
 import Plutus.PAB.Webserver.Server qualified as PAB.Server
 import Plutus.V1.Ledger.Value (CurrencySymbol)
+
+import Servant.Client (BaseUrl(..), Scheme(Http))
 
 import Mlabs.Lending.Contract.Api qualified as Api
 import Mlabs.Lending.Contract.Server qualified as Server
@@ -46,6 +48,8 @@ data LendexContracts
     Oracle
   | -- | govern actions
     Admin
+  | -- | query actions
+    Query
   deriving stock (Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
 
@@ -68,15 +72,17 @@ handleLendexContracts lendexId initHandler = Builtin.handleBuiltin getSchema get
       User -> Builtin.endpointsToSchemas @Api.UserSchema
       Oracle -> Builtin.endpointsToSchemas @Api.OracleSchema
       Admin -> Builtin.endpointsToSchemas @Api.AdminSchema
+      Query -> Builtin.endpointsToSchemas @Api.QuerySchema
     getContract = \case
       Init -> SomeBuiltin initHandler
       User -> SomeBuiltin $ Server.userEndpoints lendexId
       Oracle -> SomeBuiltin $ Server.oracleEndpoints lendexId
       Admin -> SomeBuiltin $ Server.adminEndpoints lendexId
+      Query -> SomeBuiltin $ Server.queryEndpoints lendexId
 
 handlers :: LendexId -> InitContract -> SimulatorEffectHandlers (Builtin LendexContracts)
 handlers lid initContract =
-  Simulator.mkSimulatorHandlers @(Builtin LendexContracts) def [] $
+  Simulator.mkSimulatorHandlers @(Builtin LendexContracts) def [Init, User, Oracle, Admin, Query] $
     interpret (handleLendexContracts lid initContract)
 
 -- | Runs simulator for Lendex
