@@ -32,7 +32,6 @@ jobs:
             ~/.cabal/store
             dist-newstyle
           key: ${{ runner.os }}-cabal
-      - uses: actions/checkout@v2
       - name: Serialize validators
         run: |
           cd mlabs
