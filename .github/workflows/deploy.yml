@@ -12,17 +12,40 @@ jobs:
       image: docker://stackchain/alonzopurple:rc2
     steps:
       - uses: actions/checkout@v2
-      - name: Serialize validators
-        run: echo "Here validators should be serialized and saved to .github/workflows/nft_delivery" 
-      - name: Build script address
-        run: |
-          export MAGIC="--testnet-magic 8"
-          .github/workflows/nft_delivery/create_nft_script_address.sh
-      - name: Upload scripts and address
-        uses: actions/upload-artifact@v2
+      - uses: cachix/install-nix-action@v13
+        name: Set up nix and IOHK cache
         with:
-          name: nft-artifact
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ= iohk.cachix.org-1:DpRUyj7h7V830dp/i6Nti+NEO2/nhblbov/8MW7Rqoo= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+            substituters = https://hydra.iohk.io https://iohk.cachix.org https://cache.nixos.org/
+      - uses: cachix/cachix-action@v10
+        with:
+          name: mlabs
+          authToken: '${{ secrets.CACHIXKEY }}'
+      - name: Cache cabal folder
+        id: cabal
+        uses: actions/cache@v2.1.4
+        with:
           path: |
-            .github/workflows/nft_delivery/NftPolicy.plutus
-            .github/workflows/nft_delivery/NftScript.plutus
-            .github/workflows/nft_delivery/nft-script-payment.addr
+            ~/.cabal/packages
+            ~/.cabal/store
+            dist-newstyle
+          key: ${{ runner.os }}-cabal
+      - uses: actions/checkout@v2
+      - name: Serialize validators
+        run: |
+          cd mlabs
+          nix-shell --run "cabal new-build deploy-app && cabal new-run exe:deploy-app -- ./../.github/workflows/nft_delivery"
+      # - name: Build script address
+      #   run: |
+      #     export MAGIC="--testnet-magic 8"
+      #     .github/workflows/nft_delivery/create_nft_script_address.sh
+      # - name: Upload scripts and address
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: nft-artifact
+      #     path: |
+      #       .github/workflows/nft_delivery/NftPolicy.plutus
+      #       .github/workflows/nft_delivery/NftScript.plutus
+      #       .github/workflows/nft_delivery/nft-script-payment.addr
