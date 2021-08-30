@@ -5,5 +5,5 @@ module Mlabs.Nft.Contract (
 
 import Mlabs.Nft.Contract.Api as X
 import Mlabs.Nft.Contract.Forge as X
-import Mlabs.Nft.Contract.Server as X
+-- import Mlabs.Nft.Contract.Server as X
 import Mlabs.Nft.Contract.StateMachine as X

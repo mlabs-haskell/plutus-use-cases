@@ -2,14 +2,14 @@
 
 -- | Useful utils for contracts
 module Mlabs.Plutus.Contract (
-  selects,
+  -- selects,
   readDatum,
   Call,
   IsEndpoint (..),
-  endpointName,
-  getEndpoint,
-  callSimulator,
-  callEndpoint',
+  -- endpointName,
+  -- getEndpoint,
+  -- callSimulator,
+  -- callEndpoint',
 ) where
 
 import PlutusTx.Prelude
@@ -30,17 +30,17 @@ import Plutus.PAB.Effects.Contract.Builtin (Builtin)
 import Plutus.PAB.Simulator (Simulation, callEndpointOnInstance, waitNSlots)
 import Plutus.Trace.Effects.RunContract (RunContract, callEndpoint)
 import Plutus.Trace.Emulator.Types (ContractConstraints, ContractHandle)
-import PlutusTx (IsData, fromBuiltinData)
+import PlutusTx (FromData, fromBuiltinData)
 
-instance Semigroup (Contract.Contract w s e a) where
-  (<>) = Contract.select
+-- instance Semigroup (Contract.Contract w s e a) where
+--   (<>) = Contract.select
 
---  |Concat many endponits to one
-selects :: [Contract w s e a] -> Contract w s e a
-selects = foldl1 Contract.select
+-- --  |Concat many endponits to one
+-- selects :: [Contract w s e a] -> Contract w s e a
+-- selects = foldl1 Contract.select
 
 -- | For off-chain code
-readDatum :: IsData a => TxOutTx -> Maybe a
+readDatum :: FromData a => TxOutTx -> Maybe a
 readDatum txOut = do
   h <- txOutDatumHash $ txOutTxOut txOut
   Datum e <- lookupDatum (txOutTxTx txOut) h
@@ -59,16 +59,16 @@ callEndpoint' ::
   Eff effs ()
 callEndpoint' = callEndpoint @(EndpointSymbol ep)
 
-getEndpoint :: forall a w (s :: Row Type) e. (Contract.HasEndpoint (EndpointSymbol a) a s, Contract.AsContractError e, IsEndpoint a) => Contract w s e a
-getEndpoint = Contract.endpoint @(EndpointSymbol a)
+-- getEndpoint :: forall a w (s :: Row Type) e. (Contract.HasEndpoint (EndpointSymbol a) a s, Contract.AsContractError e, IsEndpoint a) => Contract w s e a
+-- getEndpoint = Contract.endpoint @(EndpointSymbol a)
 
-endpointName :: forall a. IsEndpoint a => a -> String
-endpointName a = symbolVal (toProxy a)
-  where
-    toProxy :: a -> Proxy (EndpointSymbol a)
-    toProxy _ = Proxy
+-- endpointName :: forall a. IsEndpoint a => a -> String
+-- endpointName a = symbolVal (toProxy a)
+--   where
+--     toProxy :: a -> Proxy (EndpointSymbol a)
+--     toProxy _ = Proxy
 
-callSimulator :: IsEndpoint a => Contract.ContractInstanceId -> a -> Simulation (Builtin schema) ()
-callSimulator cid input = do
-  void $ callEndpointOnInstance cid (endpointName input) input
-  void $ waitNSlots 1
+-- callSimulator :: IsEndpoint a => Contract.ContractInstanceId -> a -> Simulation (Builtin schema) ()
+-- callSimulator cid input = do
+--   void $ callEndpointOnInstance cid (endpointName input) input
+--   void $ waitNSlots 1
