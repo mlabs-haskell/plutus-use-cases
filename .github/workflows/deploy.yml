@@ -1,0 +1,28 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ nft-deploy ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    container:
+      image: docker://stackchain/alonzopurple:rc2
+    steps:
+      - uses: actions/checkout@v2
+      - name: Serialize validators
+        run: echo "Here validators should be serialized and saved to .github/workflows/nft_delivery" 
+      - name: Build script address
+        run: |
+          export MAGIC="--testnet-magic 8"
+          .github/workflows/nft_delivery/create_nft_script_address.sh
+      - name: Upload scripts and address
+        uses: actions/upload-artifact@v2
+        with:
+          name: nft-artifact
+          path: |
+            .github/workflows/nft_delivery/NftPolicy.plutus
+            .github/workflows/nft_delivery/NftScript.plutus
+            .github/workflows/nft_delivery/nft-script-payment.addr

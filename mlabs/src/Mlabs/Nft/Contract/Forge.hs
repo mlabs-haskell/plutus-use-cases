@@ -9,7 +9,7 @@ import PlutusTx.Prelude
 import Ledger (Address, CurrencySymbol)
 import Ledger.Typed.Scripts (MintingPolicy)
 import Ledger.Typed.Scripts qualified as Scripts
-import Plutus.V1.Ledger.Contexts qualified as Contexts
+import Ledger.Contexts qualified as Contexts
 import Plutus.V1.Ledger.Scripts qualified as Scripts
 import Plutus.V1.Ledger.Value qualified as Value
 import PlutusTx qualified
@@ -40,7 +40,7 @@ validate stateAddr (NftId token oref) _ ctx =
 
     hasUtxo = any (\inp -> Contexts.txInInfoOutRef inp == oref) $ Contexts.txInfoInputs info
 
-    checkMintedAmount = case Value.flattenValue (Contexts.txInfoForge info) of
+    checkMintedAmount = case Value.flattenValue (Contexts.txInfoMint info) of
       [(cur, tn, val)] -> Contexts.ownCurrencySymbol ctx == cur && token == tn && val == 1
       _ -> False
 
