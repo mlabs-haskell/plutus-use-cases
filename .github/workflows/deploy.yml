@@ -35,7 +35,7 @@ jobs:
       - name: Serialize validators
         run: |
           cd mlabs
-          nix-shell --run "cabal new-build deploy-app && cabal new-run exe:deploy-app -- ./../.github/workflows/nft_delivery"
+          nix-shell --run "cabal update && cabal new-build deploy-app && cabal new-run exe:deploy-app -- ./../.github/workflows/nft_delivery"
       # - name: Build script address
       #   run: |
       #     export MAGIC="--testnet-magic 8"
