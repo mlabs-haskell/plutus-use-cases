@@ -8,8 +8,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    container:
-      image: docker://stackchain/alonzopurple:rc2
+    # container:
+    #   image: docker://stackchain/alonzopurple:rc2
     steps:
       - uses: actions/checkout@v2
       - uses: cachix/install-nix-action@v13
