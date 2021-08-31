@@ -8,8 +8,11 @@ import Mlabs.Nft.Logic.Types (Act(..), UserAct(..), Nft(..), NftId(..), toNftId,
 import Mlabs.Nft.Contract.Forge as F
 import Mlabs.Emulator.Types (UserId(..))
 
+import Plutus.V1.Ledger.Value as V (toString)
 import qualified Plutus.V1.Ledger.Api as Plutus
 import Ledger.Typed.Scripts.Validators as VS
+import qualified Data.ByteString.Lazy   as LB
+import qualified Data.ByteString as BS
 
 
 
@@ -25,27 +28,10 @@ serializeNft txId txIx ownerPkh content outDir = do
     nftId          = nft'id initNftDatum
     typedValidator = SM.scriptInstance nftId
     policy         = F.currencyPolicy (validatorAddress typedValidator) nftId
-    redeemer = -- stop sell
-      UserAct userId $ SetPriceAct Nothing
-    stopSellDatum  = initNftDatum {nft'price = Nothing}
 
-  -- DB.writeFile 
-  --   (outDir ++ "/token.name")
-  --   (let (NftId (Plutus.TokenName n) _) = nftId in Plutus.fromBuiltin n)
-
-  -- LB.writeFile 
-  --   (outDir ++ "/init-datum.json")
-  --   (toJson initNftDatum)
-
-  -- LB.writeFile 
-  --   (outDir ++ "/stop-sell-datum.json")
-  --   (toJson stopSellDatum)
-
-  -- LB.writeFile 
-  --   (outDir ++ "/stop-sell-redeemer.json")
-  --   (toJson redeemer)
-
-  validatorToPlutus (outDir ++ "/NftScript.plutus") 
-    (VS.validatorScript typedValidator)
-
+  -- print $ nftId'token nftId
+  -- BS.writeFile (outDir ++ "/t_name") (fromBuiltin content)
+  -- validatorToPlutus (outDir ++ "/NftScript.plutus") 
+  --   (VS.validatorScript typedValidator)
   policyToPlutus (outDir ++ "/NftPolicy.plutus") policy
+  -- writeData (outDir ++ "/init-datum.json") initNftDatum

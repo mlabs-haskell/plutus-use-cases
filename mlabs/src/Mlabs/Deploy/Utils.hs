@@ -64,6 +64,8 @@ serializeValidator validator =
   in
     (purpleScript, sbs)
 
+writeData file isData = LB.writeFile file (toSchemeJson isData)
+
 toSchemeJson :: ToData a => a -> LB.ByteString
 toSchemeJson = 
   Json.encode 

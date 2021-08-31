@@ -36,11 +36,11 @@ main = do
   case args of
     ["Nft"] -> 
       serializeNft 
-        "8cf79ca29e5d62ad3c62c6f43c38a1eb1db75f0338e3c8ded5c7ca7be910eef3"
+        "56b4d636bfea5cb0628ba202214a9cca42997545da87dfd436e6e3d8d7ba3b28"
         0
         "4cebc6f2a3d0111ddeb09ac48e2053b83b33b15f29182f9b528c6491"
-        "BFT Content"
+        "MonaLisa"
         "./../.github/workflows/nft_delivery"
-    -- ["gov"] -> serializeGovernance  
+    ["Governance"] -> serializeGovernance  
     _ -> 
-      die "Unknown deployment tsk type"
+      die "Unknown deployment task type"
