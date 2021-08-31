@@ -1,13 +1,13 @@
 name: Deploy
 
 on:
-  # push:
-  #   branches: [ nft-deploy ]
-  workflow_dispatch:
-    inputs:
-      initUTXO:
-        description: UTXO to initiate contract
-        required: true
+  push:
+    branches: [ nft-deploy ]
+  # workflow_dispatch:
+  #   inputs:
+  #     initUTXO:
+  #       description: UTXO to initiate contract
+  #       required: true
 
 jobs:
   deploy:
@@ -39,16 +39,16 @@ jobs:
       - name: Serialize validators
         run: |
           cd mlabs
-          nix-shell --run "cabal update && cabal new-build deploy-app && cabal new-run exe:deploy-app -- ./../.github/workflows/nft_delivery"
-      # - name: Build script address
-      #   run: |
-      #     export MAGIC="--testnet-magic 8"
-      #     .github/workflows/nft_delivery/create_nft_script_address.sh
-      # - name: Upload scripts and address
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: nft-artifact
-      #     path: |
-      #       .github/workflows/nft_delivery/NftPolicy.plutus
-      #       .github/workflows/nft_delivery/NftScript.plutus
-      #       .github/workflows/nft_delivery/nft-script-payment.addr
+          nix-shell --run "cabal update && cabal new-build deploy-app && cabal new-run exe:deploy-app -- Nft"
+      - name: Build script address
+        run: |
+          export MAGIC="--testnet-magic 8"
+          .github/workflows/nft_delivery/create_nft_script_address.sh
+      - name: Upload scripts and address
+        uses: actions/upload-artifact@v2
+        with:
+          name: nft-artifact
+          path: |
+            .github/workflows/nft_delivery/NftPolicy.plutus
+            .github/workflows/nft_delivery/NftScript.plutus
+            .github/workflows/nft_delivery/nft-script-payment.addr

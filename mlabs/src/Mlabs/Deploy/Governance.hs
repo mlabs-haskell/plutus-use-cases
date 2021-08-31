@@ -27,11 +27,10 @@ serializeGovernance = do
     xGovCurrSymbol   = scriptCurrencySymbol policy
     fstDatum = GovernanceDatum alicePkh xGovCurrSymbol
 
-  print fstDatum
-  -- validatorToPlutus (outDir ++ "/GovScript.plutus") validator
-  -- policyToPlutus (outDir ++ "/GovPolicy.plutus") policy
+  validatorToPlutus (outDir ++ "/GovScript.plutus") validator
+  policyToPlutus (outDir ++ "/GovPolicy.plutus") policy
 
-  writeDatum = 
-    LB.writeFile 
-    "/home/mike/dev/mlabs/contract_deploy/node_mnt/gov_data"
-    $ toJson fstDatum
+  -- writeDatum dat = 
+    -- LB.writeFile 
+    -- "/home/mike/dev/mlabs/contract_deploy/node_mnt/gov_data"
+    -- $ toJson fstDatum

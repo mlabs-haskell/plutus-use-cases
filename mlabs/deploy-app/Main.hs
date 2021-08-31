@@ -30,22 +30,17 @@ import Mlabs.Deploy.Nft
 import Mlabs.Deploy.Governance
 
 
-
 main :: IO ()
 main = do
   args <- getArgs
   case args of
-    ["Nft", txId, txIx, ownerPkh, content, outDir] -> 
-      serializeNft txId txIx ownerPkh content outDir
-    ["gov"] -> serializeGovernance  
+    ["Nft"] -> 
+      serializeNft 
+        "8cf79ca29e5d62ad3c62c6f43c38a1eb1db75f0338e3c8ded5c7ca7be910eef3"
+        0
+        "4cebc6f2a3d0111ddeb09ac48e2053b83b33b15f29182f9b528c6491"
+        "BFT Content"
+        "./../.github/workflows/nft_delivery"
+    -- ["gov"] -> serializeGovernance  
     _ -> 
       die "Unknown deployment tsk type"
-  
-
-
-
-
-
-
-
-        
