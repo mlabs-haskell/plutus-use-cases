@@ -39,6 +39,9 @@ common common-imports
     , text
     , freer-extras
     , insert-ordered-containers
+    , serialise
+    , cardano-api
+    , cardano-ledger-alonzo
 
 common common-language
     default-extensions:
@@ -94,6 +97,9 @@ library
     Mlabs.Control.Monad.State
     Mlabs.Data.List
     Mlabs.Data.Ord
+    Mlabs.Deploy.Governance
+    Mlabs.Deploy.Nft
+    Mlabs.Deploy.Utils
     -- Mlabs.Demo.Contract.Burn
     -- Mlabs.Demo.Contract.Mint
     -- Mlabs.Emulator.App
@@ -105,7 +111,7 @@ library
     -- Mlabs.Governance.Contract.Emulator.Client
     -- Mlabs.Governance.Contract.Server
     -- Mlabs.Governance.Contract.Simulator.Handler
-    -- Mlabs.Governance.Contract.Validation
+    Mlabs.Governance.Contract.Validation
     -- Mlabs.Lending.Contract
     -- Mlabs.Lending.Contract.Api
     -- Mlabs.Lending.Contract.Forge
@@ -125,7 +131,7 @@ library
     Mlabs.Nft.Contract
     -- Mlabs.Nft.Contract.Emulator.Client
     -- Mlabs.Nft.Contract.Simulator.Handler
-    Mlabs.Nft.Contract.Api
+    -- Mlabs.Nft.Contract.Api
     Mlabs.Nft.Contract.Forge
     -- Mlabs.Nft.Contract.Server
     Mlabs.Nft.Contract.StateMachine
@@ -217,6 +223,7 @@ Test-suite mlabs-plutus-use-cases-tests
     , tasty-quickcheck
     , QuickCheck
     , text
+
 
   Other-modules:
     Test.Demo.Contract.Mint
