@@ -2,8 +2,7 @@ name: Deploy
 
 on:
   push:
-    branches: [ nft-deploy ]
-    # branches: [ nft-deploy ]
+    branches: [ staging ]
   # workflow_dispatch:
   #   inputs:
   #     initUTXO:
