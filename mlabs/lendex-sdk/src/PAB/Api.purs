@@ -139,8 +139,6 @@ postJSON
   -> payload 
   -> Aff resp
 postJSON url payload = do
-  let jsonPayload = A.encodeJson payload
-  _ <- pure $ spy "payload json" jsonPayload
   result <- AX.post AJRF.json url $ Just $ AJRB.Json $ A.encodeJson payload
   _ <- pure $ spy "result" result
   case result of

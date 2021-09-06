@@ -1,3 +1,3 @@
 const NFT = require('./output/Lendex.API');
 
-NFT.testwithdraw_();
+NFT.testRemoveCollateral_();

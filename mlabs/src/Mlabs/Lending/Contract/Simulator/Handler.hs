@@ -29,8 +29,6 @@ import Plutus.PAB.Types
 import Plutus.PAB.Webserver.Server qualified as PAB.Server
 import Plutus.V1.Ledger.Value (CurrencySymbol)
 
-import Servant.Client (BaseUrl(..), Scheme(Http))
-
 import Mlabs.Lending.Contract.Api qualified as Api
 import Mlabs.Lending.Contract.Server qualified as Server
 import Mlabs.Lending.Logic.Types (LendexId)
