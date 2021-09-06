@@ -12,7 +12,7 @@ import PAB.Api (PABConnectionInfo, callEndpoint)
 import PAB.Types (ContractInstanceId)
 
 instanceId :: ContractInstanceId
-instanceId = { unContractInstanceId: "208a3995-ddb4-408f-b8cb-5c71754ed03f" }
+instanceId = { unContractInstanceId: "109f35c9-09a5-4294-b06e-33e4e99ec504" }
 
 connectionInfo :: PABConnectionInfo
 connectionInfo = {
@@ -49,9 +49,9 @@ deposit ci cii depositValue = do
 
 testDeposit :: Deposit
 testDeposit = {
-    deposit'amount: 10000
+    deposit'amount: 200
   , deposit'asset: {
-    unAssetClass: (Tuple {unCurrencySymbol: "Euro"} { unTokenName: "2000"})
+    unAssetClass: (Tuple {unCurrencySymbol: "d57ff37f80a4f7ba1e62fcbb12a7d5f04556e2e90ec6ce4faea3c27d"} { unTokenName: "Euro"})
   }
 }
 
@@ -76,11 +76,11 @@ borrow ci cii borrowValue = do
 
 testBorrow :: Borrow
 testBorrow = {
-   borrow'amount: 200000
+   borrow'amount: 250
   , borrow'asset:  {
-    unAssetClass: (Tuple {unCurrencySymbol: "Euro"} { unTokenName: "2000"})
+    unAssetClass: (Tuple {unCurrencySymbol: "d57ff37f80a4f7ba1e62fcbb12a7d5f04556e2e90ec6ce4faea3c27d"} { unTokenName: "Lira"})
   }
-  , borrow'rate: 2000000
+  , borrow'rate: 20
 }
 
 testBorrow_ :: Effect Unit
@@ -104,11 +104,11 @@ repay ci cii repayValue = do
 
 testRepay :: Repay
 testRepay = {
-   repay'amount: 200000
+   repay'amount: 500
   , repay'asset: {
-    unAssetClass: (Tuple {unCurrencySymbol: "Euro"} { unTokenName: "2000"})
+    unAssetClass: (Tuple {unCurrencySymbol: "a86b491d3170f5f1ce59580b1f4cbe6db97aa9c84088705d480fe99a"} { unTokenName: "Euro"})
   }
-  , repay'rate: 2000000
+  , repay'rate: 200
 }
 
 testRepay_ :: Effect Unit
@@ -131,7 +131,7 @@ swapBorrowRateModel ci cii swapBorrowRateModelValue = do
 testSwapBorrowRateModel :: SwapBorrowRateModel
 testSwapBorrowRateModel = {
    swapRate'asset:  {
-    unAssetClass: (Tuple {unCurrencySymbol: "Euro"} { unTokenName: "2000"})
+    unAssetClass: (Tuple {unCurrencySymbol: "d57ff37f80a4f7ba1e62fcbb12a7d5f04556e2e90ec6ce4faea3c27d"} { unTokenName: "Euro"})
   }
   , swapRate'rate: 100000
 }
@@ -156,7 +156,7 @@ withdraw ci cii withdrawValue = do
 testwithdraw :: Withdraw
 testwithdraw = { 
    withdraw'asset : {
-    unAssetClass: (Tuple {unCurrencySymbol: "Euro"} { unTokenName: "2000"})
+    unAssetClass: (Tuple {unCurrencySymbol: "d57ff37f80a4f7ba1e62fcbb12a7d5f04556e2e90ec6ce4faea3c27d"} { unTokenName: "Euro"})
   },
    withdraw'amount: 3000
 }
@@ -186,13 +186,13 @@ liquidationCall ci cii liquidationCallValue = do
 testLiquidationCall :: LiquidationCall
 testLiquidationCall = {
   liquidationCall'collateral:  {
-    unAssetClass: (Tuple {unCurrencySymbol: "Euro"} { unTokenName: "2000"})
+    unAssetClass: (Tuple {unCurrencySymbol: "d57ff37f80a4f7ba1e62fcbb12a7d5f04556e2e90ec6ce4faea3c27d"} { unTokenName: "Euro"})
   }
   , liquidationCall'debtUser: {
     getPubKeyHash: "Abcd"
   }
   , liquidationCall'debtAsset:  {
-    unAssetClass: (Tuple {unCurrencySymbol: "Euro"} { unTokenName: "2000"})
+    unAssetClass: (Tuple {unCurrencySymbol: "d57ff37f80a4f7ba1e62fcbb12a7d5f04556e2e90ec6ce4faea3c27d"} { unTokenName: "Euro"})
   }
   , liquidationCall'debtToCover: 1000000
   , liquidationCall'receiveAToken: true
@@ -219,9 +219,9 @@ addCollateral ci cii addCollateralValue = do
 testAddCollateral :: AddCollateral
 testAddCollateral = {
   addCollateral'asset:  {
-    unAssetClass: (Tuple {unCurrencySymbol: "Euro"} { unTokenName: "2000"})
+    unAssetClass: (Tuple {unCurrencySymbol: "d57ff37f80a4f7ba1e62fcbb12a7d5f04556e2e90ec6ce4faea3c27d"} { unTokenName: "Euro"})
   }
-  , addCollateral'amount: 50000
+  , addCollateral'amount: 500
 }
 
 testAddCollateral_ :: Effect Unit
@@ -245,14 +245,10 @@ removeCollateral ci cii removeCollateralValue = do
 testRemoveCollateral :: RemoveCollateral
 testRemoveCollateral = {
   removeCollateral'asset:  {
-    unAssetClass: (Tuple {unCurrencySymbol: "Euro"} { unTokenName: "2000"})
+    unAssetClass: (Tuple {unCurrencySymbol: "d57ff37f80a4f7ba1e62fcbb12a7d5f04556e2e90ec6ce4faea3c27d"} { unTokenName: "Euro"})
   }
   , removeCollateral'amount: 50000
 }
 
 testRemoveCollateral_ :: Effect Unit
 testRemoveCollateral_ = runAff_ (log <<< show) $ removeCollateral connectionInfo instanceId testRemoveCollateral
-
-
--- add-collateral
--- remove-collateral
