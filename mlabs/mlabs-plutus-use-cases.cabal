@@ -147,6 +147,17 @@ executable mlabs-plutus-use-cases
   main-is: app/Main.hs
   build-depends: mlabs-plutus-use-cases
 
+executable tx-builder
+  import:  common-imports
+  import:  common-language
+  main-is: tx-builder/Main.hs
+  hs-source-dirs: ., ./src
+  build-depends: 
+      mlabs-plutus-use-cases
+    , aeson-pretty
+    , memory
+
+
 executable deploy-app
   import:  common-imports
   import:  common-language
