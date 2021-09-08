@@ -29,6 +29,7 @@ import qualified Ledger                      as Plutus
 import Plutus.V1.Ledger.Ada (adaValueOf)
 import Ledger.Typed.Scripts.Validators (RedeemerType, DatumType)
 import Plutus.V1.Ledger.Api (ToData, FromData)
+import Plutus.V1.Ledger.Tx as Tx
 
 
 import           Data.Aeson                     (FromJSON (..), ToJSON (..), Value (Object), object, (.:), (.=))
@@ -48,47 +49,63 @@ import           Data.Proxy                  (Proxy (..))
 import           Data.Text.Prettyprint.Doc   (Pretty (..))
 import Control.Lens ((&), (.~), (^.))
 
+import Data.Maybe (fromJust)
+import Data.Set as Set
+
 paramsJson = "/home/mike/dev/mlabs/plutus-use-cases/mlabs/tx-builder/pparams.json"
+tx_raw_file = "/home/mike/dev/mlabs/contract_deploy/node_mnt/transactions/tx.raw"
 
 main :: IO ()
 main = do
   netParams <- readNetParams paramsJson
   netMagic  <- getTestNetMagic
   let
-    pkh = pubKeyHash $ Plutus.PubKey "4cebc6f2a3d0111ddeb09ac48e2053b83b33b15f29182f9b528c6491"
-    -- tx :: Either LC.MkTxError UnbalancedTx
+    pkh :: Plutus.PubKeyHash = fromJust $ Aeson.decode $
+        "{\"getPubKeyHash\" : \"4cebc6f2a3d0111ddeb09ac48e2053b83b33b15f29182f9b528c6491\"}" 
     testTxConstr :: LC.TxConstraints Void Void
-    testTxConstr = LC.mustPayToPubKey pkh $ adaValueOf 10_000_000
+    testTxConstr = LC.mustPayToPubKey pkh $ adaValueOf 10
     lookups :: LC.ScriptLookups Void
     lookups = mempty
-  -- todo try to add input and collateral to balance, then sign and submit
   txUnbalanced <- case LC.mkTx lookups testTxConstr of
                       Left e  -> die $ show e
                       Right t -> return t
-  -- putStrLn "\nUnbalanced:"
-  -- print txUnbalanced
-  -- putStrLn "\nUnbalanced pretty:"
-  -- pprint txUnbalanced
-  -- putStrLn "\nBalanced:"
-  -- print $ unBalancedTxTx $ txUnbalanced
-  -- putStrLn "\nBalanced pretty:"
-  -- pprint $ unBalancedTxTx $ txUnbalanced
-  putStrLn "\nExport:"
-  exptBody <- case export netParams netMagic txUnbalanced of
-              Left e  -> die $ show $ pretty e
-              Right tx -> return tx
-  BSL.putStrLn $ encodePretty exptBody
-
-  putStrLn "\nBody:"
+  putStrLn "\nUnbalanced:"
+  print txUnbalanced
+  putStrLn "\nUnbalanced pretty:"
+  pprint txUnbalanced
+  putStrLn "\nBalanced:"
+  let balanced = balance txUnbalanced
+  print balanced
+  putStrLn "\nBalanced pretty:"
+  pprint balanced
   body <- case mkPartialTxBody netParams netMagic (unBalancedTxTx txUnbalanced) of
               Left e  -> die $ show $ pretty e
               Right tx -> return tx
-  BSL.putStrLn $ encodePretty 
-    $ C.serialiseToTextEnvelope Nothing body
+  putStrLn "\nBalanced serialized:"
+  let serialized = encodePretty $ C.serialiseToTextEnvelope Nothing body
+  BSL.putStrLn serialized
+  BSL.writeFile tx_raw_file serialized
 
-  putStrLn "\nKind a signed body:"
-  BSL.putStrLn $ encodePretty 
-    $ C.serialiseToTextEnvelope Nothing (C.makeSignedTransaction [] body)
+
+
+balance :: UnbalancedTx -> Tx
+balance unbTx = 
+  let
+    tx = unBalancedTxTx unbTx
+    txInId = fromJust $ Aeson.decode 
+             $ "{\"getTxId\" : \"2b70547a10b256f4693564692ac5fabd29ae48a6797b4f92884736d39922daab\"}"
+    input_1 = TxIn (TxOutRef txInId 0 ) Nothing 
+    txCollateralId = fromJust $ Aeson.decode 
+                     $ "{\"getTxId\" : \"b66803306188d89ba0a4a3d5138ac442248219314b361bcaae8a6ee1f74d0a05\"}"
+    collateral_1 = TxIn (TxOutRef txCollateralId 1 ) Nothing 
+    txBalanced = tx
+      { txFee = adaValueOf 200000,
+        txInputs = Set.singleton input_1,
+        txCollateral = Set.singleton collateral_1
+      }
+  in
+    txBalanced
+    
 
 
 pprint :: Pretty a => a -> IO ()
@@ -104,11 +121,11 @@ readNetParams file = do
 getTestNetMagic :: IO C.NetworkId
 getTestNetMagic = return . C.Testnet . C.NetworkMagic $ 8
 
+mkPartialTxBody :: C.ProtocolParameters -> C.NetworkId -> Plutus.Tx -> Either CardanoAPI.ToCardanoError (C.TxBody C.AlonzoEra)
+mkPartialTxBody params networkId = CardanoAPI.toCardanoTxBody (Just params) networkId
 
 
-
-
-
+-- From iohks' Extract
 data ExportTx =
         ExportTx
             { partialTx   :: C.Tx C.AlonzoEra -- ^ The transaction itself
@@ -143,9 +160,6 @@ export params networkId UnbalancedTx{unBalancedTxTx, unBalancedTxUtxoIndex, unBa
         <$> mkPartialTx params networkId unBalancedTxTx
         <*> mkLookups networkId unBalancedTxUtxoIndex
         <*> mkSignatories unBalancedTxRequiredSignatories
-
-mkPartialTxBody :: C.ProtocolParameters -> C.NetworkId -> Plutus.Tx -> Either CardanoAPI.ToCardanoError (C.TxBody C.AlonzoEra)
-mkPartialTxBody params networkId = CardanoAPI.toCardanoTxBody (Just params) networkId
 
 
 mkPartialTx :: C.ProtocolParameters -> C.NetworkId -> Plutus.Tx -> Either CardanoAPI.ToCardanoError (C.Tx C.AlonzoEra)
