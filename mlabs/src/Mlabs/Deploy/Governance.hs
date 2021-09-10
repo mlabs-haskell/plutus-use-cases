@@ -14,7 +14,7 @@ import Data.Maybe (fromJust)
 
 import Mlabs.Deploy.Utils
 
-outDir = "/home/mike/dev/mlabs/contract_deploy/node_mnt/governance"
+outDir = "./deploy-app/deploy_scripts/node_mnt/governance/plutus_files"
 
 -- serializeGovernance txId txIx ownerPkh content outDir = do
 serializeGovernance = do
