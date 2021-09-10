@@ -7,6 +7,9 @@ docker rm $CONTAINER
 
 docker run -ti \
   --name $CONTAINER \
-  -v ~/dev/mlabs/contract_deploy/node_mnt:/home/cardano-my-node/node_mnt \
+  -v $(echo $PWD)/node_mnt:/home/cardano-my-node/node_mnt \
   -e MAGIC="--testnet-magic 8" \
-  $IMAGE bash
+  -e NETWORK=mainnet \
+  -p 6000:6000 \
+  $IMAGE \
+  bash
