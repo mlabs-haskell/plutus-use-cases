@@ -45,7 +45,7 @@ echo "  xGOV policy id is $XGOV_POLICY_ID"
 echo "  GOV policy id is $GOV_POLICY_ID"
 echo "  GOV change to $USER is $GOV_CHANGE"
 
-REDEEMER_VAL="[]"
+REDEEMER=$WORKDIR/plutus_files/user1-deposit-redeemer.json
 CURRENT_DATUM=$WORKDIR/plutus_files/user1-init-datum.json
 NEXT_DATUM_HASH=$(cardano-cli transaction hash-script-data --script-data-file $CURRENT_DATUM)
 
@@ -58,7 +58,7 @@ cardano-cli transaction build --alonzo-era --cardano-mode ${MAGIC} --protocol-pa
   --tx-in "$SCRIPT_INPUT" \
   --tx-in-script-file "$SCRIPT" \
   --tx-in-datum-file "$CURRENT_DATUM" \
-  --tx-in-redeemer-value "$REDEEMER_VAL" \
+  --tx-in-redeemer-file "$REDEEMER" \
   --tx-out "$SCRIPT_ADDR + 2000000 + $NEW_SCRIPT_BALANCE $GOV_POLICY_ID.GOV" \
   --tx-out-datum-hash "$NEXT_DATUM_HASH" \
   --tx-out "$USER_ADDR + 2000000 + $GOV_CHANGE $GOV_POLICY_ID.GOV" \

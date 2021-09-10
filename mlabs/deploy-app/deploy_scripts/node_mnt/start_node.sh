@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+mkdir /home/cardano-my-node/sockets
+
 cardano-node run \
   --topology /home/cardano-my-node/alonzo-purple-topology.json \
   --database-path /home/cardano-my-node/db \

@@ -7,6 +7,7 @@ docker rm $CONTAINER
 
 docker run -ti \
   --name $CONTAINER \
-  -v ~/dev/mlabs/contract_deploy/node_mnt:/home/cardano-my-node/node_mnt \
+  -v $PWD/node_mnt:/home/cardano-my-node/node_mnt \
   -e MAGIC="--testnet-magic 8" \
+  -e CARDANO_NODE_SOCKET_PATH=/home/cardano-my-node/sockets/node.socket \
   $IMAGE bash
