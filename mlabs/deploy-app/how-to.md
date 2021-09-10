@@ -22,6 +22,8 @@
 5. Build a script address with:
    `mlabs/deploy-app/deploy_scripts/node_mnt/governance/build_script_address.sh`
 
+6. TBContinued
+
 ## How to Faucet EUTXOs to an address
 
 ```bash
