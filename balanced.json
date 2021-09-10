@@ -1,0 +1,97 @@
+"PKH: 7f8a76c0ebaa4ad20dfdcd51a5de070ab771f4bf377f2c41e6b71c0a"
+[INFO] 8dae30b2-f07f-4006-93de-ac26f099adc6: "Tx 250116a0c45f36609cf575841a919d36da8b64a15f9dcd35831129b8b325c074:
+  {inputs:
+     - 74062de3b589dcb1767f2553048b076d82129fe3f673b63a3c930f553ef5d6e6!0
+
+  collateral inputs:
+    - 74062de3b589dcb1767f2553048b076d82129fe3f673b63a3c930f553ef5d6e6!0
+
+  outputs:
+    - Value (Map [(,Map [(\"\",99997999980)])]) addressed to
+      addressed to PubKeyCredential: 35dedd2982a03cf39e7dce03c839994ffdec2ec6b04f1cf2d40e61a3 (no staking credential)
+    - Value (Map [(,Map [(\"\",1000000)])]) addressed to
+      addressed to PubKeyCredential: 7f8a76c0ebaa4ad20dfdcd51a5de070ab771f4bf377f2c41e6b71c0a (no staking credential)
+  mint: Value (Map [])
+  fee: Value (Map [(,Map [(\"\",10)])])
+  mps:
+  signatures:
+    d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a
+  validity range: Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}
+  data:}"
+
+
+
+  Tx {
+    txInputs = fromList [
+      TxIn {txInRef = TxOutRef {txOutRefId = 84638173e5a5da7503d183e3c835b23dfa00a8b15d1ea0067730ef0df8d317e5, txOutRefIdx = 1}, 
+            txInType = Just ConsumePublicKeyAddress},
+      TxIn {txInRef = TxOutRef {txOutRefId = b135806142f3d020fc68e9e72fa6e8e7c8fce34b2a0f17fd23b633641f58944a, txOutRefIdx = 1}, 
+            txInType = Just ConsumePublicKeyAddress}
+    ], 
+    txCollateral = fromList [
+      TxIn {txInRef = TxOutRef {txOutRefId = 84638173e5a5da7503d183e3c835b23dfa00a8b15d1ea0067730ef0df8d317e5, txOutRefIdx = 1}, 
+            txInType = Just ConsumePublicKeyAddress},
+      TxIn {txInRef = TxOutRef {txOutRefId = b135806142f3d020fc68e9e72fa6e8e7c8fce34b2a0f17fd23b633641f58944a, txOutRefIdx = 1}, 
+            txInType = Just ConsumePublicKeyAddress}
+    ], 
+    txOutputs = [
+      TxOut {
+        txOutAddress = Address {addressCredential = PubKeyCredential 977efb35ab621d39dbeb7274ec7795a34708ff4d25a01a1df04c1f27, 
+                                addressStakingCredential = Nothing}, 
+        txOutValue = Value (Map [(,Map [(\"\",99999995019)]),(a4613b726d9d687d0594cd39001543705bbb2acc3f8277df6136633f,Map [(\"GOVToken\",45)])]), 
+        txOutDatumHash = Nothing},
+      TxOut {
+        txOutAddress = Address {addressCredential = PubKeyCredential 977efb35ab621d39dbeb7274ec7795a34708ff4d25a01a1df04c1f27, 
+                                addressStakingCredential = Nothing}, 
+        txOutValue = Value (Map [(5b256553aa589f755d2f1b2e2e5b74d8805097b522e3cca72ca3ae2f,Map [(0x977efb35ab621d39dbeb7274ec7795a34708ff4d25a01a1df04c1f27,55)])]), 
+        txOutDatumHash = Nothing},
+      TxOut {
+        txOutAddress = Address {addressCredential = ScriptCredential 4445a5195203e57104911429196a42c304b3cbf90ba6269c1242a4bf, 
+                                addressStakingCredential = Nothing}, 
+        txOutValue = Value (Map [(a4613b726d9d687d0594cd39001543705bbb2acc3f8277df6136633f,Map [(\"GOVToken\",55)])]), 
+        txOutDatumHash = Just b99f9b6fca1b3606bd4f966f64d3edff985ca4338147b40337195b320a494c8b}
+      ], 
+    txMint = Value (Map [(5b256553aa589f755d2f1b2e2e5b74d8805097b522e3cca72ca3ae2f,Map [(0x977efb35ab621d39dbeb7274ec7795a34708ff4d25a01a1df04c1f27,55)])]), 
+    txFee = Value (Map [(,Map [(\"\",4981)])]), 
+    txValidRange = Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}, 
+    txMintScripts = fromList [MintingPolicy { <script> }], 
+    txSignatures = fromList [(3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c,af26db24847e9d2cad62997cdf40422d837dc131c1d824540063674143e6b89ffd09e7719bc1e4d13bc70542f240a46bc6a1ff27e30a863b56f189a02b06720b)], 
+    txRedeemers = fromList [(RedeemerPtr Mint 0,Redeemer {getRedeemer = Constr 0 []})], 
+    txData = fromList [
+      ( b99f9b6fca1b3606bd4f966f64d3edff985ca4338147b40337195b320a494c8b
+      , Datum {getDatum = Constr 0 [B \"\\151~\\251\\&5\\171b\\GS9\\219\\235rt\\236w\\149\\163G\\b\\255M%\\160\\SUB\\GS\\240L\\US'\",B \"[%eS\\170X\\159u]/\\ESC..[t\\216\\128P\\151\\181\\\"\\227\\204\\167,\\163\\174/\"]})]}
+
+
+Tx {
+  txInputs = fromList [
+    TxIn {txInRef = TxOutRef {txOutRefId = 611564762ac709287cf8ba6c97b1c4bc43da3adffe6d5bdcc2d1bae16c09fc3b, txOutRefIdx = 0}, 
+          txInType = Just ConsumePublicKeyAddress},
+    TxIn {txInRef = TxOutRef {txOutRefId = 611564762ac709287cf8ba6c97b1c4bc43da3adffe6d5bdcc2d1bae16c09fc3b, txOutRefIdx = 2}, 
+          txInType = Just (ConsumeScriptAddress Validator { <script> } 
+                          (Redeemer {getRedeemer = Constr 0 [I 10]}) 
+                          (Datum {getDatum = Constr 0 [B \"\\151~\\251\\&5\\171b\\GS9\\219\\235rt\\236w\\149\\163G\\b\\255M%\\160\\SUB\\GS\\240L\\US'\",B \"[%eS\\170X\\159u]/\\ESC..[t\\216\\128P\\151\\181\\\"\\227\\204\\167,\\163\\174/\"]}))}
+                        ], 
+  txCollateral = fromList [
+    TxIn {txInRef = TxOutRef {txOutRefId = 611564762ac709287cf8ba6c97b1c4bc43da3adffe6d5bdcc2d1bae16c09fc3b, txOutRefIdx = 0},
+          txInType = Just ConsumePublicKeyAddress}
+          ], 
+  txOutputs = [
+    TxOut {txOutAddress = Address {addressCredential = PubKeyCredential 977efb35ab621d39dbeb7274ec7795a34708ff4d25a01a1df04c1f27, 
+           addressStakingCredential = Nothing}, 
+           txOutValue = Value (Map [(,Map [(\"\",99999983736)]),(a4613b726d9d687d0594cd39001543705bbb2acc3f8277df6136633f,Map [(\"GOVToken\",35)])]), 
+           txOutDatumHash = Nothing},
+    TxOut {txOutAddress = Address {addressCredential = PubKeyCredential 977efb35ab621d39dbeb7274ec7795a34708ff4d25a01a1df04c1f27, 
+           addressStakingCredential = Nothing}, 
+           txOutValue = Value (Map [(5b256553aa589f755d2f1b2e2e5b74d8805097b522e3cca72ca3ae2f,Map [(0x977efb35ab621d39dbeb7274ec7795a34708ff4d25a01a1df04c1f27,10)])]), 
+           txOutDatumHash = Nothing},
+    TxOut {txOutAddress = Address {addressCredential = ScriptCredential 4445a5195203e57104911429196a42c304b3cbf90ba6269c1242a4bf, 
+           addressStakingCredential = Nothing}, 
+           txOutValue = Value (Map [(a4613b726d9d687d0594cd39001543705bbb2acc3f8277df6136633f,Map [(\"GOVToken\",65)])]), 
+           txOutDatumHash = Just b99f9b6fca1b3606bd4f966f64d3edff985ca4338147b40337195b320a494c8b}], 
+           txMint = Value (Map [(5b256553aa589f755d2f1b2e2e5b74d8805097b522e3cca72ca3ae2f,Map [(0x977efb35ab621d39dbeb7274ec7795a34708ff4d25a01a1df04c1f27,10)])]), 
+  txFee = Value (Map [(,Map [(\"\",11283)])]), 
+  txValidRange = Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}, 
+  txMintScripts = fromList [MintingPolicy { <script> }], 
+  txSignatures = fromList [(3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c,55fc68e0a1cf9886e5ae7f99b5c139686765c5d39afa67421f6e7337067a4a6c9689e2d2aa581efecd15be881a2ebc36ec5ab979dc8aae1d86885a56d55aa809)], 
+  txRedeemers = fromList [(RedeemerPtr Mint 0,Redeemer {getRedeemer = Constr 0 []})], 
+  txData = fromList [(b99f9b6fca1b3606bd4f966f64d3edff985ca4338147b40337195b320a494c8b,Datum {getDatum = Constr 0 [B \"\\151~\\251\\&5\\171b\\GS9\\219\\235rt\\236w\\149\\163G\\b\\255M%\\160\\SUB\\GS\\240L\\US'\",B \"[%eS\\170X\\159u]/\\ESC..[t\\216\\128P\\151\\181\\\"\\227\\204\\167,\\163\\174/\"]})]}

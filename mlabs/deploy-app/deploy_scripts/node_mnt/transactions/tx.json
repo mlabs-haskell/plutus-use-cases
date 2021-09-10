@@ -1,0 +1,126 @@
+{
+    "txData": [],
+    "txInputs": [
+        {
+            "txInType": {
+                "tag": "ConsumePublicKeyAddress"
+            },
+            "txInRef": {
+                "txOutRefIdx": 1,
+                "txOutRefId": {
+                    "getTxId": "b66803306188d89ba0a4a3d5138ac442248219314b361bcaae8a6ee1f74d0a05"
+                }
+            }
+        }
+    ],
+    "txRedeemers": [],
+    "txOutputs": [
+        {
+            "txOutValue": {
+                "getValue": [
+                    [
+                        {
+                            "unCurrencySymbol": ""
+                        },
+                        [
+                            [
+                                {
+                                    "unTokenName": ""
+                                },
+                                9994000000
+                            ]
+                        ]
+                    ]
+                ]
+            },
+            "txOutAddress": {
+                "addressStakingCredential": null,
+                "addressCredential": {
+                    "contents": {
+                        "getPubKeyHash": "4cebc6f2a3d0111ddeb09ac48e2053b83b33b15f29182f9b528c6491"
+                    },
+                    "tag": "PubKeyCredential"
+                }
+            },
+            "txOutDatumHash": null
+        },
+        {
+            "txOutValue": {
+                "getValue": [
+                    [
+                        {
+                            "unCurrencySymbol": ""
+                        },
+                        [
+                            [
+                                {
+                                    "unTokenName": ""
+                                },
+                                5000000
+                            ]
+                        ]
+                    ]
+                ]
+            },
+            "txOutAddress": {
+                "addressStakingCredential": null,
+                "addressCredential": {
+                    "contents": {
+                        "getPubKeyHash": "5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d2"
+                    },
+                    "tag": "PubKeyCredential"
+                }
+            },
+            "txOutDatumHash": null
+        }
+    ],
+    "txValidRange": {
+        "ivTo": [
+            {
+                "tag": "PosInf"
+            },
+            true
+        ],
+        "ivFrom": [
+            {
+                "tag": "NegInf"
+            },
+            true
+        ]
+    },
+    "txFee": {
+        "getValue": [
+            [
+                {
+                    "unCurrencySymbol": ""
+                },
+                [
+                    [
+                        {
+                            "unTokenName": ""
+                        },
+                        1000000
+                    ]
+                ]
+            ]
+        ]
+    },
+    "txMint": {
+        "getValue": []
+    },
+    "txCollateral": [
+        {
+            "txInType": {
+                "tag": "ConsumePublicKeyAddress"
+            },
+            "txInRef": {
+                "txOutRefIdx": 1,
+                "txOutRefId": {
+                    "getTxId": "b66803306188d89ba0a4a3d5138ac442248219314b361bcaae8a6ee1f74d0a05"
+                }
+            }
+        }
+    ],
+    "txMintScripts": [],
+    "txSignatures": []
+}

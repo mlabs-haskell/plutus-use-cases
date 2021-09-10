@@ -1,0 +1,11 @@
+                           TxHash                                 TxIx        Amount
+--------------------------------------------------------------------------------------
+2b70547a10b256f4693564692ac5fabd29ae48a6797b4f92884736d39922daab     0        9954207118 lovelace + TxOutDatumHashNone
+2b70547a10b256f4693564692ac5fabd29ae48a6797b4f92884736d39922daab     1        2000000 lovelace + 20 fda1b6b487bee2e7f64ecf24d24b1224342484c0195ee1b7b943db50.Loltoken + TxOutDatumHashNone
+4528a802fab51a597b41063545048ed4ab781c629a795fb7eba22d351b874fd1     1        1000000 lovelace + TxOutDatumHashNone
+8774492fb30d172c3c806951fce0c97e1652d3e9e219c8b136fb5300f5977f0a     1        10000000000 lovelace + TxOutDatumHashNone
+ac335f509f3a1975c17bb7b19c3e0fad7765282e03c73a40059a036398bb1438     1        2000000 lovelace + 1 45f3e4ce012e5a094d3894539db96ef2a7aaa3c1aeb07f6a68832b6f.purple + TxOutDatumHashNone
+ac9faa7d4dde2051da584f36406201d1603de5f978571a3872db0ebacfa4e013     1        1000000 lovelace + TxOutDatumHashNone
+b66803306188d89ba0a4a3d5138ac442248219314b361bcaae8a6ee1f74d0a05     1        10000000000 lovelace + TxOutDatumHashNone
+b836eb6bc4e51b1a7d652d465c989fb69677332ff3ef42bcc157b9bbcfc5d9e1     1        3000000 lovelace + TxOutDatumHashNone
+c5ee4e7aa8182728c87acc5a8c2f64445d894825d1a4d178e310e155ec407540     1        2000000 lovelace + 10 fda1b6b487bee2e7f64ecf24d24b1224342484c0195ee1b7b943db50.GOV + TxOutDatumHashNone

@@ -1,0 +1,6 @@
+                           TxHash                                 TxIx        Amount
+--------------------------------------------------------------------------------------
+48869682e79d62dda87580e931d8228adaa846443f8e1a7d48779c891d73653d     1        1000000 lovelace + TxOutDatumHashNone
+684c9129c9c0aa58ed953d11dd08e0adda58b52fae26153c49c102dcbc07835f     1        2000000 lovelace + 1 45f3e4ce012e5a094d3894539db96ef2a7aaa3c1aeb07f6a68832b6f.purple + TxOutDatumHashNone
+970d54e36b13c221e73514bf34ceb3ffefc460ad7ce8c01515ea56b536599405     1        2000000 lovelace + 1 fda1b6b487bee2e7f64ecf24d24b1224342484c0195ee1b7b943db50.MintCoin + TxOutDatumHashNone
+b62932f6f9db77058b1bb445c586f15e434f07f4cca669cc224c654a7a752e71     1        1000000 lovelace + TxOutDatumHashNone

@@ -89,15 +89,9 @@ main = do
               Right tx -> return tx
   BSL.writeFile tx_body_file $ encodePretty balanced
   putStrLn "\nBalanced serialized:"
-  let serialized = C.serialiseToTextEnvelope Nothing body
-      serializedEncoded = encodePretty serialized
-      ttoken = C.proxyToAsType Proxy
-      des :: Either C.TextEnvelopeError (C.TxBody C.AlonzoEra) = 
-              C.deserialiseFromTextEnvelope ttoken serialized
-  BSL.putStrLn serializedEncoded
-  BSL.writeFile tx_raw_file serializedEncoded
-  putStrLn "\nDeserialized:"
-  print des
+  let serialized = encodePretty $ C.serialiseToTextEnvelope Nothing body
+  BSL.putStrLn serialized
+  BSL.writeFile tx_raw_file serialized
 
 
 

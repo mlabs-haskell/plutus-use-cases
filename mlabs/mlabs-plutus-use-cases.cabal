@@ -112,6 +112,7 @@ library
     Mlabs.Governance.Contract.Server
     Mlabs.Governance.Contract.Simulator.Handler
     Mlabs.Governance.Contract.Validation
+    Mlabs.Governance.Contract.DemoValidation
     Mlabs.Lending.Contract
     Mlabs.Lending.Contract.Api
     Mlabs.Lending.Contract.Forge
