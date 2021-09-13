@@ -1,24 +1,29 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 -- | Contract API for Lendex application
-module Mlabs.Nft.Contract.Api(
-    Buy(..)
-  , SetPrice(..)
-  , StartParams(..)
-  , UserSchema
-  , AuthorSchema
-  , IsUserAct(..)
+module Mlabs.Nft.Contract.Api (
+  Buy (..),
+  SetPrice (..),
+  StartParams (..),
+  UserSchema,
+  AuthorSchema,
+  IsUserAct (..),
 ) where
 
-import qualified Prelude as Hask
-import PlutusTx.Prelude
+import GHC.Generics (Generic)
+import Playground.Contract (FromJSON, ToJSON, ToSchema)
+import Plutus.Contract (type (.\/))
+import PlutusTx.Prelude (BuiltinByteString, Integer, Maybe, Rational)
+import Prelude qualified as Hask (Eq, Show)
 
-import GHC.Generics
-
-import Plutus.Contract
-import Playground.Contract
-
-import Mlabs.Data.Ray (Ray)
-import Mlabs.Plutus.Contract
-import Mlabs.Nft.Logic.Types
+import Mlabs.Nft.Logic.Types (UserAct (BuyAct, SetPriceAct))
+import Mlabs.Plutus.Contract (Call, IsEndpoint (..))
 
 ----------------------------------------------------------------------
 -- NFT endpoints
@@ -27,28 +32,31 @@ import Mlabs.Nft.Logic.Types
 
 -- | User buys NFT
 data Buy = Buy
-  { buy'price     :: Integer
-  , buy'newPrice  :: Maybe Integer
+  { buy'price :: Integer
+  , buy'newPrice :: Maybe Integer
   }
-  deriving stock (Show, Generic, Hask.Eq)
+  deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 -- | User sets new price for NFT
-data SetPrice = SetPrice
+newtype SetPrice = SetPrice
   { setPrice'newPrice :: Maybe Integer
   }
-  deriving stock (Show, Generic, Hask.Eq)
+  deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 -- author endpoints
 
 -- | Parameters to init NFT
 data StartParams = StartParams
-  { sp'content :: ByteString      -- ^ NFT content
-  , sp'share   :: Ray             -- ^ author share [0, 1] on reselling of the NFT
-  , sp'price   :: Maybe Integer   -- ^ current price of NFT, if it's nothing then nobody can buy it.
+  { -- | NFT content
+    sp'content :: BuiltinByteString
+  , -- | author share [0, 1] on reselling of the NFT
+    sp'share :: Rational
+  , -- | current price of NFT, if it's nothing then nobody can buy it.
+    sp'price :: Maybe Integer
   }
-  deriving stock (Show, Generic)
+  deriving stock (Hask.Show, Generic)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 ----------------------------------------------------------------------
@@ -56,14 +64,12 @@ data StartParams = StartParams
 
 -- | User schema. Owner can set the price and the buyer can try to buy.
 type UserSchema =
-  BlockchainActions
-    .\/ Call Buy
+  Call Buy
     .\/ Call SetPrice
 
 -- | Schema for the author of NFT
 type AuthorSchema =
-  BlockchainActions
-    .\/ Call StartParams
+  Call StartParams
 
 ----------------------------------------------------------------------
 -- classes
@@ -71,8 +77,8 @@ type AuthorSchema =
 class IsUserAct a where
   toUserAct :: a -> UserAct
 
-instance IsUserAct Buy      where { toUserAct Buy{..} = BuyAct buy'price buy'newPrice }
-instance IsUserAct SetPrice where { toUserAct SetPrice{..} = SetPriceAct setPrice'newPrice }
+instance IsUserAct Buy where toUserAct Buy {..} = BuyAct buy'price buy'newPrice
+instance IsUserAct SetPrice where toUserAct SetPrice {..} = SetPriceAct setPrice'newPrice
 
 instance IsEndpoint Buy where
   type EndpointSymbol Buy = "buy-nft"
@@ -82,4 +88,3 @@ instance IsEndpoint SetPrice where
 
 instance IsEndpoint StartParams where
   type EndpointSymbol StartParams = "start-nft"
-

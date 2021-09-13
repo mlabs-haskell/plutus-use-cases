@@ -1,48 +1,61 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 -- | Contract API for Lendex application
-module Mlabs.Lending.Contract.Api 
-  (
+module Mlabs.Lending.Contract.Api (
   -- * Actions
+
   -- ** User actions
-    Deposit(..)
-  , Borrow(..)
-  , Repay(..)
-  , SwapBorrowRateModel(..)
-  , SetUserReserveAsCollateral(..)
-  , Withdraw(..)
-  , LiquidationCall(..)
-  , InterestRateFlag(..)
-  , toInterestRateFlag
-  , fromInterestRateFlag
+  Deposit (..),
+  Borrow (..),
+  Repay (..),
+  SwapBorrowRateModel (..),
+  AddCollateral (..),
+  RemoveCollateral (..),
+  Withdraw (..),
+  LiquidationCall (..),
+  InterestRateFlag (..),
+  toInterestRateFlag,
+  fromInterestRateFlag,
+
   -- ** Admin actions
-  , AddReserve(..)
-  , StartParams(..)
+  AddReserve (..),
+  StartLendex (..),
+
+  -- ** Query actions
+  QueryAllLendexes (..),
+  QuerySupportedCurrencies (..),
+
   -- ** Price oracle actions
-  , SetAssetPrice(..)
+  SetAssetPrice (..),
+
   -- ** Action conversions
-  , IsUserAct(..)
-  , IsPriceAct(..)
-  , IsGovernAct(..)
+  IsUserAct (..),
+  IsPriceAct (..),
+  IsGovernAct (..),
+
   -- * Schemas
-  , UserSchema
-  , OracleSchema
-  , AdminSchema
+  UserSchema,
+  OracleSchema,
+  AdminSchema,
+  QuerySchema,
 ) where
 
-
-import qualified Prelude as Hask
 import PlutusTx.Prelude
 
-import GHC.Generics
+import GHC.Generics (Generic)
+import Playground.Contract (FromJSON, ToJSON, ToSchema)
+import Plutus.Contract (type (.\/))
+import Plutus.V1.Ledger.Crypto (PubKeyHash)
+import Prelude qualified as Hask (Eq, Show)
 
-import Plutus.Contract
-import Playground.Contract
-import Plutus.V1.Ledger.Crypto
-import Plutus.V1.Ledger.Value
-
-import Mlabs.Plutus.Contract
-import Mlabs.Emulator.Types
-import qualified Mlabs.Data.Ray as R
-import Mlabs.Lending.Logic.Types
+import Mlabs.Lending.Logic.Types qualified as Types
+import Mlabs.Plutus.Contract (Call, IsEndpoint (..))
 
 import qualified Data.Aeson as Aeson
 import qualified Data.ByteString.Lazy as BSL
@@ -57,7 +70,7 @@ data Deposit = Deposit
   { deposit'amount         :: Integer
   , deposit'asset          :: (CurrencySymbol, TokenName)
   }
-  deriving stock (Show, Generic, Hask.Eq)
+  deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 exampleDeposit :: Either String Deposit
@@ -68,11 +81,11 @@ exampleDeposit' = Aeson.encode $ Deposit 100 ("", "")
 
 -- | Borrow funds. We have to allocate collateral to be able to borrow
 data Borrow = Borrow
-  { borrow'amount         :: Integer
-  , borrow'asset          :: (CurrencySymbol, TokenName)
-  -- , borrow'rate           :: Integer
+  { borrow'amount :: Integer
+  , borrow'asset  :: (CurrencySymbol, TokenName)
+  , borrow'rate   :: InterestRateFlag
   }
-  deriving stock (Show, Generic, Hask.Eq)
+  deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 exampleBorrow :: Either String Borrow
@@ -83,28 +96,38 @@ exampleBorrow' = Aeson.encode $ Borrow 80 ("","")
 
 -- | Repay part of the borrow
 data Repay = Repay
-  { repay'amount          :: Integer
-  , repay'asset           :: (CurrencySymbol, TokenName)
-  , repay'rate            :: InterestRateFlag
+  { repay'amount :: Integer
+  , repay'asset  :: (CurrencySymbol, TokenName)
+  , repay'rate   :: InterestRateFlag
   }
-  deriving stock (Show, Generic, Hask.Eq)
+  deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 -- | Swap borrow interest rate strategy (stable to variable)
 data SwapBorrowRateModel = SwapBorrowRateModel
-  { swapRate'asset        :: (CurrencySymbol, TokenName)
-  , swapRate'rate         :: InterestRateFlag
+  { swapRate'asset :: (CurrencySymbol, TokenName)
+  , swapRate'rate  :: InterestRateFlag
   }
-  deriving stock (Show, Generic, Hask.Eq)
+  deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 -- | Set some portion of deposit as collateral or some portion of collateral as deposit
 data SetUserReserveAsCollateral = SetUserReserveAsCollateral
   { setCollateral'asset           :: (CurrencySymbol, TokenName) -- ^ which asset to use as collateral or not
   , setCollateral'useAsCollateral :: Bool                        -- ^ should we use as collateral (True) or use as deposit (False)
-  , setCollateral'portion         :: Integer                         -- ^ poriton of deposit/collateral to change status (0, 1)
+  , setCollateral'portion         :: Integer                     -- ^ poriton of deposit/collateral to change status (0, 1)
   }
-  deriving stock (Show, Generic, Hask.Eq)
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
+
+-- | Transfer portion of asset from locked user's Collateral to user's wallet
+data RemoveCollateral = RemoveCollateral
+  { -- | which Asset to use as collateral or not
+    removeCollateral'asset :: Types.Coin
+  , -- | amount of Asset to remove from Collateral and put back to Wallet
+    removeCollateral'amount :: Integer
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 -- | Withdraw funds from deposit
@@ -112,21 +135,27 @@ data Withdraw = Withdraw
   { withdraw'amount         :: Integer
   , withdraw'asset          :: (CurrencySymbol, TokenName)
   }
-  deriving stock (Show, Generic, Hask.Eq)
+  deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
--- | Call to liquidate borrows that are unsafe due to health check
--- (see <https://docs.aave.com/faq/liquidations> for description)
+{- | Call to liquidate borrows that are unsafe due to health check
+ (see <https://docs.aave.com/faq/liquidations> for description)
+-}
 data LiquidationCall = LiquidationCall
-  { liquidationCall'collateral     :: (CurrencySymbol, TokenName) -- ^ which collateral do we take for borrow repay
-  , liquidationCall'debtUser       :: PubKeyHash                  -- ^ identifier of the unhealthy borrow user
-  , liquidationCall'debtAsset      :: (CurrencySymbol, TokenName) -- ^ identifier of the unhealthy borrow asset
-  , liquidationCall'debtToCover    :: Integer                     -- ^ how much of the debt we cover
-  , liquidationCall'receiveAToken  :: Bool                        -- ^ if true, the user receives the aTokens equivalent
-                                                                  --   of the purchased collateral. If false, the user receives
-                                                                  --   the underlying asset directly.
+  { -- | which collateral do we take for borrow repay
+    liquidationCall'collateral     :: (CurrencySymbol, TokenName) 
+  , -- | identifier of the unhealthy borrow user
+    liquidationCall'debtUser       :: PubKeyHash
+  , -- | identifier of the unhealthy borrow asset
+    liquidationCall'debtAsset      :: (CurrencySymbol, TokenName) 
+  , -- | how much of the debt we cover
+    liquidationCall'debtToCover    :: Integer                     
+  , -- | if true, the user receives the aTokens equivalent
+    --   of the purchased collateral. If false, the user receives
+    --   the underlying asset directly.
+    liquidationCall'receiveAToken  :: Bool                        
   }
-  deriving stock (Show, Generic, Hask.Eq)
+  deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 -- deriving stock (Show, Generic, Hask.Eq)
@@ -135,24 +164,27 @@ data LiquidationCall = LiquidationCall
 -- admin actions
 
 -- | Adds new reserve
-data AddReserve = AddReserve CoinCfg
-  deriving stock (Show, Generic, Hask.Eq)
+newtype AddReserve = AddReserve Types.CoinCfg
+  deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
-data StartParams = StartParams
-  { sp'coins     :: [CoinCfg]     -- ^ supported coins with ratios to ADA
-  , sp'initValue :: Value         -- ^ init value deposited to the lending app
-  , sp'admins    :: [PubKeyHash]  -- ^ admins
-  , sp'oracles   :: [PubKeyHash]  -- ^ trusted oracles
-  }
-  deriving stock (Show, Generic)
-  deriving anyclass (FromJSON, ToJSON, ToSchema)
+newtype StartLendex = StartLendex Types.StartParams
+  deriving newtype (Hask.Show, Generic, Hask.Eq, FromJSON, ToJSON, ToSchema)
+
+-- query actions
+
+newtype QueryAllLendexes = QueryAllLendexes Types.StartParams
+  deriving newtype (Hask.Show, Generic, Hask.Eq, FromJSON, ToJSON, ToSchema)
+
+newtype QuerySupportedCurrencies = QuerySupportedCurrencies ()
+  deriving stock (Hask.Show, Generic)
+  deriving newtype (FromJSON, ToJSON, ToSchema)
 
 -- price oracle actions
 
 -- | Updates for the prices of the currencies on the markets
-data SetAssetPrice = SetAssetPrice Coin R.Ray
-  deriving stock (Show, Generic, Hask.Eq)
+data SetAssetPrice = SetAssetPrice Types.Coin Rational
+  deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 ----------------------------------------------------------
@@ -160,76 +192,82 @@ data SetAssetPrice = SetAssetPrice Coin R.Ray
 
 -- | User actions
 type UserSchema =
-  BlockchainActions
-    .\/ Call Deposit
+  Call Deposit
     .\/ Call Borrow
     .\/ Call Repay
     .\/ Call SwapBorrowRateModel
-    .\/ Call SetUserReserveAsCollateral
+    -- .\/ Call SetUserReserveAsCollateral
+    .\/ Call AddCollateral
+    .\/ Call RemoveCollateral
     .\/ Call Withdraw
     .\/ Call LiquidationCall
 
-
 -- | Oracle schema
 type OracleSchema =
-  BlockchainActions
-    .\/ Call SetAssetPrice
+  Call SetAssetPrice
 
 -- | Admin schema
 type AdminSchema =
-  BlockchainActions
-    .\/ Call AddReserve
-    .\/ Call StartParams
+  Call AddReserve
+    .\/ Call StartLendex
+
+-- | Query schema
+type QuerySchema =
+  Call QueryAllLendexes
+    .\/ Call QuerySupportedCurrencies
 
 ----------------------------------------------------------
 -- proxy types for ToSchema instance
 
--- | Interest rate flag.
---
--- * 0 is stable rate
--- * everything else is variable rate
+{- | Interest rate flag.
+
+ * 0 is stable rate
+ * everything else is variable rate
+-}
 newtype InterestRateFlag = InterestRateFlag Integer
-  deriving newtype (Show, Hask.Eq, FromJSON, ToJSON, ToSchema)
+  deriving newtype (Hask.Show, Hask.Eq, FromJSON, ToJSON, ToSchema)
 
-fromInterestRateFlag :: InterestRateFlag -> InterestRate
+fromInterestRateFlag :: InterestRateFlag -> Types.InterestRate
 fromInterestRateFlag (InterestRateFlag n)
-  | n == 0    = StableRate
-  | otherwise = VariableRate
+  | n == 0 = Types.StableRate
+  | otherwise = Types.VariableRate
 
-toInterestRateFlag :: InterestRate -> InterestRateFlag
-toInterestRateFlag = InterestRateFlag . \case
-  StableRate   -> 0
-  VariableRate -> 1
+toInterestRateFlag :: Types.InterestRate -> InterestRateFlag
+toInterestRateFlag =
+  InterestRateFlag . \case
+    Types.StableRate -> 0
+    Types.VariableRate -> 1
 
 ----------------------------------------------------------
--- boilerplate to logic-act coversions
+-- boilerplate to logic-act conversions
 
 class IsEndpoint a => IsUserAct a where
-  toUserAct :: a -> UserAct
+  toUserAct :: a -> Types.UserAct
 
 class IsEndpoint a => IsPriceAct a where
-  toPriceAct :: a -> PriceAct
+  toPriceAct :: a -> Types.PriceAct
 
 class IsEndpoint a => IsGovernAct a where
-  toGovernAct :: a -> GovernAct
+  toGovernAct :: a -> Types.GovernAct
 
 -- user acts
 
-instance IsUserAct Deposit                    where { toUserAct Deposit{..} = DepositAct deposit'amount (AssetClass deposit'asset) }
-instance IsUserAct Borrow                     where { toUserAct Borrow{..} = BorrowAct borrow'amount (AssetClass borrow'asset) StableRate }
-instance IsUserAct Repay                      where { toUserAct Repay{..} = RepayAct repay'amount (AssetClass repay'asset) (fromInterestRateFlag repay'rate) }
-instance IsUserAct SwapBorrowRateModel        where { toUserAct SwapBorrowRateModel{..} = SwapBorrowRateModelAct (AssetClass swapRate'asset) (fromInterestRateFlag swapRate'rate) }
-instance IsUserAct SetUserReserveAsCollateral where { toUserAct SetUserReserveAsCollateral{..} = SetUserReserveAsCollateralAct (AssetClass setCollateral'asset) setCollateral'useAsCollateral (R.fromInteger setCollateral'portion) }
-instance IsUserAct Withdraw                   where { toUserAct Withdraw{..} = WithdrawAct withdraw'amount (AssetClass withdraw'asset) }
-instance IsUserAct LiquidationCall            where { toUserAct LiquidationCall{..} = LiquidationCallAct (AssetClass liquidationCall'collateral) (BadBorrow (UserId liquidationCall'debtUser) (AssetClass liquidationCall'debtAsset)) liquidationCall'debtToCover liquidationCall'receiveAToken }
+instance IsUserAct Deposit where toUserAct Deposit {..} = Types.DepositAct deposit'amount (AssetClass deposit'asset)
+instance IsUserAct Borrow where toUserAct Borrow {..} = Types.BorrowAct borrow'amount borrow'asset (AssetClass borrow'asset) StableRate
+instance IsUserAct Repay where toUserAct Repay {..} = Types.RepayAct repay'amount (AssetClass repay'asset) (fromInterestRateFlag repay'rate)
+instance IsUserAct SwapBorrowRateModel where toUserAct SwapBorrowRateModel {..} = Types.SwapBorrowRateModelAct (AssetClass swapRate'asset) (fromInterestRateFlag swapRate'rate)
+instance IsUserAct AddCollateral where toUserAct AddCollateral {..} = Types.AddCollateralAct addCollateral'asset addCollateral'amount
+instance IsUserAct RemoveCollateral where toUserAct RemoveCollateral {..} = Types.RemoveCollateralAct removeCollateral'asset removeCollateral'amount
+instance IsUserAct Withdraw where toUserAct Withdraw {..} = Types.WithdrawAct withdraw'asset (AssetClass withdraw'asset)
+instance IsUserAct LiquidationCall where toUserAct LiquidationCall {..} = Types.LiquidationCallAct (AssetClass liquidationCall'collateral) (Types.BadBorrow (Types.UserId liquidationCall'debtUser) (AssetClass liquidationCall'debtAsset)) liquidationCall'debtToCover liquidationCall'receiveAToken
 
 -- price acts
 
-instance IsPriceAct SetAssetPrice             where { toPriceAct (SetAssetPrice asset rate) = SetAssetPriceAct asset rate }
+instance IsPriceAct SetAssetPrice where toPriceAct (SetAssetPrice asset rate) = Types.SetAssetPriceAct asset rate
 
 -- govern acts
 
-instance IsGovernAct AddReserve               where { toGovernAct (AddReserve cfg) = AddReserveAct cfg }
+instance IsGovernAct AddReserve where toGovernAct (AddReserve cfg) = Types.AddReserveAct cfg
 
 -- endpoint names
 
@@ -245,8 +283,11 @@ instance IsEndpoint Repay where
 instance IsEndpoint SwapBorrowRateModel where
   type EndpointSymbol SwapBorrowRateModel = "swap-borrow-rate-model"
 
-instance IsEndpoint SetUserReserveAsCollateral where
-  type EndpointSymbol SetUserReserveAsCollateral = "set-user-reserve-as-collateral"
+instance IsEndpoint AddCollateral where
+  type EndpointSymbol AddCollateral = "add-collateral"
+
+instance IsEndpoint RemoveCollateral where
+  type EndpointSymbol RemoveCollateral = "remove-collateral"
 
 instance IsEndpoint Withdraw where
   type EndpointSymbol Withdraw = "withdraw"
@@ -260,6 +301,11 @@ instance IsEndpoint SetAssetPrice where
 instance IsEndpoint AddReserve where
   type EndpointSymbol AddReserve = "add-reserve"
 
-instance IsEndpoint StartParams where
-  type EndpointSymbol StartParams = "start-lendex"
+instance IsEndpoint StartLendex where
+  type EndpointSymbol StartLendex = "start-lendex"
 
+instance IsEndpoint QueryAllLendexes where
+  type EndpointSymbol QueryAllLendexes = "query-all-lendexes"
+
+instance IsEndpoint QuerySupportedCurrencies where
+  type EndpointSymbol QuerySupportedCurrencies = "query-supported-currencies"
