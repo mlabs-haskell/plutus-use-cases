@@ -42,6 +42,9 @@ common common-imports
     , serialise
     , cardano-api
     , cardano-ledger-alonzo
+    , unordered-containers
+    , lens-aeson
+    , scientific
 
 common common-language
     default-extensions:
@@ -165,7 +168,6 @@ executable deploy-app
   import:  common-imports
   import:  common-language
   import:  common-configs
-  main-is: deploy-app/Main.hs
   build-depends: 
       mlabs-plutus-use-cases
     , cardano-ledger-alonzo
@@ -174,6 +176,8 @@ executable deploy-app
     , cardano-api==1.28.0
     , unordered-containers
     , lens-aeson
+    , scientific
+  main-is: deploy-app/Main.hs
   hs-source-dirs: ., ./src
   other-modules:
     Mlabs.Deploy.Aux.Parse
