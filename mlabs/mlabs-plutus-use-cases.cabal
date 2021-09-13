@@ -151,6 +151,7 @@ executable mlabs-plutus-use-cases
 executable tx-builder
   import:  common-imports
   import:  common-language
+  import:  common-configs
   main-is: tx-builder/Main.hs
   hs-source-dirs: ., ./src
   build-depends: 
@@ -170,16 +171,23 @@ executable deploy-app
     , cardano-api
     , serialise==0.2.3.0
     , cardano-api==1.28.0
+    , unordered-containers
+    , lens-aeson
+  hs-source-dirs: ., ./src
+  other-modules:
+    Mlabs.Deploy.Aux.Parse
 
 executable nft-demo
   import:  common-imports
   import:  common-language
+  import:  common-configs
   main-is: nft-demo/Main.hs
   build-depends: mlabs-plutus-use-cases
 
 executable governance-demo
   import:  common-imports
   import:  common-language
+  import:  common-configs
   main-is: governance-demo/Main.hs
   build-depends: 
       mlabs-plutus-use-cases
