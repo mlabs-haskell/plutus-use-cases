@@ -9,7 +9,5 @@ docker run -ti \
   --name $CONTAINER \
   -v $(echo $PWD)/node_mnt:/home/cardano-my-node/node_mnt \
   -e MAGIC="--testnet-magic 8" \
-  -e NETWORK=mainnet \
-  -p 6000:6000 \
-  $IMAGE \
-  bash
+  -e CARDANO_NODE_SOCKET_PATH=/home/cardano-my-node/sockets/node.socket \
+  $IMAGE bash

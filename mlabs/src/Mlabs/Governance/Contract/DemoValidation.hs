@@ -81,17 +81,12 @@ PlutusTx.makeLift ''GovernanceDatum
 
 data Governance
 instance Validators.ValidatorTypes Governance where
-  type DatumType Governance = BuiltinData
-  type RedeemerType Governance = BuiltinData
-
--- data Governance
--- instance Validators.ValidatorTypes Governance where
---   type DatumType Governance = GovernanceDatum
---   type RedeemerType Governance = GovernanceRedeemer
+  type DatumType Governance = GovernanceDatum
+  type RedeemerType Governance = GovernanceRedeemer
 
 -- | governance validator
 {-# INLINEABLE govValidator #-}
-mkValidator :: AssetClassGov -> BuiltinData -> BuiltinData -> ScriptContext -> Bool
+mkValidator :: AssetClassGov -> GovernanceDatum -> GovernanceRedeemer -> ScriptContext -> Bool
 mkValidator ac _ _ _ = True
 
 govInstance :: AssetClassGov -> Validators.TypedValidator Governance
@@ -102,8 +97,7 @@ govInstance gov =
     )
     $$(PlutusTx.compile [||wrap||])
   where
-    wrap = Validators.wrapValidator @BuiltinData @BuiltinData
-    -- wrap = Validators.wrapValidator @GovernanceDatum @GovernanceRedeemer
+    wrap = Validators.wrapValidator @GovernanceDatum @GovernanceRedeemer
 
 govValidator :: AssetClassGov -> Validator
 govValidator = Validators.validatorScript . govInstance
