@@ -186,7 +186,7 @@ defaultInterestModel =
 
 -- | Coin configuration
 data CoinCfg = CoinCfg
-  { coinCfg'coin :: Coin
+  { coinCfg'coin :: (CurrencySymbol, TokenName)
   , coinCfg'rate :: Rational
   , coinCfg'aToken :: TokenName
   , coinCfg'interestModel :: InterestModel
@@ -208,8 +208,8 @@ initLendingPool curSym coinCfgs admins oracles =
     , lp'trustedOracles = oracles
     }
   where
-    reserves = M.fromList $ fmap (\cfg -> (cfg.coinCfg'coin, initReserve cfg)) coinCfgs
-    coinMap = M.fromList $ fmap (\(CoinCfg coin _ aToken _ _) -> (aToken, coin)) coinCfgs
+    reserves = M.fromList $ fmap (\cfg -> (AssetClass cfg.coinCfg'coin, initReserve cfg)) coinCfgs
+    coinMap = M.fromList $ fmap (\(CoinCfg coin _ aToken _ _) -> (aToken, (AssetClass coin))) coinCfgs
 
 {-# INLINEABLE initReserve #-}
 

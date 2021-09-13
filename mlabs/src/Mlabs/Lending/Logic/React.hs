@@ -13,6 +13,7 @@ import PlutusTx.Prelude
 
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.State.Strict (MonadState (get, put), gets)
+import Plutus.V1.Ledger.Value (AssetClass(..))
 import PlutusTx.AssocMap qualified as M
 import PlutusTx.These (these)
 import Prelude qualified as Hask
@@ -293,10 +294,11 @@ react input = do
 
     addReserve cfg@Types.CoinCfg {..} = do
       st <- get
+      let coin = (AssetClass coinCfg'coin)
       State.guardError "Reserve is already present" $
-        M.member coinCfg'coin (st.lp'reserves)
-      let newReserves = M.insert coinCfg'coin (initReserve cfg) $ st.lp'reserves
-          newCoinMap = M.insert coinCfg'aToken coinCfg'coin $ st.lp'coinMap
+        M.member coin (st.lp'reserves)
+      let newReserves = M.insert coin (initReserve cfg) $ st.lp'reserves
+          newCoinMap = M.insert coinCfg'aToken coin $ st.lp'coinMap
       put $ st {lp'reserves = newReserves, lp'coinMap = newCoinMap}
       return []
 

@@ -65,7 +65,7 @@ initApp AppConfig {..} =
   App
     { app'st =
         Types.LendingPool
-          { lp'reserves = AM.fromList (fmap (\x -> (x.coinCfg'coin, Types.initReserve x)) appConfig'reserves)
+          { lp'reserves = AM.fromList (fmap (\x -> (AssetClass x.coinCfg'coin, Types.initReserve x)) appConfig'reserves)
           , lp'users = AM.empty
           , lp'currency = appConfig'currencySymbol
           , lp'coinMap = coinMap
@@ -80,7 +80,7 @@ initApp AppConfig {..} =
     coinMap =
       AM.fromList
         . fmap
-          (\Types.CoinCfg {..} -> (coinCfg'aToken, coinCfg'coin))
+          (\Types.CoinCfg {..} -> (coinCfg'aToken, AssetClass coinCfg'coin))
         $ appConfig'reserves
 
 {- | Default application.
@@ -101,7 +101,7 @@ defaultAppConfig = AppConfig reserves users curSym admins oracles
       fmap
         ( \name ->
             Types.CoinCfg
-              { coinCfg'coin = toCoin name
+              { coinCfg'coin = toUnwrappedAssetClass name
               , coinCfg'rate = R.fromInteger 1
               , coinCfg'aToken = toAToken name
               , coinCfg'interestModel = Types.defaultInterestModel
@@ -117,6 +117,9 @@ defaultAppConfig = AppConfig reserves users curSym admins oracles
 
 toCoin :: BuiltinByteString -> Types.Coin
 toCoin str = Value.AssetClass (Value.CurrencySymbol str, Value.TokenName str)
+
+toUnwrappedAssetClass :: ByteString -> (CurrencySymbol, TokenName)
+toUnwrappedAssetClass str = (currencySymbol str, tokenName str)
 
 ----------------------------------------------------------
 -- scripts

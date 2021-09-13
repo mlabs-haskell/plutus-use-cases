@@ -123,7 +123,6 @@ getJson url = do
   _ <- liftEffect $ log $ "Request sent to " <> url
   res <- AX.get AXRF.json url
   _ <- liftEffect $ log "Response received:"
-  _ <- trace res \x-> pure x
   handleResponse res $ "GET request to " <> url <> " failed: "
 
 -- | Sends a POST request to the specified URL and returns the response JSON (or error).

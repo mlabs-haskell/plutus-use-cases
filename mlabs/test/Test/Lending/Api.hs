@@ -1,5 +1,7 @@
 module Test.Lending.Api where
 
+import Prelude
+
 import Data.Aeson as A
 import Data.Aeson.Encoding as AE
 import Data.ByteString (ByteString)
@@ -10,7 +12,8 @@ import Test.Tasty.HUnit as HU
 
 import Mlabs.Data.Ray as R
 import Mlabs.Emulator.Types (Coin(..))
-import Mlabs.Lending.Contract.Api  (Deposit(..), Borrow(..), Repay(..), InterestRateFlag(..), LiquidationCall(..), SetUserReserveAsCollateral(..), SwapBorrowRateModel(..), Withdraw(..))
+import Mlabs.Lending.Contract.Api  (Deposit(..), Borrow(..), Repay(..), InterestRateFlag(..), AddReserve(..), LiquidationCall(..), SetAssetPrice(..), SetUserReserveAsCollateral(..), SwapBorrowRateModel(..), Withdraw(..))
+import Mlabs.Lending.Logic.Types (CoinCfg(..), InterestModel(..))
 
 test :: TestTree
 test = jsonTests
@@ -22,6 +25,7 @@ jsonTests = testGroup "Lending Contract JSON"
   , decodeWithdraw
   , decodeSetUserReserveAsCollateral
   , decodeLiquidationCall
+  , decodeSetAssetPrice
   ]
 
 decodeDeposit :: TestTree
@@ -87,7 +91,7 @@ decodeSetUserReserveAsCollateral =
     let expected = Just $ SetUserReserveAsCollateral
                             { setCollateral'asset           = ("", "")
                             , setCollateral'useAsCollateral = True
-                            , setCollateral'portion         = 333333333333333333333333333
+                            , setCollateral'portion         = R.fromInteger 333333333333333333333333333
                             }
     let actual = decode json :: Maybe SetUserReserveAsCollateral
     HU.assertEqual "Unexpected decode result" expected actual
@@ -104,4 +108,36 @@ decodeLiquidationCall =
                             , liquidationCall'receiveAToken = True
                             }
     let actual = decode json :: Maybe LiquidationCall
+    HU.assertEqual "Unexpected decode result" expected actual
+
+decodeSetAssetPrice :: TestTree
+decodeSetAssetPrice =
+  testCase "Decode SetAssetPrice" $ do
+    let json = "{\"setAssetPrice\'asset\":[{\"unCurrencySymbol\":\"\"},{\"unTokenName\":\"\"}],\"setAssetPrice\'rate\":333333333333333333333333333}"
+    let expected = Just $ SetAssetPrice
+                            { setAssetPrice'asset = ("", "")
+                            , setAssetPrice'rate  = R.fromInteger 333333333333333333333333333
+                            }
+    let actual = decode json :: Maybe SetAssetPrice
+    HU.assertEqual "Unexpected decode result" expected actual
+
+addReserve :: TestTree
+addReserve =
+  testCase "Decode AddReserve" $ do
+    let json = ""
+    let expected = Just $ AddReserve 
+                            { addReserve'coinConfig        = CoinCfg
+                                { coinCfg'coin             = ("", "")
+                                , coinCfg'rate             = R.fromInteger 1
+                                , coinCfg'aToken           = "abc"
+                                , coinCfg'interestModel    = InterestModel
+                                    { im'base   = R.fromInteger 0
+                                    , im'slope1 = 1 % 5
+                                    , im'slope2 = R.fromInteger 4
+                                    , im'optimalUtilisation = 8 % 10
+                                    }
+                                , coinCfg'liquidationBonus = R.fromInteger 2
+                                } 
+                            }
+    let actual = decode json :: Maybe AddReserve
     HU.assertEqual "Unexpected decode result" expected actual

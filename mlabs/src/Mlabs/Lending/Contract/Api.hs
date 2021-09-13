@@ -164,7 +164,9 @@ data LiquidationCall = LiquidationCall
 -- admin actions
 
 -- | Adds new reserve
-newtype AddReserve = AddReserve Types.CoinCfg
+data AddReserve = AddReserve
+  { addReserve'coinConfig :: Types.CoinCfg
+  }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
@@ -183,7 +185,10 @@ newtype QuerySupportedCurrencies = QuerySupportedCurrencies ()
 -- price oracle actions
 
 -- | Updates for the prices of the currencies on the markets
-data SetAssetPrice = SetAssetPrice Types.Coin Rational
+data SetAssetPrice = SetAssetPrice 
+  { setAssetPrice'asset :: (CurrencySymbol, TokenName)
+  , setAssetPrice'rate  :: Rational
+  }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 

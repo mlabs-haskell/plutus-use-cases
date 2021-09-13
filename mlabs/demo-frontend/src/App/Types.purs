@@ -14,11 +14,12 @@ import Data.Array as Array
 import Data.BigInt (BigInt)
 import Debug.Trace (trace)
 import Data.Generic.Rep (class Generic)
-import Data.Map as Map
-import Data.Maybe (Maybe(..))
-import Data.Lens (over, _2)
+import Data.Json.JsonTuple (JsonTuple)
+import Data.Lens (_2, _Just, over, set)
 import Data.Lens.Index (ix)
 import Data.Lens.Iso.Newtype (_Newtype)
+import Data.Map as Map
+import Data.Maybe (Maybe(..))
 import Data.Show (class Show)
 import Data.Show.Generic (genericShow)
 import Matryoshka (Algebra, ana, cata)
@@ -69,6 +70,8 @@ data Action
   | SetField FieldEvent
   | SetSubField Int Action
   | Submit
+  | AddSubField
+  | RemoveSubField Int
 
 -- TODO: Use BigInt for SetBigIntegerField
 data FieldEvent
@@ -109,9 +112,9 @@ handleFormEvent initialValue event =
 
   algebra (SetSubField 2 subEvent) (FormTupleF field1 field2) = FormTupleF field1 (handleFormEvent initialValue subEvent field2)
 
-  -- algebra (SetSubField 0 subEvent) (FormMaybeF schema field) = FormMaybeF schema $ over _Just (handleFormEvent initialValue subEvent) field
+  algebra (SetSubField 0 subEvent) (FormMaybeF schema field) = FormMaybeF schema $ over _Just (handleFormEvent initialValue subEvent) field
 
-  -- algebra (SetSubField n subEvent) (FormArrayF schema fields) = FormArrayF schema $ over (ix n) (handleFormEvent initialValue subEvent) fields
+  algebra (SetSubField n subEvent) (FormArrayF schema fields) = FormArrayF schema $ over (ix n) (handleFormEvent initialValue subEvent) fields
 
   algebra (SetSubField n subEvent) s@(FormObjectF fields) = FormObjectF $ over (ix n <<< _Newtype <<< _2) (handleFormEvent initialValue subEvent) fields
 

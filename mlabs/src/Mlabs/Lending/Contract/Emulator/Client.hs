@@ -39,8 +39,8 @@ callUserAct lid wal act = do
     types.FlashLoanAct               -> pure ()
     types.LiquidationCallAct{..}     ->
       case act'debt of
-        BadBorrow (UserId pkh) asset  -> callEndpoint' hdl $ Api.LiquidationCall (unAssetClass act'collateral) pkh (unAssetClass asset) act'debtToCover act'receiveAToken
-        _                             -> throwError $ GenericError "Bad borrow has wrong settings"
+        BadBorrow (UserId pkh) asset -> callEndpoint' hdl $ Api.LiquidationCall (unAssetClass act'collateral) pkh (unAssetClass asset) act'debtToCover act'receiveAToken
+        _                            -> throwError $ GenericError "Bad borrow has wrong settings"
 
 -- | Calls price oracle act
 callPriceAct :: Types.LendexId -> Emulator.Wallet -> Types.PriceAct -> EmulatorTrace ()

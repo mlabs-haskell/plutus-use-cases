@@ -1,11 +1,6 @@
 .PHONY: build-nix hoogle build nix-build-library nix-build-executables \
         nix-build-test nix-repl requires_nix_shell ci-build-run
 
-# Generate TOC for README.md
-# It has to be manually inserted into the README.md for now.
-generate_readme_contents:
-	nix-shell -p nodePackages.npm --command "npx markdown-toc ./README.md --no-firsth1"
-
 # Starts a hoogle Server.
 hoogle: requires_nix_shell
 	@ nix-shell --pure --command "hoogle server --local --port 8008"
@@ -64,3 +59,7 @@ fourmolu-format:
 	fourmolu -i $$(find test/ -iregex ".*.hs")
 	fourmolu -i $$(find app/  -iregex ".*.hs")
 
+# Generate TOC for README.md
+# It has to be manually inserted into the README.md for now.
+readme_contents:
+	nix-shell -p nodePackages.npm --command "npx markdown-toc ./README.md --no-firsth1"
