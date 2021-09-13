@@ -6,11 +6,10 @@ where
 import System.IO
 import Prelude as Hask
 import Data.ByteString.Lazy.Internal ( packChars )
-import Data.Aeson ( FromJSON, ToJSON, decode, Object, encode )
+import Data.Aeson ( decode, Object )
 import Data.Aeson.Lens
-import Data.Text.Internal
+import Data.Bifunctor (first,second)
 import Control.Lens
-import Data.Map (Map)
 import GHC.Generics ( Generic )
 import qualified Data.HashMap.Lazy as Hm
 import qualified Data.Scientific as Scientific
@@ -41,21 +40,25 @@ getEUTXo fileP = do
     file <- readFile fileP
     let t         = parse file
         hm        = (getIx . read . show) <$> (maybe mempty Hm.toList $ t) ^.. folded . _1
-        lovelace  =  t ^.. folded . folded . key "value"  . key "lovelace" . _Number 
-        lovelace' = Scientific.toRealFloat <$> lovelace
+        lovelace'  =  t ^.. folded . folded . key "value"  . key "lovelace" . _Number . to Scientific.toRealFloat 
         tokens    = (filter (\x -> fst x /= "lovelace") . Hm.toList) <$> (t ^.. folded . folded . key "value" . _Object)  
-        tokens'   =  fmap (unpack . fst) <$> tokens 
-        tokens''  = aux <$> tokens
+        tokens'   = fmap (unpack . fst) <$> tokens 
+        tokens''  = aux  <$> tokens
         tokens''' = aux' <$> tokens
-        tokensf   = zipWith3 (zipWith3 (\a b c ->  (a, b, c) )) tokens' tokens'' tokens'''
-        tokensf'  = fmap (\(a,b,c) -> Tokens a b c ) <$> tokensf
+        tokensf'   = zipWith3 (zipWith3 Tokens) tokens' tokens'' tokens'''
     return $ (Hask.uncurry. Hask.uncurry . Hask.uncurry) Transaction <$> zip (zip hm lovelace') tokensf'
-    where
+    where 
         getIx :: String -> (String,Int)
-        getIx  =  n . reverse 
-            where 
-                n (x:'#':xs) = (reverse xs,(read [x]))
-
+        getIx =  second (\x -> (read x) :: Int) . splitAt '#' 
+          where 
+            splitAt :: Char -> String -> (String,String)
+            splitAt = aux (mempty,mempty)
+              where
+                aux :: (String,String) -> Char -> String -> (String,String)
+                aux prev c = \case 
+                  (x:xs) -> if c == x then second (const xs) prev else aux (first (x:) prev) c xs
+                  _      -> prev 
+                
         aux x  = x ^..  folded . folded . _Object . to Hm.toList . folded . to fst . to unpack
         aux' x = x ^..  folded . folded . _Object . to Hm.toList . folded . to snd . _Number . to Scientific.toRealFloat 
 
@@ -65,4 +68,5 @@ getEUTXo fileP = do
         parse :: String -> Maybe Object
         parse str = decode . packChars $ str   
 
+testGetEUTXo :: IO [Transaction]
 testGetEUTXo = getEUTXo "./deploy/test3.json"
