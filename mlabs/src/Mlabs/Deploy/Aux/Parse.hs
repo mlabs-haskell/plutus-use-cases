@@ -1,4 +1,5 @@
 {-#LANGUAGE UndecidableInstances#-}
+{-#LANGUAGE TemplateHaskell#-}
 module Mlabs.Deploy.Aux.Parse (getEUTXo) 
 
 where
@@ -6,34 +7,33 @@ where
 import System.IO
 import Prelude as Hask
 import Data.ByteString.Lazy.Internal ( packChars )
-import Data.Aeson ( decode, Object )
+import Data.Aeson ( decode, Object, Value (Bool) )
 import Data.Aeson.Lens
 import Data.Bifunctor (first,second)
 import Control.Lens
 import GHC.Generics ( Generic )
 import qualified Data.HashMap.Lazy as Hm
 import qualified Data.Scientific as Scientific
+import Data.List (sortOn)
 
 data Transaction = Transaction 
-  { t'id :: Hask.String
-  , t'ix :: Hask.Int
-  , t'llace :: Hask.Float 
-  , t'tokens   :: [Tokens]
+  { _t'id :: Hask.String
+  , _t'ix :: Hask.Int
+  , _t'llace :: Hask.Float 
+  , _t'tokens   :: [Tokens]
   }
   deriving Hask.Show
 
-data Value = Value 
-  { v'lovelace :: Hask.Float
-  , v'tokens   :: [Tokens]
-  }  
-  deriving Hask.Show
 
 data Tokens = Tokens
-  { t'hash :: Hask.String
-  , t'name :: Hask.String
-  , t'amm  :: Hask.Float
+  { _t'hash :: Hask.String
+  , _t'name :: Hask.String
+  , _t'amm  :: Hask.Float
   }
   deriving Hask.Show
+
+makeLenses ''Transaction
+makeLenses ''Tokens
 
 getEUTXo :: FilePath -> IO [Transaction]
 getEUTXo fileP = do 
@@ -68,5 +68,30 @@ getEUTXo fileP = do
         parse :: String -> Maybe Object
         parse str = decode . packChars $ str   
 
+-- | Returns a list sorted by Lovelace amount
+getMaxLovelace :: [Transaction] -> IO [Transaction]
+getMaxLovelace tx = do
+  let a = tx ^.. folded . t'llace
+      b = zip a tx
+  return $ snd <$> sortOn fst b  
+
+filterToken :: Hask.String -> [Transaction] -> IO [Transaction]
+filterToken tk tx = do
+  let tks = tx ^.. folded . t'tokens 
+      b   = zip tks tx
+      c   = snd <$> filter aux b
+  return c
+    where
+      aux :: ([Tokens],Transaction) -> Bool
+      aux = foldr (||) False . fmap ((== tk) . view t'name) . fst
+
 testGetEUTXo :: IO [Transaction]
-testGetEUTXo = getEUTXo "./deploy/test3.json"
+testGetEUTXo = do
+  ux <- getEUTXo "./deploy/test3.json"
+  tx <- getMaxLovelace ux
+  tks <- filterToken "GOV" ux 
+  print tx 
+  print "sorted" 
+  print tks
+  print "filtered"
+  return ux
