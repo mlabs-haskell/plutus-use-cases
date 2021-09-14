@@ -9,7 +9,7 @@ import Prelude as Hask
 import Data.ByteString.Lazy.Internal ( packChars )
 import Data.Aeson ( decode, Object, Value (Bool) )
 import Data.Aeson.Lens
-import Data.Bifunctor (first,second)
+import Data.Bifunctor (first,second,bimap)
 import Control.Lens
 import GHC.Generics ( Generic )
 import qualified Data.HashMap.Lazy as Hm
@@ -48,7 +48,7 @@ getEUTXo fileP = do
     return $ (Hask.uncurry. Hask.uncurry . Hask.uncurry) Transaction <$> zip (zip hm lovelace') tokensf'
     where 
         getIx :: String -> (String,Int)
-        getIx =  second (\x -> (read x) :: Int) . splitAt '#' 
+        getIx =  bimap reverse (\x -> (read x) :: Int) . splitAt '#' 
           where 
             splitAt :: Char -> String -> (String,String)
             splitAt = aux (mempty,mempty)
