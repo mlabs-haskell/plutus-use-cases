@@ -1,10 +1,10 @@
 {-#LANGUAGE UndecidableInstances#-}
 {-#LANGUAGE TemplateHaskell#-}
-module Mlabs.Deploy.Aux.Parse (getEUTXo) 
-
+module Mlabs.Deploy.Aux.Parse 
+  (getEUTXo) 
 where
 
-import System.IO
+import System.IO ( print, IO, readFile, FilePath )
 import Prelude as Hask
 import Data.ByteString.Lazy.Internal ( packChars )
 import Data.Aeson ( decode, Object, Value (Bool) )
@@ -23,7 +23,6 @@ data Transaction = Transaction
   , _t'tokens   :: [Tokens]
   }
   deriving Hask.Show
-
 
 data Tokens = Tokens
   { _t'hash :: Hask.String
@@ -75,6 +74,7 @@ getMaxLovelace tx = do
       b = zip a tx
   return $ snd <$> sortOn fst b  
 
+-- | Filters transactions with a specific token.
 filterToken :: Hask.String -> [Transaction] -> IO [Transaction]
 filterToken tk tx = do
   let tks = tx ^.. folded . t'tokens 
