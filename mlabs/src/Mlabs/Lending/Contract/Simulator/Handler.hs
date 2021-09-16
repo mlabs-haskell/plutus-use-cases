@@ -46,7 +46,7 @@ data LendexContracts
     Oracle
   | -- | govern actions
     Admin
-  | -- | query actions
+  | -- | Query actions
     Query
   deriving stock (Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
