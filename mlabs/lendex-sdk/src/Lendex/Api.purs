@@ -12,7 +12,7 @@ import PAB.Api (PABConnectionInfo, callEndpoint)
 import PAB.Types (ContractInstanceId)
 
 instanceId :: ContractInstanceId
-instanceId = { unContractInstanceId: "109f35c9-09a5-4294-b06e-33e4e99ec504" }
+instanceId = { unContractInstanceId: "2dbc6f8f-cd84-48dd-be65-a0220c9d8844" }
 
 connectionInfo :: PABConnectionInfo
 connectionInfo = {
@@ -76,11 +76,11 @@ borrow ci cii borrowValue = do
 
 testBorrow :: Borrow
 testBorrow = {
-   borrow'amount: 250
+   borrow'amount: 30
   , borrow'asset:  {
-    unAssetClass: (Tuple {unCurrencySymbol: "d57ff37f80a4f7ba1e62fcbb12a7d5f04556e2e90ec6ce4faea3c27d"} { unTokenName: "Lira"})
+    unAssetClass: (Tuple {unCurrencySymbol: "d57ff37f80a4f7ba1e62fcbb12a7d5f04556e2e90ec6ce4faea3c27d"} { unTokenName: "Euro"})
   }
-  , borrow'rate: 20
+  , borrow'rate: 0
 }
 
 testBorrow_ :: Effect Unit
@@ -104,11 +104,11 @@ repay ci cii repayValue = do
 
 testRepay :: Repay
 testRepay = {
-   repay'amount: 500
+   repay'amount: 50
   , repay'asset: {
-    unAssetClass: (Tuple {unCurrencySymbol: "a86b491d3170f5f1ce59580b1f4cbe6db97aa9c84088705d480fe99a"} { unTokenName: "Euro"})
+    unAssetClass: (Tuple {unCurrencySymbol: "d57ff37f80a4f7ba1e62fcbb12a7d5f04556e2e90ec6ce4faea3c27d"} { unTokenName: "Euro"})
   }
-  , repay'rate: 200
+  , repay'rate: 0
 }
 
 testRepay_ :: Effect Unit
@@ -133,7 +133,7 @@ testSwapBorrowRateModel = {
    swapRate'asset:  {
     unAssetClass: (Tuple {unCurrencySymbol: "d57ff37f80a4f7ba1e62fcbb12a7d5f04556e2e90ec6ce4faea3c27d"} { unTokenName: "Euro"})
   }
-  , swapRate'rate: 100000
+  , swapRate'rate: 0
 }
 
 testSwapBorrowRateModel_ :: Effect Unit
@@ -158,7 +158,7 @@ testwithdraw = {
    withdraw'asset : {
     unAssetClass: (Tuple {unCurrencySymbol: "d57ff37f80a4f7ba1e62fcbb12a7d5f04556e2e90ec6ce4faea3c27d"} { unTokenName: "Euro"})
   },
-   withdraw'amount: 3000
+   withdraw'amount: 25
 }
 
 testwithdraw_ :: Effect Unit
@@ -192,10 +192,10 @@ testLiquidationCall = {
     getPubKeyHash: "Abcd"
   }
   , liquidationCall'debtAsset:  {
-    unAssetClass: (Tuple {unCurrencySymbol: "d57ff37f80a4f7ba1e62fcbb12a7d5f04556e2e90ec6ce4faea3c27d"} { unTokenName: "Euro"})
+    unAssetClass: (Tuple {unCurrencySymbol: ""} { unTokenName: ""})
   }
-  , liquidationCall'debtToCover: 1000000
-  , liquidationCall'receiveAToken: true
+  , liquidationCall'debtToCover: 10
+  , liquidationCall'receiveAToken: false
 }
 
 testLiquidationCall_ :: Effect Unit
@@ -221,7 +221,7 @@ testAddCollateral = {
   addCollateral'asset:  {
     unAssetClass: (Tuple {unCurrencySymbol: "d57ff37f80a4f7ba1e62fcbb12a7d5f04556e2e90ec6ce4faea3c27d"} { unTokenName: "Euro"})
   }
-  , addCollateral'amount: 500
+  , addCollateral'amount: 50
 }
 
 testAddCollateral_ :: Effect Unit
@@ -247,7 +247,7 @@ testRemoveCollateral = {
   removeCollateral'asset:  {
     unAssetClass: (Tuple {unCurrencySymbol: "d57ff37f80a4f7ba1e62fcbb12a7d5f04556e2e90ec6ce4faea3c27d"} { unTokenName: "Euro"})
   }
-  , removeCollateral'amount: 50000
+  , removeCollateral'amount: 50
 }
 
 testRemoveCollateral_ :: Effect Unit
