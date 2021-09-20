@@ -36,6 +36,7 @@ source-repository-package
           quickcheck-dynamic
           web-ghc
           word-array
+          stubs/plutus-ghc-stub
 
 
 -- The following sections are copied from the 'plutus' repository cabal.project at the revision
