@@ -1,27 +1,34 @@
 -- | Simulator demo for NFTs
-module Main where
+module Main (
+  main,
+  activateStartNft,
+  activateUser,
+  nftContent,
+  startParams,
+) where
 
 import Prelude
-import Control.Monad.IO.Class
-import Data.Functor
-import PlutusTx.Prelude (ByteString)
 
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.Functor (void)
+import Playground.Contract (Wallet (Wallet))
+import Plutus.Contract (ContractInstanceId)
 import Plutus.PAB.Simulator qualified as Simulator
-import Playground.Contract
-import Plutus.Contract
+import PlutusTx.Prelude (BuiltinByteString)
+import Wallet.Emulator.Wallet (WalletNumber (..), fromWalletNumber)
 
-import Mlabs.Nft.Logic.Types
-import Mlabs.Nft.Contract.Simulator.Handler
-import qualified Mlabs.Nft.Contract as Nft
-import qualified Mlabs.Data.Ray as R
-
-import Mlabs.Plutus.PAB
-import Mlabs.System.Console.PrettyLogger
-import Mlabs.System.Console.Utils
+import Mlabs.Nft.Contract qualified as Nft
+import Mlabs.Nft.Contract.Simulator.Handler qualified as Handler
+import Mlabs.Nft.Logic.Types (NftId)
+import Mlabs.Plutus.PAB (call, printBalance, waitForLast)
+import Mlabs.System.Console.PrettyLogger (logNewLine)
+import Mlabs.System.Console.Utils (logAction, logMlabs)
+import Mlabs.Utils.Wallet (walletFromNumber)
+import PlutusTx.Ratio qualified as R
 
 -- | Main function to run simulator
 main :: IO ()
-main = runSimulator startParams $ do
+main = Handler.runSimulator startParams $ do
   let users = [1, 2, 3]
   logMlabs
   test "Init users" users (pure ())
@@ -30,7 +37,7 @@ main = runSimulator startParams $ do
 
   nid <- activateStartNft user1
   cids <- mapM (activateUser nid) [user1, user2, user3]
- let [u1, u2, u3] = cids
+  let [u1, u2, u3] = cids
 
   test "User 1 sets the Mona Lisa's price to 100 Lovelace, User 2 buys The Mona Lisa from User 1 for 100 Lovelace (what a deal!), User 2 has specified that the Mona Lisa is not for sale" [1, 2] $ do
     setPrice u1 (Just 100)
@@ -43,7 +50,7 @@ main = runSimulator startParams $ do
   liftIO $ putStrLn "Fin (Press enter to Exit)"
   where
     test msg wals act = do
-      void $ act
+      void act
       logAction msg
       mapM_ printBalance wals
       next
@@ -56,27 +63,27 @@ main = runSimulator startParams $ do
 -- handlers
 
 -- | Instanciates start NFT endpoint in the simulator to the given wallet
-activateStartNft :: Wallet -> Sim NftId
+activateStartNft :: Wallet -> Handler.Sim NftId
 activateStartNft wal = do
-  wid <- Simulator.activateContract wal StartNft
+  wid <- Simulator.activateContract wal Handler.StartNft
   nftId <- waitForLast wid
   void $ Simulator.waitUntilFinished wid
   pure nftId
 
 -- | Instanciates user actions endpoint in the simulator to the given wallet
-activateUser :: NftId -> Wallet -> Sim ContractInstanceId
+activateUser :: NftId -> Wallet -> Handler.Sim ContractInstanceId
 activateUser nid wal = do
-  Simulator.activateContract wal $ User nid
+  Simulator.activateContract wal $ Handler.User nid
 
 -------------------------------------------------------------
 -- Script helpers
 
 -- | Call buy NFT endpoint
-buy :: ContractInstanceId -> Integer -> Maybe Integer -> Sim ()
+buy :: ContractInstanceId -> Integer -> Maybe Integer -> Handler.Sim ()
 buy cid price newPrice = call cid (Nft.Buy price newPrice)
 
 -- | Call set price for NFT endpoint
-setPrice :: ContractInstanceId -> Maybe Integer -> Sim ()
+setPrice :: ContractInstanceId -> Maybe Integer -> Handler.Sim ()
 setPrice cid newPrice = call cid (Nft.SetPrice newPrice)
 
 -------------------------------------------------------------
@@ -84,19 +91,19 @@ setPrice cid newPrice = call cid (Nft.SetPrice newPrice)
 
 -- Users for testing
 user1, user2, user3 :: Wallet
-user1 = Wallet 1
-user2 = Wallet 2
-user3 = Wallet 3
+user1 = walletFromNumber 1
+user2 = walletFromNumber 2
+user3 = walletFromNumber 3
 
 -- | Content of NFT
-nftContent :: ByteString
+nftContent :: BuiltinByteString
 nftContent = "Mona Lisa"
 
 -- | NFT initial parameters
 startParams :: Nft.StartParams
-startParams = Nft.StartParams
-  { sp'content = nftContent
-  , sp'share   = 1 R.% 10
-  , sp'price   = Nothing
-  }
-
+startParams =
+  Nft.StartParams
+    { sp'content = nftContent
+    , sp'share = 1 R.% 10
+    , sp'price = Nothing
+    }

@@ -1,74 +1,90 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+
 -- | Useful utils for contracts
-module Mlabs.Plutus.Contract(
-    selects
-  , readDatum
-  , Call
-  , IsEndpoint(..)
-  , endpointName
-  , getEndpoint
-  , callSimulator
-  , callEndpoint'
+module Mlabs.Plutus.Contract (
+  readDatum,
+  readDatum',
+  Call,
+  IsEndpoint (..),
+  endpointName,
+  getEndpoint,
+  callSimulator,
+  callEndpoint',
+  selectForever,
 ) where
 
-import Data.Aeson (ToJSON)
-import Playground.Contract (ToSchema)
+import PlutusTx.Prelude
+import Prelude (String, foldl1)
 
+import Control.Lens (review, (^?))
+import Control.Monad (forever)
 import Control.Monad.Freer (Eff)
-import Data.Row
-import Data.OpenUnion
-import Data.Proxy
-import Data.Kind
-import GHC.TypeLits
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Functor (void)
-
-import Prelude
-import Plutus.Contract
-
-import Ledger hiding (singleton)
-import PlutusTx
-import Plutus.PAB.Simulator (Simulation)
-import Plutus.PAB.Simulator qualified as Simulator
+import Data.Kind (Type)
+import Data.OpenUnion (Member)
+import Data.Proxy (Proxy (..))
+import Data.Row (KnownSymbol, Row)
+import GHC.TypeLits (Symbol, symbolVal)
+import Ledger (Datum (Datum), TxOut (txOutDatumHash), TxOutTx (txOutTxOut, txOutTxTx), lookupDatum)
+import Ledger.Tx (ChainIndexTxOut, ciTxOutAddress, ciTxOutDatum, toTxOut, txOutAddress)
+import Mlabs.Data.List (maybeRight)
+import Playground.Contract (Contract, ToSchema)
+import Plutus.Contract qualified as Contract
 import Plutus.PAB.Effects.Contract.Builtin (Builtin)
-import Plutus.Trace.Emulator.Types
-import Plutus.Trace.Effects.RunContract (callEndpoint, RunContract)
-
-instance Semigroup (Contract w s e a) where
-  (<>) = select
-
---  |Concat many endponits to one
-selects :: [Contract w s e a] -> Contract w s e a
-selects = foldl1 select
+import Plutus.PAB.Simulator (Simulation, callEndpointOnInstance, waitNSlots)
+import Plutus.Trace.Effects.RunContract (RunContract, callEndpoint)
+import Plutus.Trace.Emulator.Types (ContractConstraints, ContractHandle)
+import PlutusTx (FromData, fromBuiltinData)
 
 -- | For off-chain code
-readDatum :: IsData a => TxOutTx -> Maybe a
+readDatum :: FromData a => TxOutTx -> Maybe a
 readDatum txOut = do
   h <- txOutDatumHash $ txOutTxOut txOut
   Datum e <- lookupDatum (txOutTxTx txOut) h
-  PlutusTx.fromData e
+  PlutusTx.fromBuiltinData e
 
-type Call a = Endpoint (EndpointSymbol a) a
+-- | For off-chain code - from querying the chain
+readDatum' :: FromData a => ChainIndexTxOut -> Maybe a
+readDatum' txOut = do
+  d <- txOut ^? ciTxOutDatum
+  Datum e <- maybeRight d
+  PlutusTx.fromBuiltinData e
 
-class (ToSchema a, ToJSON a, KnownSymbol (EndpointSymbol a)) => IsEndpoint a where
+type Call a = Contract.Endpoint (EndpointSymbol a) a
+
+class (ToSchema a, ToJSON a, FromJSON a, KnownSymbol (EndpointSymbol a)) => IsEndpoint a where
   type EndpointSymbol a :: Symbol
 
 callEndpoint' ::
   forall ep w s e effs.
-  (IsEndpoint ep, ContractConstraints s, HasEndpoint (EndpointSymbol ep) ep s, Member RunContract effs)
-    => ContractHandle w s e -> ep -> Eff effs ()
-callEndpoint' hdl act = callEndpoint @(EndpointSymbol ep) hdl act
+  (IsEndpoint ep, ContractConstraints s, Contract.HasEndpoint (EndpointSymbol ep) ep s, Member RunContract effs) =>
+  ContractHandle w s e ->
+  ep ->
+  Eff effs ()
+callEndpoint' = callEndpoint @(EndpointSymbol ep)
 
-getEndpoint :: forall a w (s :: Row Type) e . (HasEndpoint (EndpointSymbol a) a s, AsContractError e, IsEndpoint a) => Contract w s e a
-getEndpoint = endpoint @(EndpointSymbol a)
+getEndpoint ::
+  forall a w s e b.
+  ( Contract.HasEndpoint (EndpointSymbol a) a s
+  , Contract.AsContractError e
+  , IsEndpoint a
+  , FromJSON a
+  ) =>
+  (a -> Contract w s e b) ->
+  Contract.Promise w s e b
+getEndpoint = Contract.endpoint @(EndpointSymbol a)
 
-endpointName :: forall a . IsEndpoint a => a -> String
+endpointName :: forall a. IsEndpoint a => a -> String
 endpointName a = symbolVal (toProxy a)
   where
     toProxy :: a -> Proxy (EndpointSymbol a)
     toProxy _ = Proxy
 
-callSimulator :: IsEndpoint a => ContractInstanceId -> a -> Simulation (Builtin schema) ()
+callSimulator :: IsEndpoint a => Contract.ContractInstanceId -> a -> Simulation (Builtin schema) ()
 callSimulator cid input = do
-  void $ Simulator.callEndpointOnInstance cid (endpointName input) input
-  void $ Simulator.waitNSlots 1
+  void $ callEndpointOnInstance cid (endpointName input) input
+  void $ waitNSlots 1
 
+selectForever :: [Contract.Promise w s e a] -> Contract w s e b
+selectForever = forever . Contract.selectList
