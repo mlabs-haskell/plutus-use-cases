@@ -1,6 +1,9 @@
 with import ./nix { };
 (plutus.plutus.haskell.project.shellFor (pab.env_variables // {
 
+  # adds the direct shell of the plutus repo
+  inherit plutusShell; 
+
   # Select packages which should be added to the shell env
   packages = ps:
     [
@@ -25,6 +28,7 @@ with import ./nix { };
     ];
 
   withHoogle = true;
+  
 
   # Extra haskell tools (arg passed on to mkDerivation)
   # Using the plutus.pkgs to use nixpkgs version from plutus (nixpkgs-unstable, mostly)
@@ -53,10 +57,6 @@ with import ./nix { };
 
       ### Pab
       pab.plutus_pab_client
-
-      ### Example contracts
-      plutus.plutus-atomic-swap
-      plutus.plutus-currency
 
     ] ++ (builtins.attrValues pab.plutus_pab_exes);
 

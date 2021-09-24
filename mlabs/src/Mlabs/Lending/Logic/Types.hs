@@ -38,6 +38,7 @@ module Mlabs.Lending.Logic.Types (
   initReserve,
   initLendingPool,
   Act (..),
+  QueryAct (..),
   UserAct (..),
   StartParams (..),
   HealthReport,
@@ -50,6 +51,8 @@ module Mlabs.Lending.Logic.Types (
   fromAToken,
   QueryRes (..),
   SupportedCurrency (..),
+  UserBalance (..),
+  InsolventAccount (..),
 ) where
 
 import PlutusTx.Prelude hiding ((%))
@@ -69,7 +72,7 @@ import Mlabs.Emulator.Types (Coin, UserId (..), adaCoin)
 import PlutusTx.Ratio qualified as R
 
 -- | Unique identifier of the lending pool state.
-newtype LendexId = LendexId ByteString
+newtype LendexId = LendexId BuiltinByteString
   deriving stock (Hask.Show, Generic)
   deriving newtype (Eq)
   deriving anyclass (ToJSON, FromJSON)
@@ -129,7 +132,7 @@ data StartParams = StartParams
 
 type HealthReport = Map BadBorrow Rational
 
-{- | Borrow that don't has enough collateral.
+{- | Borrow that doesn't have enough collateral.
  It has health check ration below one.
 -}
 data BadBorrow = BadBorrow
@@ -307,6 +310,12 @@ data Act
       { governAct'userd :: UserId
       , goverAct'act :: GovernAct
       }
+  | -- | app query actions
+    QueryAct
+      { queryAct'userId :: UserId
+      , queryAct'time :: Integer
+      , queryAct'act :: QueryAct
+      }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON)
 
@@ -368,6 +377,15 @@ data UserAct
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON)
 
+-- | Query Actions.
+data QueryAct
+  = -- | Query current balance
+    QueryCurrentBalanceAct ()
+  | -- |  Query insolvent accounts
+    QueryInsolventAccountsAct ()
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON)
+
 -- | Acts that can be done by admin users.
 newtype GovernAct
   = -- | Adds new reserve
@@ -411,12 +429,47 @@ data SupportedCurrency = SupportedCurrency
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON)
 
+{- | Query returns the user's funds currently locked in the current Lendex,
+ including both underlying tokens and aTokens of multiple kinds. Also returns
+ the user's current borrow amount and advances interest.
+-}
+data UserBalance = UserBalance
+  { -- | User Id
+    ub'id :: !UserId
+  , -- | Total Deposit for User,
+    ub'totalDeposit :: !Integer
+  , -- | Total Collateral for User,
+    ub'totalCollateral :: !Integer
+  , -- | Total Borrow for User,
+    ub'totalBorrow :: !Integer
+  , -- | Normalised Income for User,
+    ub'cumulativeBalance :: Map Coin Rational
+  , -- | User Funds
+    ub'funds :: Map Coin Wallet
+  }
+  deriving (Eq)
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON)
+
+data InsolventAccount = InsolventAccount
+  { -- | User Id
+    ia'id :: !UserId
+  , -- | Insolvent Currencies, with their Current health.
+    ia'ic :: [(Coin, Rational)]
+  }
+  deriving (Eq)
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON)
+
 -- If another query is added, extend this data type
 
 -- | Results of query endpoints calls on `QueryContract`
 data QueryRes
   = QueryResAllLendexes [(Address, LendingPool)]
   | QueryResSupportedCurrencies {getSupported :: [SupportedCurrency]}
+  | QueryResCurrentBalance UserBalance
+  | QueryResInsolventAccounts [InsolventAccount]
+  deriving (Eq)
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON)
 
@@ -431,6 +484,7 @@ PlutusTx.unstableMakeIsData ''ReserveInterest
 PlutusTx.unstableMakeIsData ''UserAct
 PlutusTx.unstableMakeIsData ''PriceAct
 PlutusTx.unstableMakeIsData ''GovernAct
+PlutusTx.unstableMakeIsData ''QueryAct
 PlutusTx.unstableMakeIsData ''User
 PlutusTx.unstableMakeIsData ''Wallet
 PlutusTx.unstableMakeIsData ''Reserve
@@ -438,6 +492,5 @@ PlutusTx.unstableMakeIsData ''StartParams
 PlutusTx.unstableMakeIsData ''BadBorrow
 PlutusTx.unstableMakeIsData ''LendingPool
 PlutusTx.unstableMakeIsData ''Act
-
 PlutusTx.unstableMakeIsData ''LendexId
 PlutusTx.makeLift ''LendexId

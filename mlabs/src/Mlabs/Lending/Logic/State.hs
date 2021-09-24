@@ -23,9 +23,14 @@ module Mlabs.Lending.Logic.State (
   initReserve,
   guardError,
   getWallet,
+  getAllWallets,
   getsWallet,
+  getsAllWallets,
   getUser,
   getsUser,
+  getAllUsers,
+  getsAllUsers,
+  getUsers,
   getReserve,
   getsReserve,
   toAda,
@@ -39,7 +44,9 @@ module Mlabs.Lending.Logic.State (
   getLiquidationThreshold,
   getLiquidationBonus,
   getHealth,
+  getCurrentHealthCheck,
   getHealthCheck,
+  getCurrentHealth,
   modifyUsers,
   modifyReserve,
   modifyReserveWallet,
@@ -54,6 +61,7 @@ module Mlabs.Lending.Logic.State (
   modifyHealthReport,
   getNormalisedIncome,
   getCumulativeBalance,
+  getWalletCumulativeBalance,
 ) where
 
 import PlutusTx.Prelude
@@ -93,9 +101,10 @@ import Mlabs.Lending.Logic.Types (
  )
 import Mlabs.Lending.Logic.Types qualified as Types
 import PlutusTx.Ratio qualified as R
+import System.Posix.Types qualified as Types
 
 -- | Type for errors
-type Error = Hask.String
+type Error = BuiltinByteString
 
 -- | State update of lending pool
 type St = PlutusState LendingPool
@@ -135,7 +144,7 @@ isAdmin :: Types.UserId -> St ()
 isAdmin = checkRole "Is not admin" lp'admins
 
 {-# INLINEABLE checkRole #-}
-checkRole :: Hask.String -> (LendingPool -> [Types.UserId]) -> Types.UserId -> St ()
+checkRole :: BuiltinByteString -> (LendingPool -> [Types.UserId]) -> Types.UserId -> St ()
 checkRole msg extract uid = do
   users <- gets extract
   guardError msg $ elem uid users
@@ -162,6 +171,24 @@ getWallet :: Types.UserId -> Types.Coin -> St Wallet
 getWallet uid coin =
   getsUser uid (fromMaybe defaultWallet . M.lookup coin . user'wallets)
 
+-- | Get all user internal wallets.
+{-# INLINEABLE getsAllWallets #-}
+getsAllWallets :: Types.UserId -> (Map Types.Coin Wallet -> a) -> St a
+getsAllWallets uid f =
+  f <$> getAllWallets uid
+
+-- | Get all user internal wallets.
+{-# INLINEABLE getAllWallets #-}
+getAllWallets :: Types.UserId -> St (Map Types.Coin Wallet)
+getAllWallets uid =
+  getsUser uid user'wallets
+
+{-# INLINEABLE getUsers #-}
+
+-- | Get a list of all the users.
+getUsers :: St [Types.UserId]
+getUsers = M.keys <$> getAllUsers
+
 {-# INLINEABLE getsUser #-}
 
 -- | Get user info in the lending app by user id and apply extractor function to it.
@@ -173,6 +200,18 @@ getsUser uid f = fmap f $ getUser uid
 -- | Get user info in the lending app by user id.
 getUser :: Types.UserId -> St User
 getUser uid = gets (fromMaybe defaultUser . M.lookup uid . lp'users)
+
+{-# INLINEABLE getAllUsers #-}
+
+-- | Get Map of all users.
+getAllUsers :: St (Map Types.UserId User)
+getAllUsers = gets lp'users
+
+{-# INLINEABLE getsAllUsers #-}
+
+-- | Gets all users given predicate.
+getsAllUsers :: (User -> Bool) -> St (Map Types.UserId User)
+getsAllUsers f = gets (M.filter f . lp'users)
 
 {-# INLINEABLE getsReserve #-}
 
@@ -262,10 +301,16 @@ getTotalDeposit = walletTotal wallet'deposit
 
 {-# INLINEABLE getHealthCheck #-}
 
--- | Check that user has enough health for the given asset.
+-- | Check if the user has enough health for the given asset.
 getHealthCheck :: Integer -> Types.Coin -> User -> St Bool
 getHealthCheck addToBorrow coin user =
   fmap (> R.fromInteger 1) $ getHealth addToBorrow coin user
+
+{-# INLINEABLE getCurrentHealthCheck #-}
+
+-- | Check if the user has currently enough health for the given asset.
+getCurrentHealthCheck :: Types.Coin -> User -> St Bool
+getCurrentHealthCheck = getHealthCheck 0
 
 {-# INLINEABLE getHealth #-}
 
@@ -276,6 +321,12 @@ getHealth addToBorrow coin user = do
   bor <- fmap (+ addToBorrow) $ getTotalBorrow user
   liq <- getLiquidationThreshold coin
   pure $ R.fromInteger col N.* liq N.* R.recip (R.fromInteger bor)
+
+{-# INLINEABLE getCurrentHealth #-}
+
+-- | Check immediate borrowing health for the user by given currency
+getCurrentHealth :: Types.Coin -> User -> St Rational
+getCurrentHealth = getHealth 0
 
 {-# INLINEABLE getLiquidationThreshold #-}
 
@@ -384,3 +435,11 @@ getCumulativeBalance :: Types.UserId -> Types.Coin -> St Rational
 getCumulativeBalance uid asset = do
   ni <- getNormalisedIncome asset
   getsWallet uid asset (IR.getCumulativeBalance ni)
+
+{-# INLINEABLE getWalletCumulativeBalance #-}
+getWalletCumulativeBalance :: Types.UserId -> St (Map Types.Coin Rational)
+getWalletCumulativeBalance uid = do
+  wallet <- getsAllWallets uid M.toList :: St [(Types.Coin, Wallet)]
+  coins <- return $ fst <$> wallet :: St [Types.Coin]
+  ni <- mapM getNormalisedIncome coins
+  return . M.fromList $ zip coins ni
