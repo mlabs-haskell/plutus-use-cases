@@ -39,6 +39,8 @@ import Mlabs.Lending.Logic.React (react)
 import Mlabs.Lending.Logic.Types qualified as Types
 import PlutusTx.Ratio qualified as R
 
+import PlutusTx.Semigroup (Semigroup(..))
+
 type LendingApp = App Types.LendingPool Types.Act
 
 runLendingApp :: AppConfig -> Script -> LendingApp
@@ -59,6 +61,11 @@ data AppConfig = AppConfig
   , -- | users that can submit price changes
     appConfig'oracles :: [Types.UserId]
   }
+
+
+-- prefers the first currency symbol
+instance Semigroup AppConfig where 
+  (AppConfig reserves users cs admins oracles) <> (AppConfig reserves' users' _ admins' oracles') = AppConfig (reserves <> reserves') (users <> users') cs  (admins <> admins')    (oracles <> oracles')
 
 -- | App is initialised with list of coins and their rates (value relative to base currency, ada for us)
 initApp :: AppConfig -> LendingApp

@@ -13,6 +13,7 @@ import PlutusTx.Prelude hiding (fmap, length, (<$>), (<*>))
 import Prelude (
   Int,
   Show,
+  String, 
   abs,
   drop,
   fmap,
@@ -22,19 +23,29 @@ import Prelude (
   (<*>),
  )
 
+import qualified Prelude as Prelude 
+
+import Control.Monad (guard)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.String (fromString)
 import Plutus.V1.Ledger.Value qualified as Value
 import Test.Lending.Logic (coin1, coin2, coin3, fromToken, testAppConfig, user1, user2, user3)
 import Test.QuickCheck qualified as QC
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.QuickCheck (testProperty)
+import qualified Test.QuickCheck.Gen as Gen 
 
 import Mlabs.Emulator.App (App (..), lookupAppWallet)
 import Mlabs.Emulator.Blockchain (BchWallet (..))
 import Mlabs.Emulator.Types (Coin, UserId (..), adaCoin)
-import Mlabs.Lending.Logic.App (AppConfig (..), Script, runLendingApp, userAct)
-import Mlabs.Lending.Logic.Types (UserAct (..))
+import Mlabs.Lending.Logic.App (AppConfig (..), Script, runLendingApp, userAct, toCoin)
+import Mlabs.Lending.Logic.Types (UserAct (..), CoinCfg (CoinCfg), defaultInterestModel)
+import Plutus.V1.Ledger.Api (PubKeyHash(PubKeyHash))
+import PlutusTx.Builtins.Class ()
+import Control.Monad.Reader (replicateM)
+import Plutus.V1.Ledger.Value (AssetClass(unAssetClass))
+import Test.QuickCheck (elements)
 
 allUsers :: [UserId]
 allUsers = [Self, user1, user2, user3]
@@ -88,16 +99,17 @@ newtype DepositTestInput = DepositTestInput
   {deposits :: [(UserId, Coin, Integer)]}
   deriving (Show)
 
+
 -- | Construct a `Script`
 createDepositScript :: DepositTestInput -> Script
 createDepositScript (DepositTestInput ds) =
   mapM_ (\(user, coin, amt) -> userAct user $ DepositAct amt coin) ds
 
 noErrorsProp :: App st act -> Bool
-noErrorsProp app = null (app.app'log)
+noErrorsProp app = null @[] (    "app'log"        )
 
 someErrorsProp :: App st act -> Bool
-someErrorsProp app = not (null (app.app'log))
+someErrorsProp app = not (null @[] (    "app'log"        ))
 
 hasWallet :: App st act -> UserId -> BchWallet -> Bool
 hasWallet app uid wal = lookupAppWallet uid app == Just wal
@@ -138,14 +150,56 @@ testWalletsProp' d =
   let script = createDepositScript d
    in testWalletsProp (expectedWalletsDeposit testAppConfig d) script
 
-depositInputGen :: QC.Gen Integer -> QC.Gen DepositTestInput
-depositInputGen integerGen =
-  fmap (DepositTestInput . zip3 users nonNativeCoins) (QC.vectorOf n integerGen)
-  where
-    n = length users
+
+depositInputGen :: Int -> QC.Gen Integer -> QC.Gen DepositTestInput
+depositInputGen n intgen = fmap DepositTestInput $ replicateM n $ do 
+  user <- retry ((UserId . PubKeyHash . fromString) <$> QC.arbitrary) (\(UserId (PubKeyHash x)) -> x == mempty) 
+  coin <- retry ((toCoin . fromString) <$> QC.arbitrary) (\(Value.AssetClass (Value.CurrencySymbol x, Value.TokenName y)) -> x == mempty || y == mempty)
+  int <- intgen 
+  return $ (user, coin, int)
+
+retry ma p = do 
+  a <- ma 
+  if p a then retry ma p else return a 
+
+ 
+
 
 testDepositLogic :: QC.Property
-testDepositLogic = QC.forAll (depositInputGen (QC.choose (1, 100))) testWalletsProp'
+testDepositLogic = QC.forAll (depositInputGen 1 (QC.choose (1, 100))) testWalletsProp'
 
 test :: TestTree
 test = testGroup "QuickCheck" [testGroup "Logic" [testProperty "deposit" testDepositLogic]]
+
+mkUser :: QC.Gen UserId
+mkUser = UserId <$> PubKeyHash <$> fromString @BuiltinByteString <$> Gen.scale (Prelude.+3) QC.arbitrary
+
+
+mkName :: QC.Gen BuiltinByteString 
+mkName = fromString <$> Gen.scale (Prelude.+3) QC.arbitrary 
+
+mkCoinBase :: Gen.Gen Coin
+mkCoinBase = Value.AssetClass <$> do { cur <- mkName; tn <- mkName; return (Value.CurrencySymbol cur, Value.TokenName tn)}
+
+mkCoin :: Gen.Gen Coin
+mkCoin = retry mkCoinBase (\(Value.AssetClass (Value.CurrencySymbol  x, Value.TokenName y)) -> x==mempty || y == mempty)
+
+
+coinToCoinCfg :: Coin -> CoinCfg 
+coinToCoinCfg assetclass = CoinCfg assetclass (fromInteger 0) (snd . unAssetClass $ assetclass) defaultInterestModel (fromInteger 0) 
+
+--assumes no duplicate users 
+-- and a nonempty list 
+depositTestInputToAppConfig :: DepositTestInput -> Maybe AppConfig  
+depositTestInputToAppConfig (DepositTestInput []) = Nothing 
+depositTestInputToAppConfig (DepositTestInput usercoinamt@(first:_)) = Just $ AppConfig 
+  (coinToCoinCfg . (\(_, x, _) -> x) <$> usercoinamt) 
+  userswallets 
+  cs 
+  [] 
+  [] 
+  where 
+    userswallets :: [(UserId, BchWallet)]
+    userswallets = (\(user, coin, amt) -> (user, toWallet coin amt)) <$> usercoinamt 
+    toWallet coin amt = BchWallet $ Map.fromList [(coin, amt)]
+    cs = fst . unAssetClass $ (\(_, x, _) -> x)  first 
