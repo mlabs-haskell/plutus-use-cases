@@ -28,7 +28,6 @@ import Data.ByteString as DB
 import Mlabs.Deploy.Governance
 import Mlabs.Deploy.Nft
 
-import Mlabs.Deploy.Aux.TxBuild
 
 main :: IO ()
 main = do
@@ -42,5 +41,4 @@ main = do
         "MonaLisa"
         "./../.github/workflows/nft_delivery"
     ["Governance"] -> serializeGovernance
-    ["depl"] -> deposit "user1" 1 (ScriptInp "script_input" 44)
     _ -> die "Unknown deployment task type"

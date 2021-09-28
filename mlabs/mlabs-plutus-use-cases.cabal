@@ -42,6 +42,8 @@ common common-imports
     , serialise
     , cardano-api
     , cardano-ledger-alonzo
+    , cardano-cli
+    , transformers-except
 
 common common-language
     default-extensions:
@@ -100,7 +102,6 @@ library
     Mlabs.Deploy.Governance
     Mlabs.Deploy.Nft
     Mlabs.Deploy.Utils
-    Mlabs.Deploy.Aux.TxBuild
     Mlabs.Demo.Contract.Burn
     Mlabs.Demo.Contract.Mint
     Mlabs.Emulator.App
@@ -171,6 +172,7 @@ executable deploy-app
     , cardano-api
     , serialise==0.2.3.0
     , cardano-api==1.28.0
+    
 
 executable nft-demo
   import:  common-imports

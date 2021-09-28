@@ -11,8 +11,15 @@ import Plutus.V1.Ledger.Api qualified as Plutus
 import Plutus.V1.Ledger.Scripts qualified as Scripts
 import Data.Aeson as Aeson (decode)
 import Data.Maybe (fromJust)
+import Ledger.Address (scriptAddress)
 
 import Mlabs.Deploy.Utils
+import Cardano.Api
+import Cardano.CLI.Shelley.Script
+import  Cardano.CLI.Shelley.Run.Address
+import           Control.Monad.Trans.Except.Extra (firstExceptT, newExceptT)
+
+import qualified Data.ByteString.Char8 as BS
 
 outDir = "./deploy-app/deploy_scripts/node_mnt/governance/plutus_files"
 
@@ -30,6 +37,22 @@ serializeGovernance = do
       xGovCurrSymbol = scriptCurrencySymbol policy
       initNftDatum = GovernanceDatum userOnePKH xGovCurrSymbol
 
-  validatorToPlutus (outDir ++ "/GovScript.plutus") validator
-  policyToPlutus (outDir ++ "/GovPolicy.plutus") policy
-  writeData (outDir ++ "/user1-init-datum.json") initNftDatum
+
+
+
+  let validatorPath = outDir ++ "/GovScript.plutus"
+  validatorToPlutus validatorPath validator
+  scriptBytes <-  BS.readFile validatorPath
+  case deserialiseScriptInAnyLang scriptBytes of
+    Right (ScriptInAnyLang _lang script)  -> do
+       print "Deserialized hash:"
+       print $ hashScript script
+    Left _ -> print "N-OK"
+
+  print "Validator hash:"
+  print $ VS.validatorHash $ govInstance acGov
+  print "Validator address:"
+  print $ govAddress acGov
+
+  -- policyToPlutus (outDir ++ "/GovPolicy.plutus") policy
+  -- writeData (outDir ++ "/user1-init-datum.json") initNftDatum

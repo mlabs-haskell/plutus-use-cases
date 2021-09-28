@@ -94,4 +94,6 @@ Tx {
   txMintScripts = fromList [MintingPolicy { <script> }], 
   txSignatures = fromList [(3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c,55fc68e0a1cf9886e5ae7f99b5c139686765c5d39afa67421f6e7337067a4a6c9689e2d2aa581efecd15be881a2ebc36ec5ab979dc8aae1d86885a56d55aa809)], 
   txRedeemers = fromList [(RedeemerPtr Mint 0,Redeemer {getRedeemer = Constr 0 []})], 
-  txData = fromList [(b99f9b6fca1b3606bd4f966f64d3edff985ca4338147b40337195b320a494c8b,Datum {getDatum = Constr 0 [B \"\\151~\\251\\&5\\171b\\GS9\\219\\235rt\\236w\\149\\163G\\b\\255M%\\160\\SUB\\GS\\240L\\US'\",B \"[%eS\\170X\\159u]/\\ESC..[t\\216\\128P\\151\\181\\\"\\227\\204\\167,\\163\\174/\"]})]}
+  txData = fromList [
+    (b99f9b6fca1b3606bd4f966f64d3edff985ca4338147b40337195b320a494c8b
+    ,Datum {getDatum = Constr 0 [B \"\\151~\\251\\&5\\171b\\GS9\\219\\235rt\\236w\\149\\163G\\b\\255M%\\160\\SUB\\GS\\240L\\US'\",B \"[%eS\\170X\\159u]/\\ESC..[t\\216\\128P\\151\\181\\\"\\227\\204\\167,\\163\\174/\"]})]}

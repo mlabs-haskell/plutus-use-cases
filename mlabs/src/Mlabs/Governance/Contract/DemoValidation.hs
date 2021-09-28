@@ -87,7 +87,7 @@ instance Validators.ValidatorTypes Governance where
 -- | governance validator
 {-# INLINEABLE govValidator #-}
 mkValidator :: AssetClassGov -> GovernanceDatum -> GovernanceRedeemer -> ScriptContext -> Bool
-mkValidator ac _ _ _ = True
+mkValidator ac _ _ _ = traceIfFalse "wallet test" True
 
 govInstance :: AssetClassGov -> Validators.TypedValidator Governance
 govInstance gov =
