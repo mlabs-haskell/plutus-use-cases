@@ -200,7 +200,7 @@ type Media = BuiltinByteString
 type NFTSchema =
   Endpoint "mint" Media
     .\/ Endpoint "buy" NftId
-    .\/ Endpoint "sell" NftId
+    .\/ Endpoint "set-price" NftId
 
 mkSchemaDefinitions ''NFTSchema
 
@@ -227,11 +227,11 @@ mint scrAddress media = do
     continue utxos nft scrAddress oref = do
       let tkName = TokenName $ nft.nft'data
           nftid = NftId tkName oref
-          scocat = foldr1 (<>)
           val = Value.singleton (curSymbol scrAddress nftid) tkName 1
           (lookups,tx) =  
                 ( Constraints.unspentOutputs utxos
                   <> Constraints.mintingPolicy (mintPolicy scrAddress nftid)
+                  <> Constraints.typedValidatorLookups txPolicy
                 ,
                  Constraints.mustMintValue val 
                  <> Constraints.mustSpendPubKeyOutput oref
