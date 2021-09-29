@@ -74,6 +74,18 @@ import Prelude qualified as Hask
 
 -- import PlutusTx.Builtins.Internal (BuiltinByteString(..))
 
+newtype Content = Content {getContent :: BuiltinByteString}
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
+PlutusTx.unstableMakeIsData ''Content
+PlutusTx.makeLift ''Content
+
+newtype Title = Title {getTitle :: BuiltinByteString}
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
+PlutusTx.unstableMakeIsData ''Title
+PlutusTx.makeLift ''Title
+
 newtype UserId = UserId {getUserId :: PubKeyHash}
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
@@ -86,7 +98,9 @@ PlutusTx.makeLift ''UserId
  author will mint some extra NFT for same content-
 -}
 data NftId = NftId
-  { -- | token name is identified by content of the NFT (it's hash of it)
+  { -- | Content Title.
+    nftId'title :: Title
+  , -- | token name is identified by content of the NFT (it's hash of it)
     nftId'token :: TokenName
   , -- | TxOutRef which was used to mint current NFT
     nftId'outRef :: TxOutRef
@@ -97,11 +111,11 @@ data NftId = NftId
 PlutusTx.unstableMakeIsData ''NftId
 PlutusTx.makeLift ''NftId
 
-type Content = BuiltinByteString
-
 -- | Data for NFTs
 data NftContent = NftContent
-  { -- | data (NftContent, audio, photo, etc)
+  { -- | Content Title.
+    ct'title :: Title
+  , -- | data (NftContent, audio, photo, etc)
     ct'data :: Content
   , -- | author
     ct'author :: UserId
@@ -153,7 +167,7 @@ PlutusTx.unstableMakeIsData ''UserAct
 
 -- | Minting policy for NFTs.
 mkMintPolicy :: Address -> TxOutRef -> NftId -> () -> ScriptContext -> Bool
-mkMintPolicy stateAddr oref (NftId token author) _ ctx =
+mkMintPolicy stateAddr oref (NftId title token author) _ ctx =
   -- ? maybe author could be checked also, their key should be in signatures.
   traceIfFalse "UTXO not consumed" hasUtxo
     && traceIfFalse "wrong amount minted" checkMintedAmount
@@ -232,7 +246,7 @@ type NFTUserSchema =
   Endpoint "buy" NftId
 
 type NFTSAuthorSchema =
-  Endpoint "mint" Content
+  Endpoint "mint" (Content, Title)
 
 mkSchemaDefinitions ''NFTAppSchema
 mkSchemaDefinitions ''NFTUserSchema
@@ -245,7 +259,7 @@ curSymbol :: Address -> TxOutRef -> NftId -> CurrencySymbol
 curSymbol stateAddr oref nid = scriptCurrencySymbol $ mintPolicy stateAddr oref nid
 
 -- | Mints an NFT and sends it to the App Address.
-mint :: Content -> Contract w NFTSAuthorSchema Text ()
+mint :: (Content, Title) -> Contract w NFTSAuthorSchema Text ()
 mint nftContent = do
   addr <- pubKeyAddress <$> Contract.ownPubKey
   nft' <- nftInit nftContent
@@ -293,8 +307,8 @@ fstUtxo address = do
     x : _ -> pure $ Just x
 
 -- | Initialise an NFT using the current wallet.
-nftInit :: Content -> Contract w s Text (Maybe DatumNft)
-nftInit nftContent = do
+nftInit :: (Content, Title) -> Contract w s Text (Maybe DatumNft)
+nftInit (nftContent, title) = do
   pk <- Contract.ownPubKey
   let pkh = pubKeyHash pk
       userAddress = pubKeyAddress pk
@@ -309,7 +323,8 @@ nftInit nftContent = do
             DatumNft
               { dNft'id =
                   NftId
-                    { nftId'token = TokenName hData
+                    { nftId'title = title
+                    , nftId'token = TokenName hData
                     , nftId'outRef = oref
                     }
               , dNft'share = 1 % 10
@@ -318,9 +333,9 @@ nftInit nftContent = do
               , dNft'price = Just 10
               }
 
--- & some hashing function here
-hashData :: a -> a
-hashData = Hask.id
+-- | todo: some hashing function here - at the moment getting the whole bytestring
+hashData :: Content -> BuiltinByteString
+hashData (Content b) = b
 
 -- | Generic application Trace Handle.
 type AppTraceHandle = Trace.ContractHandle () NFTSAuthorSchema Text
@@ -340,7 +355,7 @@ eTrace1 = do
   callEndpoint @"mint" h2 artwork
   void $ Trace.waitNSlots 1
   where
-    artwork = "Fiona Lisa"
+    artwork = (Content "A painting.", Title "Fiona Lisa")
 
 eTrace2 :: EmulatorTrace ()
 eTrace2 = do
