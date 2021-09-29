@@ -12,7 +12,7 @@ in reality this GOV token can be any token at all, the primary purpose of the co
 
 For this contract, the primitive Plutus API, and not the state machine API will be used.
 
-The xGOV 'token' currently is a family of tokens. In order to enable features such as futures trading we must hold the information to whom the token belongs in the token itself. This is currently dons simply by setting TokenName = PubKeyHash of the one calling Deposit. 
+The xGOV 'token' currently is a family of tokens. In order to enable features such as futures trading we must hold the information to whom the token belongs in the token itself. This is currently done simply by setting `TokenName = PubKeyHash` of the one calling Deposit. 
 
 ## Governance Contract:
 
