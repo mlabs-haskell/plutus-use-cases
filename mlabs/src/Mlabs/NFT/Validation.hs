@@ -128,29 +128,32 @@ data UserAct
       }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON)
+
 PlutusTx.unstableMakeIsData ''UserAct
 
 {-# INLINEABLE mkMintPolicy #-}
 -- | Minting policy for NFTs.
 mkMintPolicy :: Address -> NftId -> () -> ScriptContext -> Bool
 mkMintPolicy stateAddr (NftId token oref) _ ctx =
-  traceIfFalse "UTXO not consumed" hasUtxo
-    && traceIfFalse "wrong amount minted" checkMintedAmount
-    && traceIfFalse "Does not pay to state" paysToState
+  traceIfFalse "UTXO not consumed - NFT uniqueness cannot be guaranteed." hasUtxo
+    && traceIfFalse "Wrong amount of NFTs minted - NFTs must be unique." checkMintedAmount
+    && traceIfFalse "Transaction does not submit the NFT to the correct address." paysToState
   where
     info = Contexts.scriptContextTxInfo ctx
 
     hasUtxo = any (\inp -> Contexts.txInInfoOutRef inp == oref) $ Contexts.txInfoInputs info
 
     checkMintedAmount = case Value.flattenValue (Contexts.txInfoMint info) of
-      [(cur, tn, val)] -> Contexts.ownCurrencySymbol ctx == cur && token == tn && val == 1
+      [(cur, tn, val)] -> Contexts.ownCurrencySymbol ctx == cur 
+                          && token == tn 
+                          && val == 1
       _ -> False
 
     paysToState = any hasNftToken $ Contexts.txInfoOutputs info
 
     hasNftToken Contexts.TxOut {..} =
       txOutAddress == stateAddr
-        && txOutValue == Value.singleton (Contexts.ownCurrencySymbol ctx) token 1
+      && txOutValue == Value.singleton (Contexts.ownCurrencySymbol ctx) token 1
 
 mintPolicy :: Address -> NftId -> TScripts.MintingPolicy
 mintPolicy stateAddr nid =
@@ -217,7 +220,6 @@ mint scrAddress media = do
   addr <- pubKeyAddress <$> Contract.ownPubKey
   nft' <- nftInit media
   utxos <- Contract.utxosAt addr
-  Contract.logInfo @Hask.String $ printf "got to here" 
   case nft' of
     Nothing -> Contract.logError @Hask.String "Cannot create NFT."
     Just nft -> maybe err (continue utxos nft scrAddress) =<< fstUtxo addr
@@ -241,7 +243,12 @@ mint scrAddress media = do
       Contract.logInfo @Hask.String $ printf "forged %s" (Hask.show val)
 
 endpoints :: Address -> Contract w NFTSchema Text ()
-endpoints scrAddr = Contract.awaitPromise $ endpoint @"mint" (mint scrAddr)
+endpoints scrAddr = do 
+    Contract.awaitPromise $ Hask.foldr1 Contract.select 
+        [ endpoint @"mint" (mint scrAddr)
+        
+        ]
+    endpoints scrAddr
 
 -- | Get the user's ChainIndexTxOut
 getUserUtxos :: Address -> Contract w NFTSchema Text [Ledger.ChainIndexTxOut]
@@ -255,7 +262,7 @@ fstUtxo address = do
     [] -> pure Nothing
     x : _ -> pure $ Just x
 
--- | Initialise an NFT in the current wallet.
+-- | Initialise an NFT using the current wallet.
 nftInit :: Media -> Contract w s Text (Maybe Nft)
 nftInit media = do
   pk <- Contract.ownPubKey
@@ -274,7 +281,7 @@ nftInit media = do
                 { nftId'token = TokenName media
                 , nftId'outRef = oref
                 }
-          , nft'data = "Artwork"
+          , nft'data = "<Artwork Placeholder>"
           , nft'share = 1 % 10
           , nft'author = user
           , nft'owner = user
@@ -288,13 +295,31 @@ type AppTraceHandle = Trace.ContractHandle () NFTSchema Text
 eTrace1 :: EmulatorTrace ()
 eTrace1 = do
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
+      wallet2 = walletFromNumber 2 :: Emulator.Wallet
       scrAddr = txScrAddress
   h1 :: AppTraceHandle <- activateContractWallet wallet1 (endpoints scrAddr)
+  h2 :: AppTraceHandle <- activateContractWallet wallet2 (endpoints scrAddr)
   callEndpoint @"mint" h1 artwork
---   void $ Trace.waitNSlots 1
+  callEndpoint @"mint" h2 artwork
+  void $ Trace.waitNSlots 1
+  callEndpoint @"mint" h2 artwork
+  callEndpoint @"mint" h1 artwork
+  void $ Trace.waitNSlots 1
   where
-    artwork = "Foo Lisa"
+    artwork = "Fiona Lisa"
+
+eTrace2 :: EmulatorTrace ()
+eTrace2 = do 
+  let wallet1 = walletFromNumber 1 :: Emulator.Wallet
+      wallet2 = walletFromNumber 2 :: Emulator.Wallet
+      scrAddr = txScrAddress
+  void $ Trace.waitNSlots 1
 
 -- | Test for prototyping.
 test :: Hask.IO ()
 test = runEmulatorTraceIO eTrace1
+
+test2 :: Hask.IO ()
+test2 = runEmulatorTraceIO $ do 
+    eTrace1
+    eTrace2
