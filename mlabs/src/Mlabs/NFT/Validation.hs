@@ -224,8 +224,7 @@ instance TScripts.ValidatorTypes NftTrade where
 txPolicy :: NftId -> TScripts.TypedValidator NftTrade
 txPolicy nftId =
   TScripts.mkTypedValidator @NftTrade
-    ( $$(PlutusTx.compile [||mKTxPolicy||])
-    )
+    $$(PlutusTx.compile [||mKTxPolicy||])
     $$(PlutusTx.compile [||wrap||])
   where
     wrap = TScripts.wrapValidator @DatumNft @UserAct
