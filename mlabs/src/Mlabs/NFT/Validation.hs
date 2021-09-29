@@ -8,7 +8,7 @@ import Data.Aeson (FromJSON, ToJSON, Value (Bool))
 import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Void (Void)
-import Data.Semigroup (Last (..), sconcat)
+import Data.Semigroup (Last (..), sconcat, (<>), Semigroup)
 
 import GHC.Generics (Generic)
 
@@ -44,6 +44,26 @@ import Plutus.V1.Ledger.Value (CurrencySymbol, TokenName (..), assetClass, asset
 
 import PlutusTx qualified
 import PlutusTx.Prelude
+    ( (>>),
+      Bool(..),
+      Integer,
+      Maybe(..),
+      Eq((==)),
+      BuiltinByteString,
+      (.),
+      Applicative(pure),
+      Rational,
+      Functor(fmap),
+      (=<<),
+      (&&),
+      any,
+      (<$>),
+      maybe,
+      ($),
+      fst,
+      (%),
+      traceIfFalse,
+    )
 
 import Text.Printf (printf)
 
@@ -184,8 +204,6 @@ type NFTSchema =
 
 mkSchemaDefinitions ''NFTSchema
 
-type NFTSchemaContract a = forall w. Contract w NFTSchema Text a
-
 {-# INLINEABLE curSymbol #-}
 
 -- | Calculate the currency symbol of the NFT.
@@ -209,11 +227,16 @@ mint scrAddress media = do
     continue utxos nft scrAddress oref = do
       let tkName = TokenName $ nft.nft'data
           nftid = NftId tkName oref
+          scocat = foldr1 (<>)
           val = Value.singleton (curSymbol scrAddress nftid) tkName 1
-          lookups = Constraints.unspentOutputs utxos
-                    <> Constraints.mintingPolicy (mintPolicy scrAddress nftid)
-          tx =  Constraints.mustMintValue val 
-               <> Constraints.mustSpendPubKeyOutput oref
+          (lookups,tx) =  
+                ( Constraints.unspentOutputs utxos
+                  <> Constraints.mintingPolicy (mintPolicy scrAddress nftid)
+                ,
+                 Constraints.mustMintValue val 
+                 <> Constraints.mustSpendPubKeyOutput oref
+                 <> Constraints.mustPayToTheScript nft val
+                )
       void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
       Contract.logInfo @Hask.String $ printf "forged %s" (Hask.show val)
 
@@ -221,7 +244,7 @@ endpoints :: Address -> Contract w NFTSchema Text ()
 endpoints scrAddr = Contract.awaitPromise $ endpoint @"mint" (mint scrAddr)
 
 -- | Get the user's ChainIndexTxOut
-getUserUtxos :: Address -> NFTSchemaContract [Ledger.ChainIndexTxOut]
+getUserUtxos :: Address -> Contract w NFTSchema Text [Ledger.ChainIndexTxOut]
 getUserUtxos adr = fmap fst . Map.elems <$> Contract.utxosTxOutTxAt adr
 
 -- | Get first utxo at address.
