@@ -3,40 +3,53 @@
 module Mlabs.NFT.Validation where
 
 import Control.Monad (void)
+
 import Data.Aeson (FromJSON, ToJSON, Value (Bool))
 import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Void (Void)
+import Data.Semigroup (Last (..), sconcat)
+
 import GHC.Generics (Generic)
+
 import Ledger qualified (Address, ScriptContext, Validator, ValidatorHash, validatorHash)
 import Ledger.Address (pubKeyAddress)
 import Ledger.Constraints qualified as Constraints
 import Ledger.Contexts (scriptCurrencySymbol)
 import Ledger.Crypto (pubKeyHash)
-import Ledger.Crypto qualified as Contract
+import Ledger.Crypto qualified as Crypto
 import Ledger.Tx qualified as Ledger
-import Ledger.Typed.Scripts qualified as Scripts
+import Ledger.Typed.Scripts as TScripts 
 import Ledger.Value qualified as Value
+import Ledger.Scripts qualified as Scripts
+
 import Mlabs.Plutus.Contract (Call, IsEndpoint (..), getEndpoint, selectForever)
 import Mlabs.Utils.Wallet (walletFromNumber)
+
 import Playground.Contract (ToSchema, TokenName (TokenName), TxOutRef, mkSchemaDefinitions)
 import Plutus.ChainIndex.Tx qualified as ChainIx
 import Plutus.Contract (Contract, Endpoint, endpoint, type (.\/))
 import Plutus.Contract qualified as Contract
+
 import Plutus.Trace.Emulator (EmulatorTrace, activateContractWallet, callEndpoint, runEmulatorTraceIO)
 import Plutus.Trace.Emulator qualified as Trace
+
 import Plutus.V1.Ledger.Address (Address)
 import Plutus.V1.Ledger.Contexts (ScriptContext (..), TxInInfo (..), TxInfo (..))
 import Plutus.V1.Ledger.Contexts qualified as Contexts
 import Plutus.V1.Ledger.Crypto (PubKeyHash (..))
 import Plutus.V1.Ledger.Scripts qualified as Scripts
 import Plutus.V1.Ledger.Tx (Tx (..), TxOutRef (..))
-import Plutus.V1.Ledger.Value (CurrencySymbol, TokenName (..), flattenValue, tokenName)
+import Plutus.V1.Ledger.Value (CurrencySymbol, TokenName (..), assetClass, assetClassValue, flattenValue, tokenName)
+
 import PlutusTx qualified
 import PlutusTx.Prelude
+
 import Text.Printf (printf)
+
 import Wallet.Emulator qualified as Emulator
 import Wallet.Emulator.Wallet qualified as Wallet
+
 import Prelude qualified as Hask
 
 -- import PlutusTx.Builtins.Internal (BuiltinByteString(..))
@@ -98,6 +111,7 @@ data UserAct
 PlutusTx.unstableMakeIsData ''UserAct
 
 {-# INLINEABLE mkMintPolicy #-}
+-- | Minting policy for NFTs.
 mkMintPolicy :: Address -> NftId -> () -> ScriptContext -> Bool
 mkMintPolicy stateAddr (NftId token oref) _ ctx =
   traceIfFalse "UTXO not consumed" hasUtxo
@@ -118,10 +132,10 @@ mkMintPolicy stateAddr (NftId token oref) _ ctx =
       txOutAddress == stateAddr
         && txOutValue == Value.singleton (Contexts.ownCurrencySymbol ctx) token 1
 
-mintPolicy :: Address -> NftId -> Scripts.MintingPolicy
+mintPolicy :: Address -> NftId -> TScripts.MintingPolicy
 mintPolicy stateAddr nid =
   Scripts.mkMintingPolicyScript $
-    $$(PlutusTx.compile [||\x y -> Scripts.wrapMintingPolicy (mkMintPolicy x y)||])
+    $$(PlutusTx.compile [||\x y -> TScripts.wrapMintingPolicy (mkMintPolicy x y)||])
       `PlutusTx.applyCode` PlutusTx.liftCode stateAddr
       `PlutusTx.applyCode` PlutusTx.liftCode nid
 
@@ -129,36 +143,37 @@ mintPolicy stateAddr nid =
 
 -- | A validator script for the user actions.
 mKTxPolicy :: Nft -> UserAct -> ScriptContext -> Bool
-mKTxPolicy nft act ctx = react
-  where
-    react = case act of
+mKTxPolicy nft act ctx =  
+    traceIfFalse "General condition." True
+    && traceIfFalse "NFT doesn't exist at the address." True
+    && case act of
       BuyAct {..} ->
-        traceIfFalse "Not enough funds." True -- todo
-          && traceIfFalse "User does not own NFT." True -- todo
+        traceIfFalse "Not enough funds." True                -- todo
+          && traceIfFalse "User does not own NFT." True      -- todo
       SetPriceAct {..} ->
-        traceIfFalse "Price cannot be negative." True -- todo
+        traceIfFalse "Price cannot be negative." True   -- todo
           && traceIfFalse "User does not own NFT." True -- todo
 
 data NftTrade
-instance Scripts.ValidatorTypes NftTrade where
+instance TScripts.ValidatorTypes NftTrade where
   type DatumType NftTrade = Nft
   type RedeemerType NftTrade = UserAct
 
-txPolicy :: Scripts.TypedValidator NftTrade
+txPolicy :: TScripts.TypedValidator NftTrade
 txPolicy =
-  Scripts.mkTypedValidator @NftTrade
+  TScripts.mkTypedValidator @NftTrade
     $$(PlutusTx.compile [||mKTxPolicy||])
     $$(PlutusTx.compile [||wrap||])
   where
-    wrap = Scripts.wrapValidator @Nft @UserAct
+    wrap = TScripts.wrapValidator @Nft @UserAct
 
 {-# INLINEABLE txValHash #-}
 txValHash :: Ledger.ValidatorHash
-txValHash = Scripts.validatorHash txPolicy
+txValHash = TScripts.validatorHash txPolicy
 
 {-# INLINEABLE txScrAddress #-}
 txScrAddress :: Ledger.Address
-txScrAddress = Scripts.validatorAddress txPolicy
+txScrAddress = TScripts.validatorAddress txPolicy
 
 type Media = BuiltinByteString
 
@@ -177,38 +192,29 @@ type NFTSchemaContract a = forall w. Contract w NFTSchema Text a
 curSymbol :: Address -> NftId -> CurrencySymbol
 curSymbol stateAddr nid = scriptCurrencySymbol $ mintPolicy stateAddr nid
 
-{-# INLINEABLE fstUtxo #-}
-
--- | Get first utxo at address.
-fstUtxo :: Address -> Contract w s Text (Maybe TxOutRef)
-fstUtxo address = do
-  utxos <- Contract.utxosAt address
-  case Map.keys utxos of
-    [] -> pure Nothing
-    x : _ -> pure $ Just x
-
-{-# INLINEABLE mint #-}
-
 -- | Mints an NFT and sends it to the App Address.
 mint :: Address -> Media -> Contract w NFTSchema Text ()
 mint scrAddress media = do
   pk <- Contract.ownPubKey
   addr <- pubKeyAddress <$> Contract.ownPubKey
   nft' <- nftInit media
-  utxos <- Contract.utxosAt (pubKeyAddress pk)
+  utxos <- Contract.utxosAt addr
+  Contract.logInfo @Hask.String $ printf "got to here" 
   case nft' of
     Nothing -> Contract.logError @Hask.String "Cannot create NFT."
-    Just nft -> maybe err (continue utxos nft) =<< fstUtxo addr
+    Just nft -> maybe err (continue utxos nft scrAddress) =<< fstUtxo addr
   where
     err = Contract.logError @Hask.String "no utxo found at address."
 
-    continue utxos nft oref = do
+    continue utxos nft scrAddress oref = do
       let tkName = TokenName $ nft.nft'data
           nftid = NftId tkName oref
           val = Value.singleton (curSymbol scrAddress nftid) tkName 1
-          lookups = Constraints.mintingPolicy (mintPolicy scrAddress nftid) -- <> Constraints.unspentOutputs utxos
-          tx = Constraints.mustMintValue val <> Constraints.mustSpendPubKeyOutput oref
-      void $ Contract.submitTxConstraintsWith @Void lookups tx
+          lookups = Constraints.unspentOutputs utxos
+                    <> Constraints.mintingPolicy (mintPolicy scrAddress nftid)
+          tx =  Constraints.mustMintValue val 
+               <> Constraints.mustSpendPubKeyOutput oref
+      void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
       Contract.logInfo @Hask.String $ printf "forged %s" (Hask.show val)
 
 endpoints :: Address -> Contract w NFTSchema Text ()
@@ -218,14 +224,22 @@ endpoints scrAddr = Contract.awaitPromise $ endpoint @"mint" (mint scrAddr)
 getUserUtxos :: Address -> NFTSchemaContract [Ledger.ChainIndexTxOut]
 getUserUtxos adr = fmap fst . Map.elems <$> Contract.utxosTxOutTxAt adr
 
+-- | Get first utxo at address.
+fstUtxo :: Address -> Contract w s Text (Maybe TxOutRef)
+fstUtxo address = do
+  utxos <- Contract.utxosAt address
+  case Map.keys utxos of
+    [] -> pure Nothing
+    x : _ -> pure $ Just x
+
 -- | Initialise an NFT in the current wallet.
 nftInit :: Media -> Contract w s Text (Maybe Nft)
 nftInit media = do
   pk <- Contract.ownPubKey
   let pkh = pubKeyHash pk
-      address = pubKeyAddress pk
+      userAddress = pubKeyAddress pk
       user = UserId pkh
-  oref' <- fstUtxo address
+  oref' <- fstUtxo userAddress
   case oref' of
     Nothing ->
       Contract.logError @Hask.String "no utxo found" >> pure Nothing
@@ -250,12 +264,11 @@ type AppTraceHandle = Trace.ContractHandle () NFTSchema Text
 -- | Emulator Trace 1. Mints one NFT.
 eTrace1 :: EmulatorTrace ()
 eTrace1 = do
-  void $ Trace.waitNSlots 1
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
       scrAddr = txScrAddress
   h1 :: AppTraceHandle <- activateContractWallet wallet1 (endpoints scrAddr)
   callEndpoint @"mint" h1 artwork
-  void $ Trace.waitNSlots 1
+--   void $ Trace.waitNSlots 1
   where
     artwork = "Foo Lisa"
 
