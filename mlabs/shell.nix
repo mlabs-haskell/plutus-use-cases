@@ -61,8 +61,6 @@ with import ./nix { };
     ] ++ (builtins.attrValues pab.plutus_pab_exes);
 
   buildInputs = (with plutus.pkgs;
-    [ zlib pkg-config libsodium systemd ]
-    # Dependencies for MacOs
-    ++ (lib.optionals (!stdenv.isDarwin) [ R ]));
-  
+    [ zlib pkg-config libsodium-vrf R ]
+    ++ (lib.optionals (!stdenv.isDarwin) [ systemd ]));
 }))
