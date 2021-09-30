@@ -92,10 +92,9 @@ newtype UserId = UserId {getUserId :: PubKeyHash}
 PlutusTx.unstableMakeIsData ''UserId
 PlutusTx.makeLift ''UserId
 
-{- | Unique identifier of NFT. we are not using utxo ref anymore to not to
- produce new address every time and guarantee that all utxos for
- content+author combination are at the same script and we can guarantee that
- author will mint some extra NFT for same content-
+{- | Unique identifier of NFT. 
+ The NftId contains a human readable title, the hashed information of the
+ content and the utxo ref included when minting the token.
 -}
 data NftId = NftId
   { -- | Content Title.
@@ -111,7 +110,9 @@ data NftId = NftId
 PlutusTx.unstableMakeIsData ''NftId
 PlutusTx.makeLift ''NftId
 
--- | Data for NFTs
+-- | Type representing the data that gets hashed when the token is minted. The
+-- tile and author are included for proof of authenticity in the case the same
+-- artwork is hashed more than once.
 data NftContent = NftContent
   { -- | Content Title.
     ct'title :: Title
@@ -126,7 +127,7 @@ data NftContent = NftContent
 PlutusTx.unstableMakeIsData ''NftContent
 PlutusTx.makeLift ''NftContent
 
--- | NFT Datum
+-- | NFT Datum is checked communicates the ownership of the NFT.
 data DatumNft = DatumNft
   { -- | NFT ID
     dNft'id :: NftId
@@ -163,11 +164,16 @@ data UserAct
 PlutusTx.makeLift ''UserAct
 PlutusTx.unstableMakeIsData ''UserAct
 
+-- | Parameters that need to be submitted when minting a new NFT.
 data MintParams = MintParams  
   { -- | Content to be minted. 
     mp'content :: Content
   , -- | Title of content.
     mp'title  :: Title 
+  , -- | Shares retained by author.
+    mp'share :: Rational
+  , -- | Listing price of the NFT.
+    mp'price :: Maybe Integer
   } 
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
@@ -319,7 +325,7 @@ fstUtxo address = do
 
 -- | Initialise an NFT using the current wallet.
 nftInit :: MintParams -> Contract w s Text (Maybe DatumNft)
-nftInit (MintParams nftContent title) = do
+nftInit mintP = do
   pk <- Contract.ownPubKey
   let pkh = pubKeyHash pk
       userAddress = pubKeyAddress pk
@@ -329,19 +335,19 @@ nftInit (MintParams nftContent title) = do
     Nothing ->
       Contract.logError @Hask.String "no utxo found" >> pure Nothing
     Just oref ->
-      let hData = hashData nftContent
+      let hData = hashData mintP.mp'content
        in pure . Just $
             DatumNft
               { dNft'id =
                   NftId
-                    { nftId'title = title
+                    { nftId'title = mintP.mp'title
                     , nftId'token = TokenName hData
                     , nftId'outRef = oref
                     }
-              , dNft'share = 1 % 10
+              , dNft'share = mintP.mp'share
               , dNft'author = user
               , dNft'owner = user
-              , dNft'price = Just 10
+              , dNft'price = mintP.mp'price
               }
 
 -- | todo: some hashing function here - at the moment getting the whole bytestring
@@ -351,7 +357,7 @@ hashData (Content b) = b
 -- | Generic application Trace Handle.
 type AppTraceHandle = Trace.ContractHandle () NFTSAuthorSchema Text
 
--- | Emulator Trace 1. Mints one NFT.
+-- | Emulator Trace 1. Mints Some  NFT.
 eTrace1 :: EmulatorTrace ()
 eTrace1 = do
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
@@ -366,7 +372,12 @@ eTrace1 = do
   callEndpoint @"mint" h2 artwork
   void $ Trace.waitNSlots 1
   where
-    artwork = MintParams (Content "A painting.") (Title "Fiona Lisa")
+    artwork = MintParams 
+      { mp'content = Content "A painting." 
+      , mp'title = Title "Fiona Lisa"
+      , mp'share = 1 % 10 
+      , mp'price = Just 100 
+      }
 
 eTrace2 :: EmulatorTrace ()
 eTrace2 = do
