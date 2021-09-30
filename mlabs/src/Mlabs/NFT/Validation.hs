@@ -286,8 +286,8 @@ instance TScripts.ValidatorTypes NftTrade where
   type RedeemerType NftTrade = UserAct
 
 {-# INLINEABLE txPolicy #-}
-txPolicy :: NftId -> TScripts.TypedValidator NftTrade
-txPolicy nftId =
+txPolicy :: TScripts.TypedValidator NftTrade
+txPolicy =
   TScripts.mkTypedValidator @NftTrade
     $$(PlutusTx.compile [||mKTxPolicy||])
     $$(PlutusTx.compile [||wrap||])
@@ -295,12 +295,12 @@ txPolicy nftId =
     wrap = TScripts.wrapValidator @DatumNft @UserAct
 
 {-# INLINEABLE txValHash #-}
-txValHash :: NftId -> Ledger.ValidatorHash
-txValHash = TScripts.validatorHash . txPolicy
+txValHash :: Ledger.ValidatorHash
+txValHash = TScripts.validatorHash txPolicy
 
 {-# INLINEABLE txScrAddress #-}
-txScrAddress :: NftId -> Ledger.Address
-txScrAddress = TScripts.validatorAddress . txPolicy
+txScrAddress :: Ledger.Address
+txScrAddress = TScripts.validatorAddress txPolicy
 
 type NFTAppSchema =
   Endpoint "buy" BuyRequestUser
@@ -319,7 +319,7 @@ type AuthorContract a = Contract (Last NftId) NFTAppSchema Text a
 
 getNftDatum :: NftId -> Contract w s Text (Maybe DatumNft)
 getNftDatum nftId = do
-  utxos :: [Ledger.ChainIndexTxOut] <- getAddrUtxos $ txScrAddress nftId
+  utxos :: [Ledger.ChainIndexTxOut] <- getAddrUtxos txScrAddress
   let datums :: [DatumNft] =
         utxos
           ^.. traversed . Ledger.ciTxOutDatum
@@ -340,8 +340,8 @@ getUserAddr = pubKeyAddress <$> Contract.ownPubKey
 getUserUtxos :: Contract w s Text (Map.Map TxOutRef Ledger.ChainIndexTxOut)
 getUserUtxos = Contract.utxosAt =<< getUserAddr
 
-getScriptUtxos :: NftId -> Contract w s Text (Map.Map TxOutRef Ledger.ChainIndexTxOut)
-getScriptUtxos = Contract.utxosAt . txScrAddress
+getScriptUtxos :: Contract w s Text (Map.Map TxOutRef Ledger.ChainIndexTxOut)
+getScriptUtxos = Contract.utxosAt txScrAddress
 
 getUId :: Contract w s Text UserId
 getUId = UserId . pubKeyHash <$> Contract.ownPubKey
@@ -357,17 +357,19 @@ buy bid newPrice nftId = do
   case oldDatum' of
     Nothing -> Contract.logError @Hask.String "NFT Cannot be found."
     Just oldDatum -> do
-      let scrAddress = txScrAddress nftId
+      let scrAddress = txScrAddress
           oref = oldDatum.dNft'id.nftId'outRef
           nftPolicy = mintPolicy scrAddress oref nftId
           val = Value.singleton (scriptCurrencySymbol nftPolicy) nftId.nftId'token 1
-      utxosAddr <- getScriptUtxos nftId
       case oldDatum.dNft'price of
         Nothing -> Contract.logError @Hask.String "NFT not for sale."
         Just price ->
           if bid Hask.< price
             then Contract.logError @Hask.String "Bid Price is too low."
             else do
+              (oref, ciTxOut, datum) <- findNft txScrAddress nftId
+              utxosAddr <- getScriptUtxos
+
               -- Unserialised Datum
               let newDatum' =
                     DatumNft
@@ -388,16 +390,18 @@ buy bid newPrice nftId = do
                   ownerShare' = bid Hask.- authorShare'
                   ownerShare = convertToAda ownerShare'
 
+                  vScript = txPolicy
+
                   (lookups, tx) =
-                    ( Hask.foldr1
-                        (<>)
+                    ( mconcat
                         [ Constraints.unspentOutputs utxos
                         , Constraints.unspentOutputs utxosAddr
-                        , --, Constraints.unspentOutputs $ Map.singleton oref ciTxOut
-                          Constraints.typedValidatorLookups (txPolicy nftId)
+                        , Constraints.unspentOutputs $ Map.singleton oref ciTxOut
+                        , Constraints.typedValidatorLookups vScript
+                        , Constraints.otherScript (validatorScript vScript)
+                        , Constraints.typedValidatorLookups txPolicy
                         ]
-                    , Hask.foldr1
-                        (<>)
+                    , mconcat
                         [ Constraints.mustPayToTheScript newDatum' val
                         , Constraints.mustIncludeDatum newDatum
                         , Constraints.mustPayToPubKey (getUserId oldDatum.dNft'owner) ownerShare
@@ -421,13 +425,13 @@ mint nftContent = do
 
     continue utxos nft oref = do
       let nftId = nft.dNft'id
-          scrAddress = txScrAddress nftId
+          scrAddress = txScrAddress
           nftPolicy = mintPolicy scrAddress oref nftId
           val = Value.singleton (scriptCurrencySymbol nftPolicy) nftId.nftId'token 1
           (lookups, tx) =
             ( Constraints.unspentOutputs utxos
                 <> Constraints.mintingPolicy nftPolicy
-                <> Constraints.typedValidatorLookups (txPolicy nftId)
+                <> Constraints.typedValidatorLookups txPolicy
             , Constraints.mustMintValue val
                 <> Constraints.mustSpendPubKeyOutput oref
                 <> Constraints.mustPayToTheScript nft val
@@ -505,13 +509,13 @@ setPrice spParams = do
     contract = do
       let nftId = spParams.sp'nftId
       ownPkh <- pubKeyHash <$> Contract.ownPubKey
-      (oref, ciTxOut, datum) <- findNft (txScrAddress nftId) nftId
+      (oref, ciTxOut, datum) <- findNft txScrAddress nftId
       Contract.logInfo @Hask.String $ Hask.show ownPkh <> " is owner: " <> Hask.show (isOwner datum ownPkh)
       if isOwner datum ownPkh then pure () else Contract.throwError "Only owner can set price"
       let newDatum = datum {dNft'price = spParams.sp'price}
           redeemer = asRedeemer (SetPriceAct spParams.sp'price)
           newValue = ciTxOut ^. Ledger.ciTxOutValue
-          vScript = txPolicy nftId
+          vScript = txPolicy
           lookups =
             mconcat
               [ Constraints.unspentOutputs $ Map.singleton oref ciTxOut
