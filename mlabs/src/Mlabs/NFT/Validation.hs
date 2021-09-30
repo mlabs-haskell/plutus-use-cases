@@ -2,6 +2,8 @@
 
 module Mlabs.NFT.Validation where
 
+import GHC.Float.RealFracMethods (roundDoubleInteger)
+
 import qualified Control.Monad.Freer.Extras.Log as Extras
 import Control.Monad (forever, void)
 import Control.Lens ((^..), _Right, traversed, to , _Just, filtered )
@@ -29,6 +31,7 @@ import Ledger.Value qualified as Value
 import Mlabs.Plutus.Contract (Call, IsEndpoint (..), getEndpoint, selectForever)
 import Mlabs.Utils.Wallet (walletFromNumber)
 
+import Plutus.V1.Ledger.Ada qualified as Ada
 import Playground.Contract (ToSchema, TokenName (TokenName), TxOutRef, mkSchemaDefinitions)
 import Plutus.ChainIndex.Tx qualified as ChainIx
 import Plutus.Contract (Contract, Endpoint, endpoint, type (.\/))
@@ -49,6 +52,8 @@ import Mlabs.Plutus.Contract (readChainIndexTxDatum, readDatum, readDatum', sele
 
 import PlutusTx qualified
 import PlutusTx.Prelude (
+  fromInteger,
+  round,
   Applicative (pure),
   Bool (..),
   BuiltinByteString,
@@ -68,6 +73,7 @@ import PlutusTx.Prelude (
   (<$>),
   (=<<),
   (>>),
+  (*),
   return,
  )
 
@@ -308,13 +314,17 @@ getNftDatum nftId = do
   Contract.logInfo @Hask.String $ Hask.show $ "Datum length:" <> Hask.show ( Hask.length  datums)
   case datums of 
     [x] -> pure $ Just x 
-    [ ] -> Contract.throwError @Hask.String "No Datum can be found." 
-    _ : _  -> Contract.throwError @Hask.String "More than one suitable datums can be found."
+    [ ] -> Contract.throwError "No Datum can be found." 
+    _ : _  -> Contract.throwError "More than one suitable datums can be found."
 
+getUserAddr :: Contract w s Text Address  
 getUserAddr = pubKeyAddress <$> Contract.ownPubKey
 
 getUserUtxos :: Contract w s Text (Map.Map TxOutRef Ledger.ChainIndexTxOut)   
 getUserUtxos = Contract.utxosAt =<< getUserAddr 
+
+getScriptUtxos :: NftId -> Contract w s Text (Map.Map TxOutRef Ledger.ChainIndexTxOut)   
+getScriptUtxos = Contract.utxosAt . txScrAddress
 
 getUId :: Contract w s Text UserId
 getUId = UserId . pubKeyHash <$> Contract.ownPubKey 
@@ -322,7 +332,6 @@ getUId = UserId . pubKeyHash <$> Contract.ownPubKey
 reactBuy :: BuyRequestUser -> Contract w NFTAppSchema Text ()
 reactBuy (BuyRequestUser nftId bid newPrice) = buy bid newPrice nftId
   
-
 buy :: Integer -> Maybe Integer -> NftId -> Contract w NFTAppSchema Text ()
 buy bid newPrice nftId = do
   oldDatum' <- getNftDatum nftId
@@ -330,14 +339,20 @@ buy bid newPrice nftId = do
   utxos <- getUserUtxos
   case oldDatum' of
     Nothing -> Contract.logError @Hask.String "NFT Cannot be found."
-    Just oldDatum ->
+    Just oldDatum -> do 
+      let scrAddress = txScrAddress nftId
+          oref = oldDatum.dNft'id.nftId'outRef 
+          nftPolicy = mintPolicy scrAddress oref nftId
+          val = Value.singleton (scriptCurrencySymbol nftPolicy) nftId.nftId'token 1
+      utxosAddr <- getScriptUtxos nftId 
       case oldDatum.dNft'price of 
         Nothing -> Contract.logError @Hask.String "NFT not for sale."
         Just price ->
           if bid Hask.< price
             then Contract.logError @Hask.String "Bid Price is too low."
             else do
-              let newDatum = Scripts.Datum . PlutusTx.toBuiltinData $
+                  -- Unserialised Datum
+              let newDatum' = 
                     DatumNft
                       { dNft'id = oldDatum.dNft'id
                       , dNft'share = oldDatum.dNft'share
@@ -346,19 +361,32 @@ buy bid newPrice nftId = do
                       , dNft'price = newPrice
                       }
 
+                  -- Serialised Datum 
+                  newDatum = Scripts.Datum . PlutusTx.toBuiltinData $ newDatum'
+
+                  convertToAda = Ada.toValue . Ada.Lovelace . (Hask.*) 1_000_000
+
+                  authorShare' = round $ (fromInteger bid) * oldDatum.dNft'share
+                  authorShare = convertToAda authorShare'
+                  ownerShare' =  bid Hask.- authorShare'
+                  ownerShare = convertToAda ownerShare'
+
                   (lookups, tx) =
                     ( Hask.foldr1 (<>)
                       [ Constraints.unspentOutputs utxos
+                      , Constraints.unspentOutputs utxosAddr
+                      --, Constraints.unspentOutputs $ Map.singleton oref ciTxOut
                       , Constraints.typedValidatorLookups (txPolicy nftId)
                       ]
                     , Hask.foldr1 (<>) 
-                      [ --Constraints.mustMintValue val
-                      --, Constraints.mustSpendPubKeyOutput oref
-                      -- Constraints.mustPayToTheScript nft val
-                       Constraints.mustIncludeDatum newDatum
+                      [ Constraints.mustPayToTheScript newDatum' val
+                      , Constraints.mustIncludeDatum newDatum
+                      , Constraints.mustPayToPubKey (getUserId oldDatum.dNft'owner) ownerShare
+                      , Constraints.mustPayToPubKey (getUserId oldDatum.dNft'author) authorShare
                       ]
                     )
               void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
+              Contract.logInfo @Hask.String $ printf "Bought %s" $ Hask.show val
 
 -- | Mints an NFT and sends it to the App Address.
 mint :: MintParams -> Contract (Last NftId) s Text ()
@@ -456,21 +484,19 @@ eTrace1 = do
   h1 :: AppTraceHandle <- activateContractWallet wallet1 endpoints
   h2 :: AppTraceHandle <- activateContractWallet wallet2 endpoints
   callEndpoint @"mint" h1 artwork
-  callEndpoint @"mint" h2 artwork
+ -- callEndpoint @"mint" h2 artwork2
 
   void $ Trace.waitNSlots 1
-  oState <- Trace.observableState h2
+  oState <- Trace.observableState h1
   nftId <- case getLast oState of
              Nothing  -> Trace.throwError (Trace.GenericError "NftId not found")
              Just nid -> return nid
   void $ Trace.waitNSlots 1
-  callEndpoint @"buy" h1 (buyParams nftId)
   callEndpoint @"buy" h2 (buyParams nftId)
 
   Extras.logInfo @Hask.String $ Hask.show  oState
 
-  callEndpoint @"mint" h1 artwork
-  callEndpoint @"mint" h2 artwork
+--  callEndpoint @"mint" h1 artwork
   where
     artwork =
       MintParams
@@ -479,6 +505,8 @@ eTrace1 = do
         , mp'share = 1 % 10
         , mp'price = Just 100
         }
+    artwork2 = artwork { mp'content = Content "Another Painting"}
+
     buyParams nftId = BuyRequestUser nftId 100 (Just 200)
 
 -- | Test for prototyping.
