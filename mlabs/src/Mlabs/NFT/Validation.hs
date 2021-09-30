@@ -371,32 +371,35 @@ hashData (Content b) = b
 
 setPrice :: SetPriceParams -> Contract w NFTUserSchema Text ()
 setPrice spParams = do
-  let nftId = spParams.sp'nftId
-  (oref, ciTxOut, datum) <- findNft (txScrAddress nftId) nftId 
-  isOwner <- checkOwner datum
-  Contract.logInfo @Hask.String $ "Is owner: " <> Hask.show isOwner
-  if isOwner then pure () else  Contract.throwError "Only owner can set price"
-  let newDatum = datum {dNft'price = spParams.sp'price}
-      redeemer = asRedeemer (SetPriceAct spParams.sp'price)
-      newValue = ciTxOut ^. Ledger.ciTxOutValue
-      vScript = txPolicy nftId
-      lookups = 
-        mconcat [ Constraints.unspentOutputs $ Map.singleton oref ciTxOut
-                , Constraints.typedValidatorLookups vScript
-                , Constraints.otherScript (validatorScript vScript)
-                ]
-      tx = 
-        mconcat [ Constraints.mustSpendScriptOutput oref redeemer
-                , Constraints.mustPayToTheScript newDatum newValue
-                ]
-  ledgerTx <- Contract.submitTxConstraintsWith @NftTrade lookups tx
-  void $ Contract.awaitTxConfirmed $ Ledger.txId ledgerTx
-  Contract.logInfo @Hask.String $ printf "New datum %s" (Hask.show newDatum)
-  where 
-    checkOwner :: DatumNft -> Contract w NFTUserSchema Text Bool
-    checkOwner datum = do
+  result <- Contract.runError contract
+  case result of
+    Hask.Left e  -> Contract.logError e
+    Hask.Right r -> Contract.logInfo @Hask.String "Price set"
+  where
+    contract :: Contract w NFTUserSchema Text ()
+    contract = do
+      let nftId = spParams.sp'nftId
       ownPkh <- pubKeyHash <$> Contract.ownPubKey
-      pure $ ownPkh == datum.dNft'owner.getUserId
+      (oref, ciTxOut, datum) <- findNft (txScrAddress nftId) nftId 
+      Contract.logInfo @Hask.String $ Hask.show ownPkh <> " is owner: " <> Hask.show (isOwner datum ownPkh)
+      if isOwner datum ownPkh then pure () else  Contract.throwError "Only owner can set price"
+      let newDatum = datum {dNft'price = spParams.sp'price}
+          redeemer = asRedeemer (SetPriceAct spParams.sp'price)
+          newValue = ciTxOut ^. Ledger.ciTxOutValue
+          vScript = txPolicy nftId
+          lookups = 
+            mconcat [ Constraints.unspentOutputs $ Map.singleton oref ciTxOut
+                    , Constraints.typedValidatorLookups vScript
+                    , Constraints.otherScript (validatorScript vScript)
+                    ]
+          tx = 
+            mconcat [ Constraints.mustSpendScriptOutput oref redeemer
+                    , Constraints.mustPayToTheScript newDatum newValue
+                    ]
+      ledgerTx <- Contract.submitTxConstraintsWith @NftTrade lookups tx
+      void $ Contract.awaitTxConfirmed $ Ledger.txId ledgerTx
+      Contract.logInfo @Hask.String $ printf "New datum %s" (Hask.show newDatum)
+    isOwner datum pkh = pkh == datum.dNft'owner.getUserId
     
 findNft :: Address -> NftId -> Contract w s Text (TxOutRef, ChainIndexTxOut, DatumNft)
 findNft addr nftId = do
@@ -450,7 +453,7 @@ eTrace2 = do
 setPriceTrace :: EmulatorTrace ()
 setPriceTrace = do
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
-      wallet2 = walletFromNumber 2 :: Emulator.Wallet
+      wallet2 = walletFromNumber 5 :: Emulator.Wallet
   authMintH <- activateContractWallet wallet1 endpoints
   callEndpoint @"mint" authMintH artwork
   void $ Trace.waitNSlots 1
@@ -465,6 +468,10 @@ setPriceTrace = do
   void $ Trace.waitNSlots 1
   userUseH :: UserHandle <- activateContractWallet wallet2 userEndpoints
   callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just 20))
+  void $ Trace.waitNSlots 1
+  callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just 30))
+  void $ Trace.waitNSlots 1
+  callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just 40))
   void $ Trace.waitNSlots 1
   -- userUserH :: AppTraceHandle <- activateContractWallet wallet2 endpoints
   -- callEndpoint @"set-price" authUseH artwork
