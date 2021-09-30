@@ -3,6 +3,7 @@
 module Mlabs.NFT.Validation where
 
 import Control.Monad (forever, void)
+import Control.Lens ((^..), _Right, traversed, to , _Just, filtered )
 
 import Data.Aeson (FromJSON, ToJSON, Value (Bool))
 import Data.Map qualified as Map
@@ -41,6 +42,8 @@ import Plutus.V1.Ledger.Crypto (PubKeyHash (..))
 import Plutus.V1.Ledger.Scripts qualified as Scripts
 import Plutus.V1.Ledger.Tx (Tx (..), TxOutRef (..))
 import Plutus.V1.Ledger.Value (CurrencySymbol, TokenName (..), assetClass, assetClassValue, flattenValue, tokenName)
+
+import Mlabs.Plutus.Contract (readChainIndexTxDatum, readDatum, readDatum', selectForever)
 
 import PlutusTx qualified
 import PlutusTx.Prelude (
@@ -83,16 +86,18 @@ PlutusTx.makeLift ''Content
 newtype Title = Title {getTitle :: BuiltinByteString}
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
+  deriving Eq
 PlutusTx.unstableMakeIsData ''Title
 PlutusTx.makeLift ''Title
 
 newtype UserId = UserId {getUserId :: PubKeyHash}
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
+  deriving Eq
 PlutusTx.unstableMakeIsData ''UserId
 PlutusTx.makeLift ''UserId
 
-{- | Unique identifier of NFT. 
+{- | Unique identifier of NFT.
  The NftId contains a human readable title, the hashed information of the
  content and the utxo ref included when minting the token.
 -}
@@ -106,13 +111,15 @@ data NftId = NftId
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
+  deriving Eq
 
 PlutusTx.unstableMakeIsData ''NftId
 PlutusTx.makeLift ''NftId
 
--- | Type representing the data that gets hashed when the token is minted. The
--- tile and author are included for proof of authenticity in the case the same
--- artwork is hashed more than once.
+{- | Type representing the data that gets hashed when the token is minted. The
+ tile and author are included for proof of authenticity in the case the same
+ artwork is hashed more than once.
+-}
 data NftContent = NftContent
   { -- | Content Title.
     ct'title :: Title
@@ -123,6 +130,7 @@ data NftContent = NftContent
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON, ToSchema)
+  deriving Eq
 
 PlutusTx.unstableMakeIsData ''NftContent
 PlutusTx.makeLift ''NftContent
@@ -142,6 +150,7 @@ data DatumNft = DatumNft
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON, ToSchema)
+  deriving Eq
 
 PlutusTx.unstableMakeIsData ''DatumNft
 PlutusTx.makeLift ''DatumNft
@@ -160,25 +169,27 @@ data UserAct
         act'newPrice :: Maybe Integer
       }
   deriving stock (Hask.Show, Generic, Hask.Eq)
-  deriving anyclass (FromJSON, ToJSON )
+  deriving anyclass (FromJSON, ToJSON)
+  deriving Eq
 PlutusTx.makeLift ''UserAct
 PlutusTx.unstableMakeIsData ''UserAct
 
 -- | Parameters that need to be submitted when minting a new NFT.
-data MintParams = MintParams  
-  { -- | Content to be minted. 
+data MintParams = MintParams
+  { -- | Content to be minted.
     mp'content :: Content
   , -- | Title of content.
-    mp'title  :: Title 
+    mp'title :: Title
   , -- | Shares retained by author.
     mp'share :: Rational
   , -- | Listing price of the NFT.
     mp'price :: Maybe Integer
-  } 
+  }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
-PlutusTx.makeLift ''MintParams 
-PlutusTx.unstableMakeIsData ''MintParams 
+  deriving Eq
+PlutusTx.makeLift ''MintParams
+PlutusTx.unstableMakeIsData ''MintParams
 
 {-# INLINEABLE mkMintPolicy #-}
 
@@ -192,7 +203,9 @@ mkMintPolicy stateAddr oref (NftId title token author) _ ctx =
   where
     info = Contexts.scriptContextTxInfo ctx
 
-    hasUtxo = any (\inp -> Contexts.txInInfoOutRef inp == oref) $ Contexts.txInfoInputs info
+    hasUtxo =
+      any (\inp -> Contexts.txInInfoOutRef inp == oref) $
+        Contexts.txInfoInputs info
 
     checkMintedAmount = case Value.flattenValue (Contexts.txInfoMint info) of
       [(cur, tn, val)] ->
@@ -274,6 +287,69 @@ mkSchemaDefinitions ''NFTSAuthorSchema
 curSymbol :: Address -> TxOutRef -> NftId -> CurrencySymbol
 curSymbol stateAddr oref nid = scriptCurrencySymbol $ mintPolicy stateAddr oref nid
 
+getNftDatum :: NftId -> Contract w s Text (Maybe DatumNft)
+getNftDatum nftId = do
+  utxos :: [Ledger.ChainIndexTxOut] <- getAddrUtxos $ txScrAddress nftId
+  let datums :: [DatumNft] = 
+        utxos ^.. traversed . Ledger.ciTxOutDatum 
+              .  _Right 
+              . to ( PlutusTx.fromBuiltinData @DatumNft . Scripts.getDatum )
+              . _Just 
+              . filtered (\d -> d.dNft'id == nftId)
+  case datums of 
+    [x] -> pure $ Just x 
+    [ ] -> Contract.logError @Hask.String "No Datum can be found." >> pure Nothing 
+    _ : _  -> Contract.logError @Hask.String "More than one suitable datums can be found." >> pure Nothing 
+
+getUserAddr = pubKeyAddress <$> Contract.ownPubKey
+
+getUserUtxos :: Contract w s Text (Map.Map TxOutRef Ledger.ChainIndexTxOut)   
+getUserUtxos = Contract.utxosAt =<< getUserAddr 
+
+getUId :: Contract w s Text UserId
+getUId = UserId . pubKeyHash <$> Contract.ownPubKey 
+
+react :: NftId -> UserAct -> Contract w NFTUserSchema Text ()
+react nftId = \case 
+    BuyAct bid newPrice -> buy bid newPrice nftId
+  
+
+buy :: Integer -> Maybe Integer -> NftId -> Contract w NFTUserSchema Text ()
+buy bid newPrice nftId = do
+  oldDatum' <- getNftDatum nftId
+  user <- getUId
+  utxos <- getUserUtxos
+  case oldDatum' of
+    Nothing -> Contract.logError @Hask.String "NFT Cannot be found."
+    Just oldDatum ->
+      case oldDatum.dNft'price of 
+        Nothing -> Contract.logError @Hask.String "NFT not for sale."
+        Just price ->
+          if bid Hask.< price
+            then Contract.logError @Hask.String "Bid Price is too low."
+            else do
+              let newDatum = Scripts.Datum . PlutusTx.toBuiltinData $
+                    DatumNft
+                      { dNft'id = oldDatum.dNft'id
+                      , dNft'share = oldDatum.dNft'share
+                      , dNft'author = oldDatum.dNft'author
+                      , dNft'owner = user
+                      , dNft'price = newPrice
+                      }
+
+                  (lookups, tx) =
+                    ( Hask.foldr1 (<>)
+                      [ Constraints.unspentOutputs utxos
+                      , Constraints.typedValidatorLookups (txPolicy nftId)
+                      ]
+                    , Hask.foldr1 (<>) 
+                      [ --Constraints.mustMintValue val
+                      --, Constraints.mustSpendPubKeyOutput oref
+                      -- Constraints.mustPayToTheScript nft val
+                       Constraints.mustIncludeDatum newDatum
+                      ]
+                    )
+              void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
 
 -- | Mints an NFT and sends it to the App Address.
 mint :: MintParams -> Contract w NFTSAuthorSchema Text ()
@@ -312,8 +388,8 @@ endpoints = forever $ do
       ]
 
 -- | Get the user's ChainIndexTxOut
-getUserUtxos :: Address -> Contract w NFTSAuthorSchema Text [Ledger.ChainIndexTxOut]
-getUserUtxos adr = fmap fst . Map.elems <$> Contract.utxosTxOutTxAt adr
+getAddrUtxos :: Address -> Contract w s Text [Ledger.ChainIndexTxOut]
+getAddrUtxos adr = fmap fst . Map.elems <$> Contract.utxosTxOutTxAt adr
 
 -- | Get first utxo at address.
 fstUtxo :: Address -> Contract w s Text (Maybe TxOutRef)
@@ -357,7 +433,7 @@ hashData (Content b) = b
 -- | Generic application Trace Handle.
 type AppTraceHandle = Trace.ContractHandle () NFTSAuthorSchema Text
 
--- | Emulator Trace 1. Mints Some  NFT.
+-- | Emulator Trace 1. Mints Some NFT.
 eTrace1 :: EmulatorTrace ()
 eTrace1 = do
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
@@ -372,12 +448,13 @@ eTrace1 = do
   callEndpoint @"mint" h2 artwork
   void $ Trace.waitNSlots 1
   where
-    artwork = MintParams 
-      { mp'content = Content "A painting." 
-      , mp'title = Title "Fiona Lisa"
-      , mp'share = 1 % 10 
-      , mp'price = Just 100 
-      }
+    artwork =
+      MintParams
+        { mp'content = Content "A painting."
+        , mp'title = Title "Fiona Lisa"
+        , mp'share = 1 % 10
+        , mp'price = Just 100
+        }
 
 eTrace2 :: EmulatorTrace ()
 eTrace2 = do
