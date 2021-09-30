@@ -304,10 +304,12 @@ getNftDatum nftId = do
               . to ( PlutusTx.fromBuiltinData @DatumNft . Scripts.getDatum )
               . _Just 
               . filtered (\d -> d.dNft'id Hask.== nftId)
+  Contract.logInfo @Hask.String $ Hask.show $ "Datum Found:" <> Hask.show datums
+  Contract.logInfo @Hask.String $ Hask.show $ "Datum length:" <> Hask.show ( Hask.length  datums)
   case datums of 
     [x] -> pure $ Just x 
-    [ ] -> Contract.logError @Hask.String "No Datum can be found." >> pure Nothing 
-    _ : _  -> Contract.logError @Hask.String "More than one suitable datums can be found." >> pure Nothing 
+    [ ] -> Contract.throwError @Hask.String "No Datum can be found." 
+    _ : _  -> Contract.throwError @Hask.String "More than one suitable datums can be found."
 
 getUserAddr = pubKeyAddress <$> Contract.ownPubKey
 
