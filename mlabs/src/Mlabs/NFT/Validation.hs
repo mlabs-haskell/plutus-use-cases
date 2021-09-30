@@ -2,6 +2,7 @@
 
 module Mlabs.NFT.Validation where
 
+import qualified Control.Monad.Freer.Extras.Log as Extras
 import Control.Monad (forever, void)
 import Control.Lens ((^..), _Right, traversed, to , _Just, filtered )
 
@@ -113,7 +114,6 @@ data NftId = NftId
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
-  deriving Eq
 
 PlutusTx.unstableMakeIsData ''NftId
 PlutusTx.makeLift ''NftId
@@ -303,7 +303,7 @@ getNftDatum nftId = do
               .  _Right 
               . to ( PlutusTx.fromBuiltinData @DatumNft . Scripts.getDatum )
               . _Just 
-              . filtered (\d -> d.dNft'id == nftId)
+              . filtered (\d -> d.dNft'id Hask.== nftId)
   case datums of 
     [x] -> pure $ Just x 
     [ ] -> Contract.logError @Hask.String "No Datum can be found." >> pure Nothing 
@@ -454,17 +454,21 @@ eTrace1 = do
   h1 :: AppTraceHandle <- activateContractWallet wallet1 endpoints
   h2 :: AppTraceHandle <- activateContractWallet wallet2 endpoints
   callEndpoint @"mint" h1 artwork
-  callEndpoint @"mint" h1 artwork
   callEndpoint @"mint" h2 artwork
-  oState <- Trace.observableState h1
+
+  void $ Trace.waitNSlots 1
+  oState <- Trace.observableState h2
   nftId <- case getLast oState of
              Nothing  -> Trace.throwError (Trace.GenericError "NftId not found")
              Just nid -> return nid
   void $ Trace.waitNSlots 1
   callEndpoint @"buy" h1 (buyParams nftId)
   callEndpoint @"buy" h2 (buyParams nftId)
-  void $ Trace.waitNSlots 1
-  void $ Trace.waitNSlots 1
+
+  Extras.logInfo @Hask.String $ Hask.show  oState
+
+  callEndpoint @"mint" h1 artwork
+  callEndpoint @"mint" h2 artwork
   where
     artwork =
       MintParams
