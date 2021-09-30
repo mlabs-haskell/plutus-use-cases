@@ -159,9 +159,20 @@ data UserAct
         act'newPrice :: Maybe Integer
       }
   deriving stock (Hask.Show, Generic, Hask.Eq)
-  deriving anyclass (FromJSON, ToJSON)
+  deriving anyclass (FromJSON, ToJSON )
 PlutusTx.makeLift ''UserAct
 PlutusTx.unstableMakeIsData ''UserAct
+
+data MintParams = MintParams  
+  { -- | Content to be minted. 
+    mp'content :: Content
+  , -- | Title of content.
+    mp'title  :: Title 
+  } 
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
+PlutusTx.makeLift ''MintParams 
+PlutusTx.unstableMakeIsData ''MintParams 
 
 {-# INLINEABLE mkMintPolicy #-}
 
@@ -245,7 +256,7 @@ type NFTUserSchema =
   Endpoint "buy" NftId
 
 type NFTSAuthorSchema =
-  Endpoint "mint" (Content, Title)
+  Endpoint "mint" MintParams
 
 mkSchemaDefinitions ''NFTAppSchema
 mkSchemaDefinitions ''NFTUserSchema
@@ -257,8 +268,9 @@ mkSchemaDefinitions ''NFTSAuthorSchema
 curSymbol :: Address -> TxOutRef -> NftId -> CurrencySymbol
 curSymbol stateAddr oref nid = scriptCurrencySymbol $ mintPolicy stateAddr oref nid
 
+
 -- | Mints an NFT and sends it to the App Address.
-mint :: (Content, Title) -> Contract w NFTSAuthorSchema Text ()
+mint :: MintParams -> Contract w NFTSAuthorSchema Text ()
 mint nftContent = do
   addr <- pubKeyAddress <$> Contract.ownPubKey
   nft' <- nftInit nftContent
@@ -306,8 +318,8 @@ fstUtxo address = do
     x : _ -> pure $ Just x
 
 -- | Initialise an NFT using the current wallet.
-nftInit :: (Content, Title) -> Contract w s Text (Maybe DatumNft)
-nftInit (nftContent, title) = do
+nftInit :: MintParams -> Contract w s Text (Maybe DatumNft)
+nftInit (MintParams nftContent title) = do
   pk <- Contract.ownPubKey
   let pkh = pubKeyHash pk
       userAddress = pubKeyAddress pk
@@ -354,7 +366,7 @@ eTrace1 = do
   callEndpoint @"mint" h2 artwork
   void $ Trace.waitNSlots 1
   where
-    artwork = (Content "A painting.", Title "Fiona Lisa")
+    artwork = MintParams (Content "A painting.") (Title "Fiona Lisa")
 
 eTrace2 :: EmulatorTrace ()
 eTrace2 = do
