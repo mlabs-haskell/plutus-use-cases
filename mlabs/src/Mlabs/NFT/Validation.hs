@@ -456,7 +456,7 @@ setPriceTrace = do
       wallet2 = walletFromNumber 5 :: Emulator.Wallet
   authMintH <- activateContractWallet wallet1 endpoints
   callEndpoint @"mint" authMintH artwork
-  void $ Trace.waitNSlots 1
+  void $ Trace.waitNSlots 2
   oState <- Trace.observableState authMintH
   nftId <- case getLast oState of
             Nothing  -> Trace.throwError (Trace.GenericError "NftId not found")
@@ -464,19 +464,12 @@ setPriceTrace = do
   logInfo $ Hask.show nftId
   void $ Trace.waitNSlots 1
   authUseH :: UserHandle <- activateContractWallet wallet1 userEndpoints
-  callEndpoint @"set-price" authUseH (SetPriceParams nftId Nothing)
-  void $ Trace.waitNSlots 1
-  userUseH :: UserHandle <- activateContractWallet wallet2 userEndpoints
   callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just 20))
   void $ Trace.waitNSlots 1
-  callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just 30))
+  userUseH :: UserHandle <- activateContractWallet wallet2 userEndpoints
+  callEndpoint @"set-price" userUseH (SetPriceParams nftId Nothing)
   void $ Trace.waitNSlots 1
-  callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just 40))
-  void $ Trace.waitNSlots 1
-  -- userUserH :: AppTraceHandle <- activateContractWallet wallet2 endpoints
-  -- callEndpoint @"set-price" authUseH artwork
-  -- callEndpoint @"mint" h2 artwork
-  -- void $ Trace.waitNSlots 1
+  callEndpoint @"set-price" userUseH (SetPriceParams nftId (Just 30))
   where
     artwork = MintParams (Content "A painting.") (Title "Fiona Lisa")
 
