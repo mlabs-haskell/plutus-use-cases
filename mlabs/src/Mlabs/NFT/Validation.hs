@@ -2,13 +2,17 @@
 
 module Mlabs.NFT.Validation where
 
+import Control.Lens ((^.))
 import Control.Monad (forever, void)
+
 
 import Data.Aeson (FromJSON, ToJSON, Value (Bool))
 import Data.Map qualified as Map
-import Data.Semigroup (Last (..), Semigroup, sconcat, (<>))
-import Data.Text (Text)
+import Data.Monoid (Last (..), mconcat, (<>))
+import Data.Text (Text, pack)
 import Data.Void (Void)
+import Data.Maybe (catMaybes)
+import Data.List as L (filter)
 
 import GHC.Generics (Generic)
 
@@ -23,7 +27,7 @@ import Ledger.Tx qualified as Ledger
 import Ledger.Typed.Scripts as TScripts
 import Ledger.Value qualified as Value
 
-import Mlabs.Plutus.Contract (Call, IsEndpoint (..), getEndpoint, selectForever)
+import Mlabs.Plutus.Contract (readDatum', selectForever)
 import Mlabs.Utils.Wallet (walletFromNumber)
 
 import Playground.Contract (ToSchema, TokenName (TokenName), TxOutRef, mkSchemaDefinitions)
@@ -33,13 +37,14 @@ import Plutus.Contract qualified as Contract
 
 import Plutus.Trace.Emulator (EmulatorTrace, activateContractWallet, callEndpoint, runEmulatorTraceIO)
 import Plutus.Trace.Emulator qualified as Trace
+import Control.Monad.Freer.Extras.Log as Extra (LogMessage, LogMsg, LogObserve, logDebug, logInfo)
 
 import Plutus.V1.Ledger.Address (Address)
 import Plutus.V1.Ledger.Contexts (ScriptContext (..), TxInInfo (..), TxInfo (..))
 import Plutus.V1.Ledger.Contexts qualified as Contexts
 import Plutus.V1.Ledger.Crypto (PubKeyHash (..))
 import Plutus.V1.Ledger.Scripts qualified as Scripts
-import Plutus.V1.Ledger.Tx (Tx (..), TxOutRef (..))
+import Ledger (Tx (..), TxOutRef (..), ChainIndexTxOut, Redeemer(..))
 import Plutus.V1.Ledger.Value (CurrencySymbol, TokenName (..), assetClass, assetClassValue, flattenValue, tokenName)
 
 import PlutusTx qualified
@@ -62,7 +67,9 @@ import PlutusTx.Prelude (
   (.),
   (<$>),
   (=<<),
+  (>>=),
   (>>),
+  return
  )
 
 import Text.Printf (printf)
@@ -163,6 +170,8 @@ data UserAct
 PlutusTx.makeLift ''UserAct
 PlutusTx.unstableMakeIsData ''UserAct
 
+asRedeemer = Redeemer . PlutusTx.toBuiltinData
+
 data MintParams = MintParams  
   { -- | Content to be minted. 
     mp'content :: Content
@@ -173,6 +182,16 @@ data MintParams = MintParams
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 PlutusTx.makeLift ''MintParams 
 PlutusTx.unstableMakeIsData ''MintParams 
+
+data SetPriceParams = SetPriceParams 
+  { sp'nftId :: NftId
+  , sp'price :: Maybe Integer -- todo maybe Natural? are they available here?
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
+-- PlutusTx.makeLift ''SetPriceParams 
+-- PlutusTx.unstableMakeIsData ''SetPriceParams 
+
 
 {-# INLINEABLE mkMintPolicy #-}
 
@@ -254,6 +273,7 @@ type NFTAppSchema =
 
 type NFTUserSchema =
   Endpoint "buy" NftId
+  .\/ Endpoint "set-price" SetPriceParams
 
 type NFTSAuthorSchema =
   Endpoint "mint" MintParams
@@ -268,9 +288,9 @@ mkSchemaDefinitions ''NFTSAuthorSchema
 curSymbol :: Address -> TxOutRef -> NftId -> CurrencySymbol
 curSymbol stateAddr oref nid = scriptCurrencySymbol $ mintPolicy stateAddr oref nid
 
-
+type AuthorContract a = Contract (Last NftId) NFTSAuthorSchema Text a
 -- | Mints an NFT and sends it to the App Address.
-mint :: MintParams -> Contract w NFTSAuthorSchema Text ()
+mint :: MintParams -> AuthorContract ()
 mint nftContent = do
   addr <- pubKeyAddress <$> Contract.ownPubKey
   nft' <- nftInit nftContent
@@ -295,9 +315,10 @@ mint nftContent = do
                 <> Constraints.mustPayToTheScript nft val
             )
       void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
+      Contract.tell $ Last (Just nftId)
       Contract.logInfo @Hask.String $ printf "forged %s" (Hask.show val)
 
-endpoints :: Contract w NFTSAuthorSchema Text ()
+endpoints :: AuthorContract ()
 endpoints = forever $ do
   Contract.awaitPromise $
     Hask.foldr1
@@ -348,16 +369,67 @@ nftInit (MintParams nftContent title) = do
 hashData :: Content -> BuiltinByteString
 hashData (Content b) = b
 
+setPrice :: SetPriceParams -> Contract w NFTUserSchema Text ()
+setPrice spParams = do
+  let nftId = spParams.sp'nftId
+  (oref, ciTxOut, datum) <- findNft (txScrAddress nftId) nftId 
+  isOwner <- checkOwner datum
+  Contract.logInfo @Hask.String $ "Is owner: " <> Hask.show isOwner
+  if isOwner then pure () else  Contract.throwError "Only owner can set price"
+  let newDatum = datum {dNft'price = spParams.sp'price}
+      redeemer = asRedeemer (SetPriceAct spParams.sp'price)
+      newValue = ciTxOut ^. Ledger.ciTxOutValue
+      vScript = txPolicy nftId
+      lookups = 
+        mconcat [ Constraints.unspentOutputs $ Map.singleton oref ciTxOut
+                , Constraints.typedValidatorLookups vScript
+                , Constraints.otherScript (validatorScript vScript)
+                ]
+      tx = 
+        mconcat [ Constraints.mustSpendScriptOutput oref redeemer
+                , Constraints.mustPayToTheScript newDatum newValue
+                ]
+  ledgerTx <- Contract.submitTxConstraintsWith @NftTrade lookups tx
+  void $ Contract.awaitTxConfirmed $ Ledger.txId ledgerTx
+  Contract.logInfo @Hask.String $ printf "New datum %s" (Hask.show newDatum)
+  where 
+    checkOwner :: DatumNft -> Contract w NFTUserSchema Text Bool
+    checkOwner datum = do
+      ownPkh <- pubKeyHash <$> Contract.ownPubKey
+      pure $ ownPkh == datum.dNft'owner.getUserId
+    
+findNft :: Address -> NftId -> Contract w s Text (TxOutRef, ChainIndexTxOut, DatumNft)
+findNft addr nftId = do
+  utxos <- Contract.utxosTxOutTxAt addr
+  case findData utxos of
+    [v] -> pure v
+    []  -> Contract.throwError $ "DatumNft not found for " <> pack (Hask.show nftId)
+    _   -> Contract.throwError $ "More than one DatumNft found for " <> pack (Hask.show nftId)
+    where
+      findData = 
+        L.filter (hasNftId nftId) -- filter only datums with desired NftId
+        . catMaybes 
+        . fmap readTxData -- map to Maybe (TxOutRef, ChainIndexTxOut, DatumNft)
+        . Map.toList
+      readTxData (oref, (ciTxOut, _)) = (oref,ciTxOut,) <$> readDatum' ciTxOut
+      hasNftId nid (_,_, datum) = datum.dNft'id Hask.== nid
+
+userEndpoints :: Contract w NFTUserSchema Text ()
+userEndpoints = 
+  selectForever [endpoint @"set-price" setPrice]
+
+
 -- | Generic application Trace Handle.
-type AppTraceHandle = Trace.ContractHandle () NFTSAuthorSchema Text
+type AuthorHandle = Trace.ContractHandle (Last NftId) NFTSAuthorSchema Text
+type UserHandle = Trace.ContractHandle () NFTUserSchema Text
 
 -- | Emulator Trace 1. Mints one NFT.
 eTrace1 :: EmulatorTrace ()
 eTrace1 = do
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
       wallet2 = walletFromNumber 2 :: Emulator.Wallet
-  h1 :: AppTraceHandle <- activateContractWallet wallet1 endpoints
-  h2 :: AppTraceHandle <- activateContractWallet wallet2 endpoints
+  h1 :: AuthorHandle <- activateContractWallet wallet1 endpoints
+  h2 :: AuthorHandle <- activateContractWallet wallet2 endpoints
   callEndpoint @"mint" h1 artwork
   callEndpoint @"mint" h1 artwork
   callEndpoint @"mint" h2 artwork
@@ -375,6 +447,32 @@ eTrace2 = do
       scrAddr = txScrAddress
   void $ Trace.waitNSlots 1
 
+setPriceTrace :: EmulatorTrace ()
+setPriceTrace = do
+  let wallet1 = walletFromNumber 1 :: Emulator.Wallet
+      wallet2 = walletFromNumber 2 :: Emulator.Wallet
+  authMintH <- activateContractWallet wallet1 endpoints
+  callEndpoint @"mint" authMintH artwork
+  void $ Trace.waitNSlots 1
+  oState <- Trace.observableState authMintH
+  nftId <- case getLast oState of
+            Nothing  -> Trace.throwError (Trace.GenericError "NftId not found")
+            Just nid -> return nid
+  logInfo $ Hask.show nftId
+  void $ Trace.waitNSlots 1
+  authUseH :: UserHandle <- activateContractWallet wallet1 userEndpoints
+  callEndpoint @"set-price" authUseH (SetPriceParams nftId Nothing)
+  void $ Trace.waitNSlots 1
+  userUseH :: UserHandle <- activateContractWallet wallet2 userEndpoints
+  callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just 20))
+  void $ Trace.waitNSlots 1
+  -- userUserH :: AppTraceHandle <- activateContractWallet wallet2 endpoints
+  -- callEndpoint @"set-price" authUseH artwork
+  -- callEndpoint @"mint" h2 artwork
+  -- void $ Trace.waitNSlots 1
+  where
+    artwork = MintParams (Content "A painting.") (Title "Fiona Lisa")
+
 -- | Test for prototyping.
 test :: Hask.IO ()
 test = runEmulatorTraceIO eTrace1
@@ -383,3 +481,6 @@ test2 :: Hask.IO ()
 test2 = runEmulatorTraceIO $ do
   eTrace1
   eTrace2
+
+testSetPrice :: Hask.IO () 
+testSetPrice = runEmulatorTraceIO setPriceTrace
