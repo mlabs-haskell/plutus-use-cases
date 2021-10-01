@@ -90,6 +90,7 @@ common common-ghc-options
     -fno-strictness
     -fno-warn-orphans
     -fobject-code
+--    -fplugin-opt PlutusTx.Plugin:defer-errors -- do not use for build 
 
 library
   import:  common-imports

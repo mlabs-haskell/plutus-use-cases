@@ -20,8 +20,6 @@ import Mlabs.Utils.Wallet (walletFromNumber)
 import Mlabs.NFT.Types
 import Mlabs.NFT.Contract
 
-
-
 -- | Generic application Trace Handle.
 type AppTraceHandle = Trace.ContractHandle (Last NftId) NFTAppSchema Text
 

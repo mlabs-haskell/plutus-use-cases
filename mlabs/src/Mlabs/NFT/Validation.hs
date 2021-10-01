@@ -12,6 +12,8 @@ import GHC.Generics (Generic)
 
 import Ledger (
     Address
+  , AssetClass  
+  , Datum(..)  
   , Redeemer(..)
   , TxOutRef
   , ScriptContext(..)
@@ -20,6 +22,7 @@ import Ledger (
   , MintingPolicy
   , CurrencySymbol
   , scriptContextTxInfo
+  , txInfoData
   , txInfoInputs
   , txInInfoOutRef
   , txInfoMint
@@ -28,7 +31,6 @@ import Ledger (
   , mkMintingPolicyScript
   , scriptCurrencySymbol
   )
-import Plutus.V1.Ledger.Value (AssetClass(AssetClass))
 import Ledger.Typed.Scripts (
     TypedValidator
   , ValidatorTypes
@@ -41,13 +43,11 @@ import Ledger.Typed.Scripts (
   , validatorHash
   )
 import Ledger.Value qualified as Value
+import Plutus.V1.Ledger.Value (AssetClass(AssetClass))
 import PlutusTx qualified
 import Schema (ToSchema)
 
-
 import Mlabs.NFT.Types
-
-
 
 -- | NFT Datum is checked communicates the ownership of the NFT.
 data DatumNft = DatumNft
@@ -64,10 +64,13 @@ data DatumNft = DatumNft
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON, ToSchema)
-  deriving (Eq)
-
 PlutusTx.unstableMakeIsData ''DatumNft
 PlutusTx.makeLift ''DatumNft
+
+instance Eq DatumNft  where
+  {-# INLINEABLE (==) #-}
+  (DatumNft id1 share1 author1 owner1 price1) == (DatumNft id2 share2 author2 owner2 price2) = 
+    id1 == id2 && share1 == share2 && author1 == author2 && owner1 == owner2 && price1 == price2
 
 -- | NFT Redeemer
 data UserAct
@@ -85,9 +88,13 @@ data UserAct
       }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
-  deriving (Eq)
 PlutusTx.makeLift ''UserAct
 PlutusTx.unstableMakeIsData ''UserAct
+
+instance Eq UserAct where
+  {-# INLINEABLE (==) #-}
+  (BuyAct bid1 newPrice1) == (BuyAct bid2 newPrice2) = bid1 == bid2 && newPrice1 == newPrice2
+  (SetPriceAct newPrice1) == (SetPriceAct newPrice2) = newPrice1 == newPrice2
 
 asRedeemer :: UserAct -> Redeemer
 asRedeemer = Redeemer . PlutusTx.toBuiltinData
@@ -146,6 +153,30 @@ mKTxPolicy dNft act ctx =
       SetPriceAct {..} ->
         traceIfFalse "Price cannot be negative." True -- todo
           && traceIfFalse "User does not own NFT." True -- todo
+  where
+  ------------------------------------------------------------------------------
+  -- Utility functions.
+    getCtxDatum :: PlutusTx.FromData a => ScriptContext -> [a]
+    getCtxDatum = 
+         id
+         . fmap (\(Just x) -> x)
+         . filter (maybe False (const True))
+         . fmap PlutusTx.fromBuiltinData 
+         . fmap (\(Datum d) -> d)
+         . fmap Hask.snd 
+         . txInfoData 
+         . scriptContextTxInfo
+  
+  ------------------------------------------------------------------------------
+  -- Check if the datum is correct.
+    correctDatum = error ()
+--      let
+--       datums :: [DatumNft] = getCtxDatum ctx  
+--      in
+--        case fmap dNft'id  datums of 
+--          [x] ->  x == dId 
+--          _  -> False
+  ------------------------------------------------------------------------------
 
 data NftTrade
 instance ValidatorTypes NftTrade where
@@ -179,3 +210,4 @@ nftAsset nid = AssetClass (cs, tn) where
     cs = scriptCurrencySymbol $
           mintPolicy txScrAddress (nftId'outRef nid) nid
     tn = nftId'token nid
+
