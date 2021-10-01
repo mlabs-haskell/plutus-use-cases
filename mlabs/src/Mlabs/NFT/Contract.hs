@@ -1,6 +1,5 @@
 module Mlabs.NFT.Contract where
 
-import PlutusTx.Builtins.Internal (sha2_256)
 import PlutusTx.Prelude hiding ((<>), mconcat)
 import Prelude ((<>), mconcat)
 import Prelude qualified as Hask
@@ -19,23 +18,25 @@ import PlutusTx qualified
 import Plutus.Contract (Contract, Endpoint, endpoint, type (.\/))
 import Plutus.Contract qualified as Contract
 import Ledger as Ledger (
-    TxOutRef
-  , ChainIndexTxOut
-  , Address
-  , Datum(..)
-  , Redeemer(..)
-  , ciTxOutDatum
-  , txId
-  , getDatum
-  , ciTxOutValue
-  , pubKeyAddress
-  , pubKeyHash
-  , scriptCurrencySymbol
+    TxOutRef,
+    ChainIndexTxOut,
+    Address,
+    AssetClass(..),
+    Datum(..),
+    Redeemer(..),
+    AssetClass,
+    ciTxOutDatum,
+    txId,
+    getDatum,
+    ciTxOutValue,
+    pubKeyAddress,
+    pubKeyHash,
+    scriptCurrencySymbol )
+import Ledger.Typed.Scripts (
+    validatorScript
   )
-import Ledger.Typed.Scripts ( validatorScript )
 import Ledger.Constraints qualified as Constraints
-import Ledger.Value as Value (TokenName(..), singleton)
-
+import Ledger.Value as Value (TokenName(..), singleton, valueOf, unAssetClass)
 import Plutus.V1.Ledger.Ada qualified as Ada
 import Playground.Contract (mkSchemaDefinitions)
 
@@ -283,14 +284,18 @@ findNft addr nftId = do
   utxos <- Contract.utxosTxOutTxAt addr
   case findData utxos of
     [v] -> pure v
-    [] -> Contract.throwError $ "DatumNft not found for " <> pack (Hask.show nftId)
-    _ -> Contract.throwError $ "More than one DatumNft found for " <> pack (Hask.show nftId)
+    []  -> Contract.throwError $ "DatumNft not found for " <> pack (Hask.show nftId)
+    _   -> Contract.throwError $ "Should not happen! More than one DatumNft found for " 
+                                 <> pack (Hask.show nftId)
   where
     findData =
-      L.filter (hasNftId nftId) -- filter only datums with desired NftId
+      L.filter hasCorrectNft -- filter only datums with desired NftId
         . mapMaybe readTxData -- map to Maybe (TxOutRef, ChainIndexTxOut, DatumNft)
         . Map.toList
     readTxData (oref, (ciTxOut, _)) = (oref,ciTxOut,) <$> readDatum' ciTxOut
-    hasNftId nid (_, _, datum) = datum.dNft'id Hask.== nid
-
-
+    hasCorrectNft (_, ciTxOut, datum) = 
+      let (cs, tn) = unAssetClass $ nftAsset nftId
+      in and [ tn Hask.== nftId'token nftId -- sanity check
+             , datum.dNft'id Hask.== nftId  -- check that Datum has correct NftId
+             , valueOf (ciTxOut ^. ciTxOutValue) cs tn Hask.== 1 -- check that UTXO has single NFT in Value
+             ] 

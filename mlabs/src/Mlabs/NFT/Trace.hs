@@ -91,4 +91,3 @@ test = runEmulatorTraceIO eTrace1
 
 testSetPrice :: Hask.IO ()
 testSetPrice = runEmulatorTraceIO setPriceTrace
-
