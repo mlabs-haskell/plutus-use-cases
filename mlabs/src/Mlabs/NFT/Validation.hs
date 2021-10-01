@@ -363,7 +363,7 @@ buy req@(BuyRequestUser nftId bid newPrice) = do
             then Contract.logError @Hask.String "Bid Price is too low."
             else do
               user <- getUId
-              utxos <- getUserUtxos
+              userUtxos <- getUserUtxos
               (oref, ciTxOut, datum) <- findNft txScrAddress nftId
               oref' <- fstUtxo =<< getUserAddr
               utxosAddr <- getScriptUtxos
@@ -378,6 +378,10 @@ buy req@(BuyRequestUser nftId bid newPrice) = do
                       , dNft'price = newPrice
                       }
 
+                  action = BuyAct
+                     { act'price =  bid
+                     , act'newPrice = newPrice
+                     }
                   -- Serialised Datum
                   newDatum = Scripts.Datum . PlutusTx.toBuiltinData $ newDatum'
 
@@ -391,23 +395,27 @@ buy req@(BuyRequestUser nftId bid newPrice) = do
                   nftPolicy' = mintPolicy scrAddress oref' nftId
                   val' = Value.singleton (scriptCurrencySymbol nftPolicy') nftId.nftId'token 1
 
+                  newValue = ciTxOut ^. Ledger.ciTxOutValue
+
                   (lookups, tx) =
                     ( mconcat
-                        [ Constraints.unspentOutputs utxos
-                        , Constraints.unspentOutputs utxosAddr
+                        [ Constraints.unspentOutputs userUtxos
+                        --, Constraints.unspentOutputs utxosAddr
                         , Constraints.typedValidatorLookups txPolicy
                         , Constraints.mintingPolicy nftPolicy'
+                        , Constraints.otherScript (validatorScript txPolicy)
+                        , Constraints.unspentOutputs $ Map.singleton oref ciTxOut
 --                        , Constraints.otherScript (validatorScript vScript)
                         ]
                     , mconcat
-                        [ Constraints.mustMintValue val'
-                        , Constraints.mustPayToTheScript newDatum' val'
+                        [ --Constraints.mustMintValue val'
+                          Constraints.mustPayToTheScript newDatum' newValue
+                          --Constraints.mustPayToTheScript newDatum' val'
                         , Constraints.mustIncludeDatum newDatum
-
---                        , Constraints.mustPayToPubKey (getUserId oldDatum.dNft'owner) ownerShare
---                        , Constraints.mustPayToPubKey (getUserId oldDatum.dNft'author) authorShare
-                        , Constraints.mustSpendScriptOutput oref (Redeemer . PlutusTx.toBuiltinData $ ())
-                        , Constraints.mustSpendPubKeyOutput oref'
+                        , Constraints.mustPayToPubKey (getUserId oldDatum.dNft'owner) ownerShare
+                        , Constraints.mustPayToPubKey (getUserId oldDatum.dNft'author) authorShare
+                        , Constraints.mustSpendScriptOutput oref (Redeemer . PlutusTx.toBuiltinData $ action)
+                        --, Constraints.mustSpendPubKeyOutput oref'
                         ]
                     )
               void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
@@ -570,7 +578,6 @@ eTrace1 = do
   Extras.logInfo @Hask.String $ Hask.show oState
   where
     --  callEndpoint @"mint" h1 artwork
-
     artwork =
       MintParams
         { mp'content = Content "A painting."
@@ -580,7 +587,7 @@ eTrace1 = do
         }
     artwork2 = artwork {mp'content = Content "Another Painting"}
 
-    buyParams nftId = BuyRequestUser nftId 100 (Just 200)
+    buyParams nftId = BuyRequestUser nftId 6 (Just 200)
 
 setPriceTrace :: EmulatorTrace ()
 setPriceTrace = do
