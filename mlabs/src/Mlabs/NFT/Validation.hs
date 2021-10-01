@@ -1,8 +1,7 @@
 {-# LANGUAGE UndecidableInstances #-}
-
 module Mlabs.NFT.Validation where
 
-import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right)
+import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right, folded )
 import Control.Monad (forever, void)
 import Control.Monad.Freer.Extras.Log qualified as Extras
 
@@ -47,8 +46,15 @@ import Plutus.V1.Ledger.Value (CurrencySymbol, TokenName (..))
 
 import Mlabs.Plutus.Contract (readDatum', selectForever)
 
+import PlutusPrelude (
+  (^.),
+  )
+
 import PlutusTx qualified
 import PlutusTx.Prelude (
+  error,
+  id,
+  const,
   Applicative (pure),
   Bool (..),
   BuiltinByteString,
@@ -89,17 +95,29 @@ newtype Content = Content {getContent :: BuiltinByteString}
 PlutusTx.unstableMakeIsData ''Content
 PlutusTx.makeLift ''Content
 
+instance Eq Content where
+  {-# INLINEABLE (==) #-}
+  (Content c1) == (Content c2) = c1 == c2
+
 newtype Title = Title {getTitle :: BuiltinByteString}
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 PlutusTx.unstableMakeIsData ''Title
 PlutusTx.makeLift ''Title
 
+instance Eq Title where
+  {-# INLINEABLE (==) #-}
+  (Title t1) == (Title t2) = t1 == t2
+
 newtype UserId = UserId {getUserId :: PubKeyHash}
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 PlutusTx.unstableMakeIsData ''UserId
 PlutusTx.makeLift ''UserId
+
+instance Eq UserId where
+  {-# INLINEABLE (==) #-}
+  (UserId u1) == (UserId u2) = u1 == u2
 
 {- | Unique identifier of NFT.
  The NftId contains a human readable title, the hashed information of the
@@ -115,9 +133,13 @@ data NftId = NftId
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
-
 PlutusTx.unstableMakeIsData ''NftId
 PlutusTx.makeLift ''NftId
+
+instance Eq NftId where
+  {-# INLINEABLE (==) #-}
+  (NftId title1 token1 outRef1) == (NftId title2 token2 outRef2) = 
+    title1 == title2 && token1 == token2 && outRef1 == outRef2
 
 {- | Type representing the data that gets hashed when the token is minted. The
  tile and author are included for proof of authenticity in the case the same
@@ -133,10 +155,13 @@ data NftContent = NftContent
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON, ToSchema)
-  deriving (Eq)
-
 PlutusTx.unstableMakeIsData ''NftContent
 PlutusTx.makeLift ''NftContent
+
+instance Eq NftContent where
+  {-# INLINEABLE (==) #-}
+  (NftContent title1 data1 author1) == (NftContent title2 data2 author2) = 
+    title1 == title2 && data1 == data2 && author1 == author2
 
 -- | NFT Datum is checked communicates the ownership of the NFT.
 data DatumNft = DatumNft
@@ -153,10 +178,13 @@ data DatumNft = DatumNft
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON, ToSchema)
-  deriving (Eq)
-
 PlutusTx.unstableMakeIsData ''DatumNft
 PlutusTx.makeLift ''DatumNft
+
+instance Eq DatumNft  where
+  {-# INLINEABLE (==) #-}
+  (DatumNft id1 share1 author1 owner1 price1) == (DatumNft id2 share2 author2 owner2 price2) = 
+    id1 == id2 && share1 == share2 && author1 == author2 && owner1 == owner2 && price1 == price2
 
 data UserAct
   = -- | Buy NFT and set new price
@@ -173,9 +201,13 @@ data UserAct
       }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
-  deriving (Eq)
 PlutusTx.makeLift ''UserAct
 PlutusTx.unstableMakeIsData ''UserAct
+
+instance Eq UserAct where
+  {-# INLINEABLE (==) #-}
+  (BuyAct bid1 newPrice1) == (BuyAct bid2 newPrice2) = bid1 == bid2 && newPrice1 == newPrice2
+  (SetPriceAct newPrice1) == (SetPriceAct newPrice2) = newPrice1 == newPrice2
 
 asRedeemer :: UserAct -> Redeemer
 asRedeemer = Redeemer . PlutusTx.toBuiltinData
@@ -263,9 +295,8 @@ mintPolicy stateAddr oref nid =
 
 -- | A validator script for the user actions.
 mKTxPolicy :: DatumNft -> UserAct -> ScriptContext -> Bool
-mKTxPolicy dNft act ctx =
-  -- ? maybe, some check that datum corresponds to NftId could be added
-  traceIfFalse "Datum does not correspond to NFTId." True
+mKTxPolicy (DatumNft dId share author owner price) act ctx =
+  traceIfFalse "Datum does not correspond to NFTId, or too many datums present."  correctDatum 
     && traceIfFalse "Incorrect Datum attached to Tx." True
     && traceIfFalse "NFT doesn't exist at the address." True
     && case act of
@@ -275,6 +306,30 @@ mKTxPolicy dNft act ctx =
       SetPriceAct {..} ->
         traceIfFalse "Price cannot be negative." True -- todo
           && traceIfFalse "User does not own NFT." True -- todo
+  where
+  ------------------------------------------------------------------------------
+  -- Utility functions.
+    getCtxDatum :: PlutusTx.FromData a => ScriptContext -> [a]
+    getCtxDatum = 
+         id
+         . fmap (\(Just x) -> x)
+         . filter (maybe False (const True))
+         . fmap PlutusTx.fromBuiltinData 
+         . fmap (\(Scripts.Datum d) -> d)
+         . fmap Hask.snd 
+         . Contexts.txInfoData 
+         . scriptContextTxInfo
+  
+  ------------------------------------------------------------------------------
+  -- Check if the datum is correct.
+    correctDatum = 
+      let
+       datums :: [DatumNft] = getCtxDatum ctx  
+      in
+        case fmap dNft'id  datums of 
+          [x] ->  x == dId 
+          _  -> False
+  ------------------------------------------------------------------------------
 
 data NftTrade
 instance TScripts.ValidatorTypes NftTrade where
