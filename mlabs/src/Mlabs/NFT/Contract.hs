@@ -1,5 +1,6 @@
 module Mlabs.NFT.Contract where
 
+import PlutusTx.Builtins.Internal (sha2_256)
 import PlutusTx.Prelude hiding ((<>), mconcat)
 import Prelude ((<>), mconcat)
 import Prelude qualified as Hask
@@ -31,18 +32,16 @@ import Ledger as Ledger (
   , pubKeyHash
   , scriptCurrencySymbol
   )
-import Ledger.Typed.Scripts (
-    validatorScript
-  )
+import Ledger.Typed.Scripts ( validatorScript )
 import Ledger.Constraints qualified as Constraints
 import Ledger.Value as Value (TokenName(..), singleton)
+
 import Plutus.V1.Ledger.Ada qualified as Ada
 import Playground.Contract (mkSchemaDefinitions)
 
 import Mlabs.Plutus.Contract (readDatum', selectForever)
 import Mlabs.NFT.Types
 import Mlabs.NFT.Validation
-
 
 type AuthorContract a = Contract (Last NftId) NFTAppSchema Text a
 
@@ -245,7 +244,6 @@ getScriptUtxos = Contract.utxosAt txScrAddress
 getUId :: Contract w s Text UserId
 getUId = UserId . pubKeyHash <$> Contract.ownPubKey
 
-
 -- | Get the user's ChainIndexTxOut
 getAddrUtxos :: Address -> Contract w s Text [Ledger.ChainIndexTxOut]
 getAddrUtxos adr = fmap fst . Map.elems <$> Contract.utxosTxOutTxAt adr
@@ -276,11 +274,9 @@ getNftDatum nftId = do
     _ : _ -> Contract.throwError "More than one suitable datums can be found."
 
 
-{- | todo: some hashing function here - at the moment getting the whole
- bytestring
--}
+-- | A hashing function to minimise the data to be attached to the NTFid.
 hashData :: Content -> BuiltinByteString
-hashData (Content b) = b
+hashData (Content b) = sha2_256 b
 
 findNft :: Address -> NftId -> Contract w s Text (TxOutRef, ChainIndexTxOut, DatumNft)
 findNft addr nftId = do
