@@ -41,6 +41,7 @@ import Ledger (ChainIndexTxOut, Redeemer (..))
 import Plutus.V1.Ledger.Address (Address)
 import Plutus.V1.Ledger.Contexts (ScriptContext (..))
 import Plutus.V1.Ledger.Contexts qualified as Contexts
+import PlutusTx.Builtins.Internal qualified as Internal
 
 import Plutus.V1.Ledger.Value (CurrencySymbol, TokenName (..))
 
@@ -81,8 +82,6 @@ import Wallet.Emulator qualified as Emulator
 import Wallet.Emulator.Wallet qualified as Wallet
 
 import Prelude qualified as Hask
-
--- import PlutusTx.Builtins.Internal (BuiltinByteString(..))
 
 newtype Content = Content {getContent :: BuiltinByteString}
   deriving stock (Hask.Show, Generic, Hask.Eq)
@@ -489,11 +488,9 @@ nftInit mintP = do
       , dNft'price = mintP.mp'price
       }
 
-{- | todo: some hashing function here - at the moment getting the whole
- bytestring
--}
+-- | A hashing function to minimise the data to be attached to the NTFid.
 hashData :: Content -> BuiltinByteString
-hashData (Content b) = b
+hashData (Content b) = Internal.sha2_256 b
 
 setPrice :: SetPriceParams -> Contract w NFTAppSchema Text ()
 setPrice spParams = do
