@@ -4,12 +4,15 @@ module Mlabs.NFT.Validation where
 import PlutusTx.Prelude 
 import Prelude qualified as Hask
 
+
+
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 
 import Ledger (
     Address
-  , Datum(..)
+  , AssetClass  
+  , Datum(..)  
   , Redeemer(..)
   , TxOutRef
   , ScriptContext(..)
@@ -18,6 +21,7 @@ import Ledger (
   , MintingPolicy
   , CurrencySymbol
   , scriptContextTxInfo
+  , txInfoData
   , txInfoInputs
   , txInInfoOutRef
   , txInfoMint
@@ -25,7 +29,6 @@ import Ledger (
   , ownCurrencySymbol
   , mkMintingPolicyScript
   , scriptCurrencySymbol
-  , txInfoData
   )
 import Ledger.Typed.Scripts (
     TypedValidator
@@ -39,6 +42,7 @@ import Ledger.Typed.Scripts (
   , validatorHash
   )
 import Ledger.Value qualified as Value
+import Plutus.V1.Ledger.Value (AssetClass(AssetClass))
 import PlutusTx qualified
 import Schema (ToSchema)
 
@@ -131,6 +135,7 @@ mintPolicy stateAddr oref nid =
       `PlutusTx.applyCode` PlutusTx.liftCode oref
       `PlutusTx.applyCode` PlutusTx.liftCode nid
 
+
 {-# INLINEABLE mKTxPolicy #-}
 
 -- | A validator script for the user actions.
@@ -198,3 +203,10 @@ txScrAddress = validatorAddress txPolicy
 -- | Calculate the currency symbol of the NFT.
 curSymbol :: Address -> TxOutRef -> NftId -> CurrencySymbol
 curSymbol stateAddr oref nid = scriptCurrencySymbol $ mintPolicy stateAddr oref nid
+
+nftAsset :: NftId -> AssetClass
+nftAsset nid = AssetClass (cs, tn) where
+    cs = scriptCurrencySymbol $
+          mintPolicy txScrAddress (nftId'outRef nid) nid
+    tn = nftId'token nid
+
