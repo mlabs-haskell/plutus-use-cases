@@ -28,6 +28,7 @@ import Ledger (
   , mkMintingPolicyScript
   , scriptCurrencySymbol
   )
+import Plutus.V1.Ledger.Value (AssetClass(AssetClass))
 import Ledger.Typed.Scripts (
     TypedValidator
   , ValidatorTypes
@@ -128,6 +129,7 @@ mintPolicy stateAddr oref nid =
       `PlutusTx.applyCode` PlutusTx.liftCode oref
       `PlutusTx.applyCode` PlutusTx.liftCode nid
 
+
 {-# INLINEABLE mKTxPolicy #-}
 
 -- | A validator script for the user actions.
@@ -171,3 +173,9 @@ txScrAddress = validatorAddress txPolicy
 -- | Calculate the currency symbol of the NFT.
 curSymbol :: Address -> TxOutRef -> NftId -> CurrencySymbol
 curSymbol stateAddr oref nid = scriptCurrencySymbol $ mintPolicy stateAddr oref nid
+
+nftAsset :: NftId -> AssetClass
+nftAsset nid = AssetClass (cs, tn) where
+    cs = scriptCurrencySymbol $
+          mintPolicy txScrAddress (nftId'outRef nid) nid
+    tn = nftId'token nid
