@@ -1,5 +1,4 @@
 {-# LANGUAGE UndecidableInstances #-}
-
 module Mlabs.NFT.Validation where
 
 import PlutusTx.Prelude 
@@ -136,11 +135,9 @@ mintPolicy stateAddr oref nid =
 
 -- | A validator script for the user actions.
 mKTxPolicy :: DatumNft -> UserAct -> ScriptContext -> Bool
-mKTxPolicy dNft act ctx =
+mKTxPolicy datum act ctx =
   -- ? maybe, some check that datum corresponds to NftId could be added
-  traceIfFalse "Datum does not correspond to NFTId." True
-    && traceIfFalse "Incorrect Datum attached to Tx." True
-    && traceIfFalse "NFT doesn't exist at the address." True
+  traceIfFalse "Datum does not correspond to NFTId, no datum is present, or more than one suitable datums are present." correctDatum 
     && case act of
       BuyAct {..} ->
         traceIfFalse "Not enough funds." True -- todo
@@ -163,15 +160,17 @@ mKTxPolicy dNft act ctx =
          . scriptContextTxInfo
   
   ------------------------------------------------------------------------------
-  -- Check if the datum is correct.
-    correctDatum = error ()
---      let
---       datums :: [DatumNft] = getCtxDatum ctx  
---      in
---        case fmap dNft'id  datums of 
---          [x] ->  x == dId 
---          _  -> False
+  -- Check if the datum in the datum is also the same in the transaction. 
+    correctDatum = 
+      let
+       datums :: [DatumNft] = getCtxDatum ctx  
+       suitableDatums = filter ( == datum.dNft'id ) . fmap (\x -> x.dNft'id) $ datums
+      in
+        case suitableDatums of 
+          [_] -> True 
+          _  -> False
   ------------------------------------------------------------------------------
+  -- Check if the datum in the datum is also the same in the transaction. 
 
 data NftTrade
 instance ValidatorTypes NftTrade where

@@ -1,6 +1,5 @@
 module Mlabs.NFT.Contract where
 
-import PlutusTx.Builtins.Internal (sha2_256)
 import PlutusTx.Prelude hiding ((<>), mconcat)
 import Prelude ((<>), mconcat)
 import Prelude qualified as Hask
@@ -18,6 +17,7 @@ import Text.Printf (printf)
 import PlutusTx qualified
 import Plutus.Contract (Contract, Endpoint, endpoint, type (.\/))
 import Plutus.Contract qualified as Contract
+
 import Ledger as Ledger (
     TxOutRef
   , ChainIndexTxOut
@@ -32,6 +32,7 @@ import Ledger as Ledger (
   , pubKeyHash
   , scriptCurrencySymbol
   )
+
 import Ledger.Typed.Scripts ( validatorScript )
 import Ledger.Constraints qualified as Constraints
 import Ledger.Value as Value (TokenName(..), singleton)
@@ -106,7 +107,6 @@ nftIdInit mintP = do
       , nftId'token = TokenName hData
       , nftId'outRef = oref
       }
-
 
 -- BUY --
 buy :: BuyRequestUser -> Contract w NFTAppSchema Text ()
@@ -273,11 +273,11 @@ getNftDatum nftId = do
     [] -> Contract.throwError "No Datum can be found."
     _ : _ -> Contract.throwError "More than one suitable datums can be found."
 
-
 -- | A hashing function to minimise the data to be attached to the NTFid.
 hashData :: Content -> BuiltinByteString
 hashData (Content b) = sha2_256 b
 
+-- | Find NFTs at a specific Address.
 findNft :: Address -> NftId -> Contract w s Text (TxOutRef, ChainIndexTxOut, DatumNft)
 findNft addr nftId = do
   utxos <- Contract.utxosTxOutTxAt addr
@@ -292,5 +292,4 @@ findNft addr nftId = do
         . Map.toList
     readTxData (oref, (ciTxOut, _)) = (oref,ciTxOut,) <$> readDatum' ciTxOut
     hasNftId nid (_, _, datum) = datum.dNft'id Hask.== nid
-
 
