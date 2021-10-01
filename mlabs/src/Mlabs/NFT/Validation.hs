@@ -1,48 +1,47 @@
 {-# LANGUAGE UndecidableInstances #-}
+
 module Mlabs.NFT.Validation where
 
-import PlutusTx.Prelude 
+import PlutusTx.Prelude
 import Prelude qualified as Hask
-
-
 
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 
 import Ledger (
-    Address
-  , AssetClass  
-  , Datum(..)  
-  , Redeemer(..)
-  , TxOutRef
-  , ScriptContext(..)
-  , TxOut(..)
-  , ValidatorHash
-  , MintingPolicy
-  , CurrencySymbol
-  , scriptContextTxInfo
-  , txInfoData
-  , txInfoInputs
-  , txInInfoOutRef
-  , txInfoMint
-  , txInfoOutputs
-  , ownCurrencySymbol
-  , mkMintingPolicyScript
-  , scriptCurrencySymbol
-  )
+  Address,
+  AssetClass,
+  CurrencySymbol,
+  Datum (..),
+  MintingPolicy,
+  Redeemer (..),
+  ScriptContext (..),
+  TxOut (..),
+  TxOutRef,
+  ValidatorHash,
+  mkMintingPolicyScript,
+  ownCurrencySymbol,
+  scriptContextTxInfo,
+  scriptCurrencySymbol,
+  txInInfoOutRef,
+  txInfoData,
+  txInfoInputs,
+  txInfoMint,
+  txInfoOutputs,
+ )
 import Ledger.Typed.Scripts (
-    TypedValidator
-  , ValidatorTypes
-  , DatumType
-  , RedeemerType
-  , mkTypedValidator
-  , wrapMintingPolicy
-  , wrapValidator
-  , validatorAddress
-  , validatorHash
-  )
+  DatumType,
+  RedeemerType,
+  TypedValidator,
+  ValidatorTypes,
+  mkTypedValidator,
+  validatorAddress,
+  validatorHash,
+  wrapMintingPolicy,
+  wrapValidator,
+ )
 import Ledger.Value qualified as Value
-import Plutus.V1.Ledger.Value (AssetClass(AssetClass))
+import Plutus.V1.Ledger.Value (AssetClass (AssetClass))
 import PlutusTx qualified
 import Schema (ToSchema)
 
@@ -63,12 +62,13 @@ data DatumNft = DatumNft
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON, ToSchema)
+
 PlutusTx.unstableMakeIsData ''DatumNft
 PlutusTx.makeLift ''DatumNft
 
-instance Eq DatumNft  where
+instance Eq DatumNft where
   {-# INLINEABLE (==) #-}
-  (DatumNft id1 share1 author1 owner1 price1) == (DatumNft id2 share2 author2 owner2 price2) = 
+  (DatumNft id1 share1 author1 owner1 price1) == (DatumNft id2 share2 author2 owner2 price2) =
     id1 == id2 && share1 == share2 && author1 == author2 && owner1 == owner2 && price1 == price2
 
 -- | NFT Redeemer
@@ -87,6 +87,7 @@ data UserAct
       }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
+
 PlutusTx.makeLift ''UserAct
 PlutusTx.unstableMakeIsData ''UserAct
 
@@ -129,12 +130,11 @@ mkMintPolicy stateAddr oref (NftId title token author) _ ctx =
 
 mintPolicy :: Address -> TxOutRef -> NftId -> MintingPolicy
 mintPolicy stateAddr oref nid =
- mkMintingPolicyScript $
+  mkMintingPolicyScript $
     $$(PlutusTx.compile [||\x y z -> wrapMintingPolicy (mkMintPolicy x y z)||])
       `PlutusTx.applyCode` PlutusTx.liftCode stateAddr
       `PlutusTx.applyCode` PlutusTx.liftCode oref
       `PlutusTx.applyCode` PlutusTx.liftCode nid
-
 
 {-# INLINEABLE mKTxPolicy #-}
 
@@ -142,7 +142,7 @@ mintPolicy stateAddr oref nid =
 mKTxPolicy :: DatumNft -> UserAct -> ScriptContext -> Bool
 mKTxPolicy datum act ctx =
   -- ? maybe, some check that datum corresponds to NftId could be added
-  traceIfFalse "Datum does not correspond to NFTId, no datum is present, or more than one suitable datums are present." correctDatum 
+  traceIfFalse "Datum does not correspond to NFTId, no datum is present, or more than one suitable datums are present." correctDatum
     && case act of
       BuyAct {..} ->
         traceIfFalse "Not enough funds." True -- todo
@@ -151,31 +151,30 @@ mKTxPolicy datum act ctx =
         traceIfFalse "Price cannot be negative." True -- todo
           && traceIfFalse "User does not own NFT." True -- todo
   where
-  ------------------------------------------------------------------------------
-  -- Utility functions.
+    ------------------------------------------------------------------------------
+    -- Utility functions.
     getCtxDatum :: PlutusTx.FromData a => ScriptContext -> [a]
-    getCtxDatum = 
-         id
-         . fmap (\(Just x) -> x)
-         . filter (maybe False (const True))
-         . fmap PlutusTx.fromBuiltinData 
-         . fmap (\(Datum d) -> d)
-         . fmap Hask.snd 
-         . txInfoData 
-         . scriptContextTxInfo
-  
-  ------------------------------------------------------------------------------
-  -- Check if the datum in the datum is also the same in the transaction. 
-    correctDatum = 
-      let
-       datums :: [DatumNft] = getCtxDatum ctx  
-       suitableDatums = filter ( == datum.dNft'id ) . fmap (\x -> x.dNft'id) $ datums
-      in
-        case suitableDatums of 
-          [_] -> True 
-          _  -> False
-  ------------------------------------------------------------------------------
-  -- Check if the datum in the datum is also the same in the transaction. 
+    getCtxDatum =
+      id
+        . fmap (\(Just x) -> x)
+        . filter (maybe False (const True))
+        . fmap PlutusTx.fromBuiltinData
+        . fmap (\(Datum d) -> d)
+        . fmap Hask.snd
+        . txInfoData
+        . scriptContextTxInfo
+
+    ------------------------------------------------------------------------------
+    -- Check if the datum in the datum is also the same in the transaction.
+    correctDatum =
+      let datums :: [DatumNft] = getCtxDatum ctx
+          suitableDatums = filter (== datum.dNft'id) . fmap (.dNft'id) $ datums
+       in case suitableDatums of
+            [_] -> True
+            _ -> False
+
+------------------------------------------------------------------------------
+-- Check if the datum in the datum is also the same in the transaction.
 
 data NftTrade
 instance ValidatorTypes NftTrade where
@@ -200,13 +199,15 @@ txScrAddress :: Ledger.Address
 txScrAddress = validatorAddress txPolicy
 
 {-# INLINEABLE curSymbol #-}
+
 -- | Calculate the currency symbol of the NFT.
 curSymbol :: Address -> TxOutRef -> NftId -> CurrencySymbol
 curSymbol stateAddr oref nid = scriptCurrencySymbol $ mintPolicy stateAddr oref nid
 
 nftAsset :: NftId -> AssetClass
-nftAsset nid = AssetClass (cs, tn) where
-    cs = scriptCurrencySymbol $
-          mintPolicy txScrAddress (nftId'outRef nid) nid
+nftAsset nid = AssetClass (cs, tn)
+  where
+    cs =
+      scriptCurrencySymbol $
+        mintPolicy txScrAddress (nftId'outRef nid) nid
     tn = nftId'token nid
-

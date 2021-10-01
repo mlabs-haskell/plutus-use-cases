@@ -1,6 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
 
-
 module Mlabs.NFT.Types where
 
 import PlutusTx.Prelude
@@ -12,7 +11,6 @@ import GHC.Generics (Generic)
 import Ledger (PubKeyHash, TokenName, TxOutRef)
 import PlutusTx qualified
 import Schema (ToSchema)
-
 
 -- ON-CHAIN TYPES --
 newtype Content = Content {getContent :: BuiltinByteString}
@@ -59,12 +57,13 @@ data NftId = NftId
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
+
 PlutusTx.unstableMakeIsData ''NftId
 PlutusTx.makeLift ''NftId
 
 instance Eq NftId where
   {-# INLINEABLE (==) #-}
-  (NftId title1 token1 outRef1) == (NftId title2 token2 outRef2) = 
+  (NftId title1 token1 outRef1) == (NftId title2 token2 outRef2) =
     title1 == title2 && token1 == token2 && outRef1 == outRef2
 
 {- | Type representing the data that gets hashed when the token is minted. The
@@ -81,15 +80,17 @@ data NftContent = NftContent
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON, ToSchema)
+
 PlutusTx.unstableMakeIsData ''NftContent
 PlutusTx.makeLift ''NftContent
 
 instance Eq NftContent where
   {-# INLINEABLE (==) #-}
-  (NftContent title1 data1 author1) == (NftContent title2 data2 author2) = 
+  (NftContent title1 data1 author1) == (NftContent title2 data2 author2) =
     title1 == title2 && data1 == data2 && author1 == author2
 
 -- ENDPOINTS PARAMETERS --
+
 -- | Parameters that need to be submitted when minting a new NFT.
 data MintParams = MintParams
   { -- | Content to be minted.
@@ -103,12 +104,13 @@ data MintParams = MintParams
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
+
 PlutusTx.makeLift ''MintParams
 PlutusTx.unstableMakeIsData ''MintParams
 
 instance Eq MintParams where
   {-# INLINEABLE (==) #-}
-  (MintParams content1 title1 share1 price1) ==   (MintParams content2 title2 share2 price2) = 
+  (MintParams content1 title1 share1 price1) == (MintParams content2 title2 share2 price2) =
     content1 == content2 && title1 == title2 && share1 == share2 && price1 == price2
 
 data SetPriceParams = SetPriceParams
@@ -120,8 +122,8 @@ data SetPriceParams = SetPriceParams
 
 instance Eq SetPriceParams where
   {-# INLINEABLE (==) #-}
-  (SetPriceParams nftId1 price1) == (SetPriceParams nftId2 price2) = 
-    nftId1 == nftId2 && price1 == price2 
+  (SetPriceParams nftId1 price1) == (SetPriceParams nftId2 price2) =
+    nftId1 == nftId2 && price1 == price2
 
 data BuyRequestUser = BuyRequestUser
   { -- | nftId to Buy
@@ -138,5 +140,5 @@ PlutusTx.unstableMakeIsData ''BuyRequestUser
 
 instance Eq BuyRequestUser where
   {-# INLINEABLE (==) #-}
-  (BuyRequestUser nftId1 price1 newPrice1) == (BuyRequestUser nftId2 price2 newPrice2) = 
-    nftId1 == nftId2 && price1 == price2 && newPrice1 == newPrice2  
+  (BuyRequestUser nftId1 price1 newPrice1) == (BuyRequestUser nftId2 price2 newPrice2) =
+    nftId1 == nftId2 && price1 == price2 && newPrice1 == newPrice2

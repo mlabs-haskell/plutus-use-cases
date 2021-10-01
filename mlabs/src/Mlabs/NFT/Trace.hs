@@ -1,14 +1,14 @@
 module Mlabs.NFT.Trace where
 
 import PlutusTx.Prelude
-import Prelude (Either(..))
+import Prelude (Either (..))
 import Prelude qualified as Hask
 
+import Data.Monoid (Last (..))
 import Data.Text (Text)
-import Data.Monoid (Last(..))
 
-import Control.Monad.Freer.Extras.Log as Extra (logInfo)
 import Control.Monad (void)
+import Control.Monad.Freer.Extras.Log as Extra (logInfo)
 
 import Plutus.Trace.Emulator (EmulatorTrace, activateContractWallet, callEndpoint, runEmulatorTraceIO)
 import Plutus.Trace.Emulator qualified as Trace
@@ -17,8 +17,8 @@ import Wallet.Emulator.Wallet qualified as Wallet
 
 import Mlabs.Utils.Wallet (walletFromNumber)
 
-import Mlabs.NFT.Types
 import Mlabs.NFT.Contract
+import Mlabs.NFT.Types
 
 -- | Generic application Trace Handle.
 type AppTraceHandle = Trace.ContractHandle (Last NftId) NFTAppSchema Text
