@@ -152,7 +152,10 @@ library
     Mlabs.System.Console.PrettyLogger
     Mlabs.System.Console.Utils
     Mlabs.Utils.Wallet 
+    Mlabs.NFT.Types
+    Mlabs.NFT.Contract
     Mlabs.NFT.Validation
+    Mlabs.NFT.Trace
 
 executable mlabs-plutus-use-cases
   import:  common-imports
