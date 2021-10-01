@@ -20,7 +20,6 @@ import Ledger.Constraints qualified as Constraints
 import Ledger.Contexts (scriptCurrencySymbol)
 import Ledger.Crypto (PubKeyHash (..), pubKeyHash)
 
--- import Ledger.Crypto qualified as Crypto
 import Ledger.Scripts qualified as Scripts
 import Ledger.Tx qualified as Ledger
 import Ledger.Typed.Scripts as TScripts
@@ -30,7 +29,6 @@ import Mlabs.Utils.Wallet (walletFromNumber)
 
 import Playground.Contract (ToSchema, TxOutRef, mkSchemaDefinitions)
 
--- import Plutus.ChainIndex.Tx qualified as ChainIx
 import Plutus.Contract (Contract, Endpoint, endpoint, type (.\/))
 import Plutus.Contract qualified as Contract
 import Plutus.V1.Ledger.Ada qualified as Ada
@@ -44,7 +42,6 @@ import Plutus.V1.Ledger.Address (Address)
 import Plutus.V1.Ledger.Contexts (ScriptContext (..))
 import Plutus.V1.Ledger.Contexts qualified as Contexts
 
--- import Plutus.V1.Ledger.Crypto (PubKeyHash (..))
 import Plutus.V1.Ledger.Value (CurrencySymbol, TokenName (..))
 
 import Mlabs.Plutus.Contract (readDatum', selectForever)
@@ -378,10 +375,11 @@ buy req@(BuyRequestUser nftId bid newPrice) = do
                       , dNft'price = newPrice
                       }
 
-                  action = BuyAct
-                     { act'price =  bid
-                     , act'newPrice = newPrice
-                     }
+                  action =
+                    BuyAct
+                      { act'price = bid
+                      , act'newPrice = newPrice
+                      }
                   -- Serialised Datum
                   newDatum = Scripts.Datum . PlutusTx.toBuiltinData $ newDatum'
 
@@ -400,22 +398,17 @@ buy req@(BuyRequestUser nftId bid newPrice) = do
                   (lookups, tx) =
                     ( mconcat
                         [ Constraints.unspentOutputs userUtxos
-                        --, Constraints.unspentOutputs utxosAddr
                         , Constraints.typedValidatorLookups txPolicy
                         , Constraints.mintingPolicy nftPolicy'
                         , Constraints.otherScript (validatorScript txPolicy)
                         , Constraints.unspentOutputs $ Map.singleton oref ciTxOut
---                        , Constraints.otherScript (validatorScript vScript)
                         ]
                     , mconcat
-                        [ --Constraints.mustMintValue val'
-                          Constraints.mustPayToTheScript newDatum' newValue
-                          --Constraints.mustPayToTheScript newDatum' val'
+                        [ Constraints.mustPayToTheScript newDatum' newValue
                         , Constraints.mustIncludeDatum newDatum
                         , Constraints.mustPayToPubKey (getUserId oldDatum.dNft'owner) ownerShare
                         , Constraints.mustPayToPubKey (getUserId oldDatum.dNft'author) authorShare
                         , Constraints.mustSpendScriptOutput oref (Redeemer . PlutusTx.toBuiltinData $ action)
-                        --, Constraints.mustSpendPubKeyOutput oref'
                         ]
                     )
               void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
@@ -433,16 +426,16 @@ mint nftContent = do
       nftPolicy = mintPolicy scrAddress oref nftId
       val = Value.singleton (scriptCurrencySymbol nftPolicy) nftId.nftId'token 1
       (lookups, tx) =
-        ( mconcat 
-        [ Constraints.unspentOutputs utxos
-        , Constraints.mintingPolicy nftPolicy
-        , Constraints.typedValidatorLookups txPolicy
-        ]
-        , mconcat 
-        [ Constraints.mustMintValue val
-        , Constraints.mustSpendPubKeyOutput oref
-        , Constraints.mustPayToTheScript nft val
-        ]
+        ( mconcat
+            [ Constraints.unspentOutputs utxos
+            , Constraints.mintingPolicy nftPolicy
+            , Constraints.typedValidatorLookups txPolicy
+            ]
+        , mconcat
+            [ Constraints.mustMintValue val
+            , Constraints.mustSpendPubKeyOutput oref
+            , Constraints.mustPayToTheScript nft val
+            ]
         )
   void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
   Contract.tell $ Last . Just $ nftId
@@ -487,13 +480,14 @@ nftInit :: MintParams -> Contract w s Text DatumNft
 nftInit mintP = do
   user <- getUId
   nftId <- nftIdInit mintP
-  pure $ DatumNft
-    { dNft'id = nftId
-    , dNft'share = mintP.mp'share
-    , dNft'author = user
-    , dNft'owner = user
-    , dNft'price = mintP.mp'price
-    }
+  pure $
+    DatumNft
+      { dNft'id = nftId
+      , dNft'share = mintP.mp'share
+      , dNft'author = user
+      , dNft'owner = user
+      , dNft'price = mintP.mp'price
+      }
 
 {- | todo: some hashing function here - at the moment getting the whole
  bytestring
