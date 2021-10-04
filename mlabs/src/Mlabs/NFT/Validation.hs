@@ -168,7 +168,7 @@ mKTxPolicy datum act ctx =
     -- Check if the datum in the datum is also the same in the transaction.
     correctDatum =
       let datums :: [DatumNft] = getCtxDatum ctx
-          suitableDatums = filter (== datum.dNft'id) . fmap (.dNft'id) $ datums
+          suitableDatums = filter (== dNft'id datum) . fmap dNft'id $ datums
        in case suitableDatums of
             [_] -> True
             _ -> False
