@@ -23,8 +23,7 @@ serializeGovernance = do
           "GOV"
       validator = VS.validatorScript $ govInstance acGov
       policy = xGovMintingPolicy acGov
-      xGovCurrSymbol = scriptCurrencySymbol policy
-      fstDatum = GovernanceDatum alicePkh xGovCurrSymbol
+      fstDatum = GovernanceDatum alicePkh
 
   validatorToPlutus (outDir ++ "/GovScript.plutus") validator
   policyToPlutus (outDir ++ "/GovPolicy.plutus") policy

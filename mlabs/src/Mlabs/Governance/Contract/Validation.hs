@@ -1,10 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -fno-ignore-interface-pragmas #-}
-{-# OPTIONS_GHC -fno-omit-interface-pragmas #-}
-{-# OPTIONS_GHC -fno-specialise #-}
-{-# OPTIONS_GHC -fno-strictness #-}
-{-# OPTIONS_GHC -fobject-code #-}
 
 -- | Validation, on-chain code for governance application
 module Mlabs.Governance.Contract.Validation (
@@ -70,9 +65,8 @@ instance Eq GovernanceRedeemer where
 PlutusTx.unstableMakeIsData ''GovernanceRedeemer
 PlutusTx.makeLift ''GovernanceRedeemer
 
-data GovernanceDatum = GovernanceDatum
-  { gdPubKeyHash :: !PubKeyHash
-  , gdxGovCurrencySymbol :: !CurrencySymbol
+newtype GovernanceDatum = GovernanceDatum
+  { gdPubKeyHash :: PubKeyHash
   }
   deriving (Hask.Show)
 
@@ -85,8 +79,6 @@ instance Validators.ValidatorTypes Governance where
   type RedeemerType Governance = GovernanceRedeemer
 
 -- | governance validator
-{-# INLINEABLE govValidator #-}
-
 mkValidator :: AssetClassGov -> GovernanceDatum -> GovernanceRedeemer -> ScriptContext -> Bool
 mkValidator gov datum redeemer ctx =
   traceIfFalse "incorrect value from redeemer" checkCorrectValue
@@ -124,7 +116,7 @@ mkValidator gov datum redeemer ctx =
     pkh = gdPubKeyHash datum
 
     xGov :: CurrencySymbol
-    xGov = gdxGovCurrencySymbol datum
+    xGov = acGovCurrencySymbol gov
 
     --- checks
 
@@ -142,9 +134,7 @@ mkValidator gov datum redeemer ctx =
       GRWithdraw n -> n > 0 && valueIn - govSingleton gov n == valueOut
 
     checkCorrectDatumUpdate :: Bool
-    checkCorrectDatumUpdate =
-      pkh == gdPubKeyHash outputDatum
-        && xGov == gdxGovCurrencySymbol outputDatum
+    checkCorrectDatumUpdate = pkh == gdPubKeyHash outputDatum
 
 govInstance :: AssetClassGov -> Validators.TypedValidator Governance
 govInstance gov =
@@ -156,6 +146,7 @@ govInstance gov =
   where
     wrap = Validators.wrapValidator @GovernanceDatum @GovernanceRedeemer
 
+{-# INLINEABLE govValidator #-}
 govValidator :: AssetClassGov -> Validator
 govValidator = Validators.validatorScript . govInstance
 

@@ -10,26 +10,25 @@ import PlutusTx.Prelude hiding (toList, uncurry)
 import Prelude (String, show, uncurry)
 
 import Control.Lens ((^.), (^?))
-import Control.Monad (forever, void)
-import Data.List.Extra (maximumOn)
+import Control.Monad (void)
+import Data.List.NonEmpty (nonEmpty)
+import Data.List.NonEmpty.Extra (maximumOn1)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
 import Data.Semigroup (Last (..), sconcat)
 import Data.Text (Text)
 import Ledger.Constraints qualified as Constraints
 import Ledger.Crypto (PubKeyHash (..), pubKeyHash)
-import Ledger.Tx (ChainIndexTxOut, Tx (..), TxOut (..), TxOutRef, TxOutTx (..), ciTxOutDatum, ciTxOutValue, fromTxOut, toTxOut, txId, txOutPubKey)
+import Ledger.Tx (ChainIndexTxOut, txOutValue, TxOutRef, ciTxOutDatum, ciTxOutValue, toTxOut, txId, txOutPubKey)
 import Plutus.Contract qualified as Contract
 import Plutus.V1.Ledger.Api (Datum (..), Redeemer (..), fromBuiltinData, toBuiltinData)
 import Plutus.V1.Ledger.Value (Value (..), valueOf)
 import Text.Printf (printf)
 
-import GHC.Base (Maybe (Nothing))
 import Mlabs.Governance.Contract.Api qualified as Api
 import Mlabs.Governance.Contract.Validation (AssetClassGov (..), GovernanceDatum (..), GovernanceRedeemer (..))
 import Mlabs.Governance.Contract.Validation qualified as Validation
 import Mlabs.Plutus.Contract (getEndpoint, selectForever)
-import PlutusTx.Prelude (sequenceA)
 
 --import GHC.Base (Applicative(pure))
 
@@ -65,7 +64,7 @@ deposit gov (Api.Deposit amnt) = do
               ]
           )
         Nothing ->
-          let datum = GovernanceDatum ownPkh $ Validation.xGovCurrencySymbol gov
+          let datum = GovernanceDatum ownPkh
            in ( sconcat
                   [ Constraints.mustMintValue xGovValue
                   , Constraints.mustPayToTheScript datum $ Validation.govSingleton gov amnt
@@ -170,15 +169,16 @@ findGovernance ::
   GovernanceContract (Maybe (Validation.GovernanceDatum, ChainIndexTxOut, TxOutRef))
 findGovernance pkh gov@AssetClassGov {..} = do
   utxos <- Contract.utxosAt $ Validation.govAddress gov
-  case Map.toList utxos >>= foo of
-    [] -> pure Nothing
-    xs -> pure . Just $ maximumOn getVal xs
+  pure $ do
+    xs <- nonEmpty $ Map.toList utxos >>= f
+    pure $ maximumOn1 getVal xs
   where
     govOf v = valueOf v acGovCurrencySymbol acGovTokenName
 
     getVal (_, tx, _) = govOf $ tx ^. ciTxOutValue
-    foo (oref, o) = case o ^? ciTxOutDatum of
+
+    f (oref, utxo) = case utxo ^? ciTxOutDatum of
       Just (Right (Datum e)) -> case fromBuiltinData e of
-        Just gd | gd == pkh -> [(GovernanceDatum gd acGovCurrencySymbol, o, oref)]
+        Just gd | gdPubKeyHash gd == pkh -> [(gd, utxo, oref)]
         _ -> mempty
       _ -> mempty
