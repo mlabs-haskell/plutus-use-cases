@@ -145,7 +145,7 @@ buy req@(BuyRequestUser nftId bid newPrice) = do
 
                   action =
                     BuyAct
-                      { act'price = bid
+                      { act'bid = bid
                       , act'newPrice = newPrice
                       }
                   -- Serialised Datum

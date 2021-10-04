@@ -76,7 +76,7 @@ data UserAct
   = -- | Buy NFT and set new price
     BuyAct
       { -- | price to buy
-        act'price :: Integer
+        act'bid :: Integer
       , -- | new price for NFT (Nothing locks NFT)
         act'newPrice :: Maybe Integer
       }
@@ -125,11 +125,11 @@ mkMintPolicy stateAddr oref (NftId title token outRef) _ ctx =
 
     paysToState = any hasNftToken $ txInfoOutputs info
 
-    -- Check to see if the NFT token is correctly minted. 
+    -- Check to see if the NFT token is correctly minted.
     hasNftToken TxOut {..} =
       txOutAddress == stateAddr
         && txOutValue == Value.singleton (ownCurrencySymbol ctx) token 1
-    
+
     -- Check to see if the received TxOutRef is the same as the  one the NFT is
     -- paramaterised by.
     sameORef = oref == outRef
@@ -148,11 +148,20 @@ mintPolicy stateAddr oref nid =
 mKTxPolicy :: DatumNft -> UserAct -> ScriptContext -> Bool
 mKTxPolicy datum act ctx =
   -- ? maybe, some check that datum corresponds to NftId could be added
-  traceIfFalse "Datum does not correspond to NFTId, no datum is present, or more than one suitable datums are present." correctDatum
+  traceIfFalse
+    "Datum does not correspond to NFTId, no datum is present, or more than one suitable datums are present."
+    correctDatum
     && case act of
       BuyAct {..} ->
-        traceIfFalse "Not enough funds." True -- todo
-          && traceIfFalse "User does not own NFT." True -- todo
+        traceIfFalse "NFT not for sale." nftForSale
+          && traceIfFalse "Bid is too low for the NFT price." bidHighEnough
+          && traceIfFalse "New owner is not the payer." correctNewOwner
+          && traceIfFalse "Author is not paid their share." correctPaymentAuthor
+          && traceIfFalse "Current owner is not paid their share." correctPaymentOwner
+          && traceIfFalse "Datum is not consistent, illegaly altered." correctNewDatum
+          && traceIfFalse "Old transaction is not consumed." oldTxConsumed
+          && traceIfFalse "Transaction should not mint anything." noMint
+          && traceIfFalse "NFT is not sent to the correct address." tokenSentToCorrectAddress
       SetPriceAct {..} ->
         traceIfFalse "Price cannot be negative." True -- todo
           && traceIfFalse "User does not own NFT." True -- todo
@@ -171,6 +180,8 @@ mKTxPolicy datum act ctx =
         . scriptContextTxInfo
 
     ------------------------------------------------------------------------------
+    -- Checks
+    ------------------------------------------------------------------------------
     -- Check if the datum in the datum is also the same in the transaction.
     correctDatum =
       let datums :: [DatumNft] = getCtxDatum ctx
@@ -179,8 +190,44 @@ mKTxPolicy datum act ctx =
             [_] -> True
             _ -> False
 
-------------------------------------------------------------------------------
--- Check if the datum in the datum is also the same in the transaction.
+    ------------------------------------------------------------------------------
+    -- Check if the NFT is for sale.
+    nftForSale = maybe False (const True) $ dNft'price datum
+
+    ------------------------------------------------------------------------------
+    -- Check if the bid price is high enough.
+    bidHighEnough =
+      let bid = act'bid act
+          price = dNft'price datum
+       in fromMaybe False $ (bid >=) <$> price
+
+    ------------------------------------------------------------------------------
+    -- Check if the new owner is set correctly.
+    correctNewOwner = True
+
+    ------------------------------------------------------------------------------
+    -- Check if the Author is being reimbursed accordingly.
+    correctPaymentAuthor = True
+
+    ------------------------------------------------------------------------------
+    -- Check if the Current Owner is being reimbursed accordingly.
+    correctPaymentOwner = True
+
+    ------------------------------------------------------------------------------
+    -- Check if the new Datum is correctly.
+    correctNewDatum = True
+
+    ------------------------------------------------------------------------------
+    -- Check if the old Tx containing the token is consumed.
+    oldTxConsumed = True
+
+    ------------------------------------------------------------------------------
+    -- Check no new token is minted.
+    noMint = Value.isZero . txInfoMint . scriptContextTxInfo $ ctx
+
+    ------------------------------------------------------------------------------
+    -- Check if the NFT is sent to the correct address.
+    tokenSentToCorrectAddress = True
 
 data NftTrade
 instance ValidatorTypes NftTrade where
