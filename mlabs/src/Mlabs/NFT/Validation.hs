@@ -103,11 +103,12 @@ asRedeemer = Redeemer . PlutusTx.toBuiltinData
 
 -- | Minting policy for NFTs.
 mkMintPolicy :: Address -> TxOutRef -> NftId -> () -> ScriptContext -> Bool
-mkMintPolicy stateAddr oref (NftId title token author) _ ctx =
+mkMintPolicy stateAddr oref (NftId title token outRef) _ ctx =
   -- ? maybe author could be checked also, their key should be in signatures.
   traceIfFalse "UTXO not consumed" hasUtxo
-    && traceIfFalse "wrong amount minted" checkMintedAmount
+    && traceIfFalse "Wrong amount minted" checkMintedAmount
     && traceIfFalse "Does not pay to state" paysToState
+    && traceIfFalse "NFTid TxOutRef and minting TxOutRef are different" sameORef
   where
     info = scriptContextTxInfo ctx
 
@@ -124,9 +125,14 @@ mkMintPolicy stateAddr oref (NftId title token author) _ ctx =
 
     paysToState = any hasNftToken $ txInfoOutputs info
 
+    -- Check to see if the NFT token is correctly minted. 
     hasNftToken TxOut {..} =
       txOutAddress == stateAddr
         && txOutValue == Value.singleton (ownCurrencySymbol ctx) token 1
+    
+    -- Check to see if the received TxOutRef is the same as the  one the NFT is
+    -- paramaterised by.
+    sameORef = oref == outRef
 
 mintPolicy :: Address -> TxOutRef -> NftId -> MintingPolicy
 mintPolicy stateAddr oref nid =
