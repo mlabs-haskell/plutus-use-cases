@@ -1,4 +1,9 @@
-module Mlabs.NFT.Contract where
+module Mlabs.NFT.Contract (
+  NFTAppSchema,
+  schemas,
+  userEndpoints,
+  endpoints,
+) where
 
 import PlutusTx.Prelude hiding (mconcat, (<>))
 import Prelude (mconcat, (<>))
@@ -23,7 +28,6 @@ import Ledger (
   Datum (..),
   Redeemer (..),
   TxOutRef,
-  Value,
   ciTxOutDatum,
   ciTxOutValue,
   getDatum,
@@ -34,19 +38,37 @@ import Ledger (
  )
 
 import Ledger.Constraints qualified as Constraints
-import Ledger.Typed.Scripts (
-  validatorScript,
- )
+import Ledger.Typed.Scripts (validatorScript)
 import Ledger.Value as Value (TokenName (..), singleton, unAssetClass, valueOf)
-import Playground.Contract (mkSchemaDefinitions)
-import Plutus.V1.Ledger.Ada qualified as Ada
 
-import Mlabs.NFT.Types
-import Mlabs.NFT.Validation
+import Playground.Contract (mkSchemaDefinitions)
+
+import Mlabs.NFT.Types (
+  BuyRequestUser (..),
+  Content (..),
+  MintParams,
+  NftId (..),
+  SetPriceParams,
+  UserId (..),
+ )
+
+import Mlabs.NFT.Validation (
+  DatumNft (..),
+  NftTrade,
+  UserAct (..),
+  asRedeemer,
+  calculateShares,
+  mintPolicy,
+  nftAsset,
+  txPolicy,
+  txScrAddress,
+ )
+
 import Mlabs.Plutus.Contract (readDatum', selectForever)
 
 type AuthorContract a = Contract (Last NftId) NFTAppSchema Text a
 
+-- | A common App schema works for now.
 type NFTAppSchema =
   Endpoint "buy" BuyRequestUser
     .\/ Endpoint "mint" MintParams
@@ -110,7 +132,10 @@ nftIdInit mintP = do
       , nftId'outRef = oref
       }
 
--- BUY --
+{- | BUY.
+ Attempts to buy a new NFT by changing the owner, pays the current owner and
+ the author, and sets a new price for the NFT.
+-}
 buy :: BuyRequestUser -> Contract w NFTAppSchema Text ()
 buy (BuyRequestUser nftId bid newPrice) = do
   oldDatum' <- getNftDatum nftId
@@ -131,9 +156,8 @@ buy (BuyRequestUser nftId bid newPrice) = do
               userUtxos <- getUserUtxos
               (nftOref, ciTxOut, _) <- findNft txScrAddress nftId
               oref' <- fstUtxo =<< getUserAddr
-
-              -- Unserialised Datum
               let newDatum' =
+                    -- Unserialised Datum
                     DatumNft
                       { dNft'id = oldDatum.dNft'id
                       , dNft'share = oldDatum.dNft'share
@@ -141,21 +165,15 @@ buy (BuyRequestUser nftId bid newPrice) = do
                       , dNft'owner = user
                       , dNft'price = newPrice
                       }
-
                   action =
                     BuyAct
                       { act'bid = bid
                       , act'newPrice = newPrice
                       }
-                  -- Serialised Datum
-                  newDatum = Datum . PlutusTx.toBuiltinData $ newDatum'
-
-                  (paidToAuthor, paidToOwner) = calculateShares bid (dNft'share oldDatum)
-
+                  newDatum = Datum . PlutusTx.toBuiltinData $ newDatum' -- Serialised Datum
+                  (paidToAuthor, paidToOwner) = calculateShares bid $ dNft'share oldDatum
                   nftPolicy' = mintPolicy scrAddress oref' nftId
-
                   newValue = ciTxOut ^. ciTxOutValue
-
                   (lookups, tx) =
                     ( mconcat
                         [ Constraints.unspentOutputs userUtxos
@@ -232,8 +250,8 @@ getUserAddr = pubKeyAddress <$> Contract.ownPubKey
 getUserUtxos :: Contract w s Text (Map.Map TxOutRef Ledger.ChainIndexTxOut)
 getUserUtxos = Contract.utxosAt =<< getUserAddr
 
-getScriptUtxos :: Contract w s Text (Map.Map TxOutRef Ledger.ChainIndexTxOut)
-getScriptUtxos = Contract.utxosAt txScrAddress
+--getScriptUtxos :: Contract w s Text (Map.Map TxOutRef Ledger.ChainIndexTxOut)
+--getScriptUtxos = Contract.utxosAt txScrAddress
 
 getUId :: Contract w s Text UserId
 getUId = UserId . pubKeyHash <$> Contract.ownPubKey

@@ -1,6 +1,16 @@
 {-# LANGUAGE UndecidableInstances #-}
 
-module Mlabs.NFT.Validation where
+module Mlabs.NFT.Validation (
+  DatumNft (..),
+  NftTrade,
+  calculateShares,
+  UserAct (..),
+  asRedeemer,
+  txPolicy,
+  txScrAddress,
+  nftAsset,
+  mintPolicy,
+) where
 
 import PlutusTx.Prelude
 import Prelude qualified as Hask
