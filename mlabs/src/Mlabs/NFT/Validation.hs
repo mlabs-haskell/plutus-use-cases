@@ -196,6 +196,10 @@ mKTxPolicy :: DatumNft -> UserAct -> ScriptContext -> Bool
 mKTxPolicy datum act ctx =
   traceIfFalse "Datum does not correspond to NFTId, no datum is present, or more than one suitable datums are present." correctDatum
     && traceIfFalse "Datum is not  present." correctDatum'
+    && traceIfFalse "New Price cannot be negative." (setPositivePrice act)
+    && traceIfFalse "Previous TX is not consumed." prevTxConsumed
+    && traceIfFalse "NFT sent to wrong address." tokenSentToCorrectAddress
+    && traceIfFalse "Transaction cannot mint." noMint
     && case act of
       BuyAct {..} ->
         traceIfFalse "NFT not for sale." nftForSale
@@ -231,7 +235,6 @@ mKTxPolicy datum act ctx =
           suitableDatums = filter (== dNft'id datum) . fmap dNft'id $ datums
        in case suitableDatums of
             _ : _ -> True
-            [_] -> True
             _ -> False
 
     ------------------------------------------------------------------------------
@@ -297,8 +300,20 @@ mKTxPolicy datum act ctx =
     containsNft v = valueOf v (act'cs act) (nftTokenName datum) == 1
 
     ------------------------------------------------------------------------------
-    -- Check if the old Tx containing the token is consumed.
-    oldTxConsumed =
+    -- Check new price is positive or nothing.
+    setPositivePrice = \case
+      action@BuyAct {} ->
+        case act'newPrice action of
+          Nothing -> True
+          Just x -> x > 0
+      action@SetPriceAct {} ->
+        case act'newPrice action of
+          Nothing -> True
+          Just x -> x > 0
+
+    ------------------------------------------------------------------------------
+    -- Check if the previous Tx containing the token is consumed.
+    prevTxConsumed =
       case findOwnInput ctx of
         Just (TxInInfo _ out) -> containsNft $ txOutValue out
         Nothing -> False
