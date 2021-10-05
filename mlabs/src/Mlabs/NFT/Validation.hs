@@ -11,6 +11,7 @@ module Mlabs.NFT.Validation (
   nftCurrency,
   nftAsset,
   mintPolicy,
+  priceNotNegative,
 ) where
 
 import PlutusTx.Prelude
@@ -45,6 +46,7 @@ import Ledger (
   txInfoOutputs,
   findOwnInput,
   getContinuingOutputs,
+  txInfoSignatories,
  )
 import Ledger.Typed.Scripts (
   DatumType,
@@ -190,8 +192,8 @@ mKTxPolicy datum act ctx =
           && traceIfFalse "Current owner is not paid their share." (correctPaymentOwner act'bid)
           && traceIfFalse "Datum is not consistent, illegaly altered." consistentDatum
       SetPriceAct {} ->
-        traceIfFalse "Price cannot be negative." True -- todo
-          && traceIfFalse "User does not own NFT." True -- todo
+        traceIfFalse "Price can not be negative." priceNotNegative'
+          && traceIfFalse "Only owner exclusively can set NFT price." ownerSetsPrice
   where
     ------------------------------------------------------------------------------
     -- Utility functions.
@@ -277,6 +279,20 @@ mKTxPolicy datum act ctx =
         Just (TxInInfo _ out) -> containsNft $ txOutValue out
         Nothing               -> False
 
+    ------------------------------------------------------------------------------
+    -- Check if new price non-negative.
+    priceNotNegative' = priceNotNegative (act'newPrice act)
+
+    ------------------------------------------------------------------------------
+    -- Check that price set by NFT owner.
+    ownerSetsPrice = 
+      case txInfoSignatories $ scriptContextTxInfo ctx of
+        [pkh] -> pkh == getUserId  (dNft'owner datum)
+        _     -> False
+
+{-# INLINEABLE priceNotNegative #-}
+priceNotNegative :: Maybe Integer -> Bool
+priceNotNegative = maybe True (>= 0)
 
 data NftTrade
 instance ValidatorTypes NftTrade where

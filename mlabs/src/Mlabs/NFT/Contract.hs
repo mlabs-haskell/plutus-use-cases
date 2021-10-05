@@ -63,6 +63,7 @@ import Mlabs.NFT.Validation (
   nftAsset,
   txPolicy,
   txScrAddress,
+  priceNotNegative
  )
 
 import Mlabs.Plutus.Contract (readDatum', selectForever)
@@ -202,11 +203,8 @@ setPrice :: SetPriceParams -> Contract w NFTAppSchema Text ()
 setPrice spParams = do
   result <-
     Contract.runError $ do
-      ownPkh <- pubKeyHash <$> Contract.ownPubKey
       (oref, ciTxOut, datum) <- findNft txScrAddress spParams.sp'nftId
-      if isOwner datum ownPkh
-        then pure ()
-        else Contract.throwError "Only owner can set price"
+      runOffChainChecks datum
       let (tx, lookups) = mkTxLookups oref ciTxOut datum
       ledgerTx <- Contract.submitTxConstraintsWith @NftTrade lookups tx
       void $ Contract.awaitTxConfirmed $ Ledger.txId ledgerTx
@@ -232,6 +230,17 @@ setPrice spParams = do
               , Constraints.mustPayToTheScript newDatum newValue
               ]
        in (tx, lookups)
+
+    runOffChainChecks :: DatumNft -> Contract w NFTAppSchema Text ()
+    runOffChainChecks datum = do
+      ownPkh <- pubKeyHash <$> Contract.ownPubKey
+      if isOwner datum ownPkh
+        then pure ()
+        else Contract.throwError "Only owner can set price"
+      if priceNotNegative spParams.sp'price
+        then pure ()
+        else Contract.throwError "New price can not be negative"
+        
     isOwner datum pkh = pkh == datum.dNft'owner.getUserId
 
 -- ENDPOINTS --
