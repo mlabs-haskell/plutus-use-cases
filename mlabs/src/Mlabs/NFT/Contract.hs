@@ -59,8 +59,8 @@ import Mlabs.NFT.Validation (
   asRedeemer,
   calculateShares,
   mintPolicy,
-  nftCurrency,
   nftAsset,
+  nftCurrency,
   txPolicy,
   txScrAddress,
   priceNotNegative
@@ -160,7 +160,6 @@ buy (BuyRequestUser nftId bid newPrice) = do
               oref' <- fstUtxo =<< getUserAddr
               let nftPolicy' = mintPolicy scrAddress oref' nftId
                   nftCurrency' = nftCurrency nftId
-                  val' = Value.singleton nftCurrency' nftId.nftId'token 1
                   newDatum' =
                     -- Unserialised Datum
                     DatumNft
@@ -212,7 +211,6 @@ setPrice spParams = do
   case result of
     Hask.Left e -> Contract.logError e
     Hask.Right _ -> Contract.logInfo @Hask.String "New price set"
-
   where
     mkTxLookups oref ciTxOut datum =
       let newDatum = datum {dNft'price = spParams.sp'price}
