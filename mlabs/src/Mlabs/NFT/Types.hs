@@ -1,6 +1,14 @@
 {-# LANGUAGE UndecidableInstances #-}
 
-module Mlabs.NFT.Types where
+module Mlabs.NFT.Types (
+  UserId (..),
+  NftId (..),
+  BuyRequestUser (..),
+  MintParams (..),
+  SetPriceParams (..),
+  Content (..),
+  Title (..),
+) where
 
 import PlutusTx.Prelude
 import Prelude qualified as Hask

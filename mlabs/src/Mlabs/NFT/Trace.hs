@@ -1,7 +1,6 @@
 module Mlabs.NFT.Trace where
 
 import PlutusTx.Prelude
-import Prelude (Either (..))
 import Prelude qualified as Hask
 
 import Data.Monoid (Last (..))
@@ -13,7 +12,6 @@ import Control.Monad.Freer.Extras.Log as Extra (logInfo)
 import Plutus.Trace.Emulator (EmulatorTrace, activateContractWallet, callEndpoint, runEmulatorTraceIO)
 import Plutus.Trace.Emulator qualified as Trace
 import Wallet.Emulator qualified as Emulator
-import Wallet.Emulator.Wallet qualified as Wallet
 
 import Mlabs.Utils.Wallet (walletFromNumber)
 
@@ -51,7 +49,7 @@ eTrace1 = do
         , mp'share = 1 % 10
         , mp'price = Just 5
         }
-    artwork2 = artwork {mp'content = Content "Another Painting"}
+    -- artwork2 = artwork {mp'content = Content "Another Painting"}
 
     buyParams nftId = BuyRequestUser nftId 6 (Just 200)
 

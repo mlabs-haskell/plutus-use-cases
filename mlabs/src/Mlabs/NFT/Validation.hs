@@ -7,6 +7,7 @@ import Prelude qualified as Hask
 
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
+import Plutus.V1.Ledger.Ada qualified as Ada
 
 import Ledger (
   Address,
@@ -19,8 +20,10 @@ import Ledger (
   TxOut (..),
   TxOutRef,
   ValidatorHash,
+  Value,
   mkMintingPolicyScript,
   ownCurrencySymbol,
+  pubKeyOutputsAt,
   scriptContextTxInfo,
   scriptCurrencySymbol,
   txInInfoOutRef,
@@ -95,6 +98,7 @@ instance Eq UserAct where
   {-# INLINEABLE (==) #-}
   (BuyAct bid1 newPrice1) == (BuyAct bid2 newPrice2) = bid1 == bid2 && newPrice1 == newPrice2
   (SetPriceAct newPrice1) == (SetPriceAct newPrice2) = newPrice1 == newPrice2
+  _ == _ = False
 
 asRedeemer :: UserAct -> Redeemer
 asRedeemer = Redeemer . PlutusTx.toBuiltinData
@@ -103,7 +107,7 @@ asRedeemer = Redeemer . PlutusTx.toBuiltinData
 
 -- | Minting policy for NFTs.
 mkMintPolicy :: Address -> TxOutRef -> NftId -> () -> ScriptContext -> Bool
-mkMintPolicy stateAddr oref (NftId title token outRef) _ ctx =
+mkMintPolicy stateAddr oref (NftId _ token outRef) _ ctx =
   -- ? maybe author could be checked also, their key should be in signatures.
   traceIfFalse "UTXO not consumed" hasUtxo
     && traceIfFalse "Wrong amount minted" checkMintedAmount
@@ -151,18 +155,18 @@ mKTxPolicy datum act ctx =
   traceIfFalse
     "Datum does not correspond to NFTId, no datum is present, or more than one suitable datums are present."
     correctDatum
+    && traceIfFalse "Old transaction is not consumed." oldTxConsumed
+    && traceIfFalse "Transaction should not mint anything." noMint
+    && traceIfFalse "NFT is not sent to the correct address." tokenSentToCorrectAddress
     && case act of
       BuyAct {..} ->
         traceIfFalse "NFT not for sale." nftForSale
-          && traceIfFalse "Bid is too low for the NFT price." bidHighEnough
+          && traceIfFalse "Bid is too low for the NFT price." (bidHighEnough act'bid)
           && traceIfFalse "New owner is not the payer." correctNewOwner
-          && traceIfFalse "Author is not paid their share." correctPaymentAuthor
-          && traceIfFalse "Current owner is not paid their share." correctPaymentOwner
-          && traceIfFalse "Datum is not consistent, illegaly altered." correctNewDatum
-          && traceIfFalse "Old transaction is not consumed." oldTxConsumed
-          && traceIfFalse "Transaction should not mint anything." noMint
-          && traceIfFalse "NFT is not sent to the correct address." tokenSentToCorrectAddress
-      SetPriceAct {..} ->
+          && traceIfFalse "Author is not paid their share." (correctPaymentAuthor act'bid)
+          && traceIfFalse "Current owner is not paid their share." (correctPaymentOwner act'bid)
+          && traceIfFalse "Datum is not consistent, illegaly altered." consistentDatum
+      SetPriceAct {} ->
         traceIfFalse "Price cannot be negative." True -- todo
           && traceIfFalse "User does not own NFT." True -- todo
   where
@@ -175,7 +179,7 @@ mKTxPolicy datum act ctx =
         . filter (maybe False (const True))
         . fmap PlutusTx.fromBuiltinData
         . fmap (\(Datum d) -> d)
-        . fmap Hask.snd
+        . fmap snd
         . txInfoData
         . scriptContextTxInfo
 
@@ -196,9 +200,8 @@ mKTxPolicy datum act ctx =
 
     ------------------------------------------------------------------------------
     -- Check if the bid price is high enough.
-    bidHighEnough =
-      let bid = act'bid act
-          price = dNft'price datum
+    bidHighEnough bid =
+      let price = dNft'price datum
        in fromMaybe False $ (bid >=) <$> price
 
     ------------------------------------------------------------------------------
@@ -207,20 +210,31 @@ mKTxPolicy datum act ctx =
 
     ------------------------------------------------------------------------------
     -- Check if the Author is being reimbursed accordingly.
-    correctPaymentAuthor = True
+    correctPaymentAuthor bid =
+      let info = scriptContextTxInfo ctx
+          authorPaid = pubKeyOutputsAt (getUserId . dNft'author $ datum) info
+          authorDeserves = snd $ calculateShares bid (dNft'share datum)
+       in case authorPaid of
+            [x] -> authorDeserves == x
+            _ -> False
 
     ------------------------------------------------------------------------------
     -- Check if the Current Owner is being reimbursed accordingly.
-    correctPaymentOwner = True
+    correctPaymentOwner bid =
+      let info = scriptContextTxInfo ctx
+          ownerPaid = pubKeyOutputsAt (getUserId . dNft'owner $ datum) info
+          ownerDeserves = fst $ calculateShares bid (dNft'share datum)
+       in case ownerPaid of
+            [x] -> ownerDeserves == x
+            _ -> False
 
     ------------------------------------------------------------------------------
     -- Check if the new Datum is correctly.
-    correctNewDatum = True
-
-    ------------------------------------------------------------------------------
-    -- Check if the old Tx containing the token is consumed.
-    oldTxConsumed = True
-
+    consistentDatum =
+      let prevDatum :: DatumNft = head . getCtxDatum $ ctx
+       in dNft'id prevDatum == dNft'id datum
+            && dNft'share prevDatum == dNft'share datum
+            && dNft'author prevDatum == dNft'author datum
     ------------------------------------------------------------------------------
     -- Check no new token is minted.
     noMint = Value.isZero . txInfoMint . scriptContextTxInfo $ ctx
@@ -228,6 +242,10 @@ mKTxPolicy datum act ctx =
     ------------------------------------------------------------------------------
     -- Check if the NFT is sent to the correct address.
     tokenSentToCorrectAddress = True
+
+    ------------------------------------------------------------------------------
+    -- Check if the old Tx containing the token is consumed.
+    oldTxConsumed = True
 
 data NftTrade
 instance ValidatorTypes NftTrade where
@@ -257,6 +275,7 @@ txScrAddress = validatorAddress txPolicy
 curSymbol :: Address -> TxOutRef -> NftId -> CurrencySymbol
 curSymbol stateAddr oref nid = scriptCurrencySymbol $ mintPolicy stateAddr oref nid
 
+{-# INLINEABLE nftAsset #-}
 nftAsset :: NftId -> AssetClass
 nftAsset nid = AssetClass (cs, tn)
   where
@@ -264,3 +283,15 @@ nftAsset nid = AssetClass (cs, tn)
       scriptCurrencySymbol $
         mintPolicy txScrAddress (nftId'outRef nid) nid
     tn = nftId'token nid
+
+{-# INLINEABLE calculateShares #-}
+
+-- | Returns the calculated value of shares.
+calculateShares :: Integer -> Rational -> (Value, Value)
+calculateShares bid authorShare = (toOwner, toAuthor)
+  where
+    converAdaToLovelace = Ada.toValue . Ada.Lovelace . (* 1_000_000)
+    toAuthor' = round $ fromInteger bid * authorShare
+    toAuthor = converAdaToLovelace toAuthor'
+    toOwner' = bid - toAuthor'
+    toOwner = converAdaToLovelace toOwner'

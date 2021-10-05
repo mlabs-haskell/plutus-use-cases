@@ -19,11 +19,11 @@ import PlutusTx qualified
 
 import Ledger (
   Address,
-  AssetClass (..),
   ChainIndexTxOut,
   Datum (..),
   Redeemer (..),
   TxOutRef,
+  Value,
   ciTxOutDatum,
   ciTxOutValue,
   getDatum,
@@ -112,7 +112,7 @@ nftIdInit mintP = do
 
 -- BUY --
 buy :: BuyRequestUser -> Contract w NFTAppSchema Text ()
-buy req@(BuyRequestUser nftId bid newPrice) = do
+buy (BuyRequestUser nftId bid newPrice) = do
   oldDatum' <- getNftDatum nftId
   case oldDatum' of
     Nothing -> Contract.logError @Hask.String "NFT Cannot be found."
@@ -129,9 +129,8 @@ buy req@(BuyRequestUser nftId bid newPrice) = do
             else do
               user <- getUId
               userUtxos <- getUserUtxos
-              (oref, ciTxOut, datum) <- findNft txScrAddress nftId
+              (nftOref, ciTxOut, _) <- findNft txScrAddress nftId
               oref' <- fstUtxo =<< getUserAddr
-              utxosAddr <- getScriptUtxos
 
               -- Unserialised Datum
               let newDatum' =
@@ -151,15 +150,9 @@ buy req@(BuyRequestUser nftId bid newPrice) = do
                   -- Serialised Datum
                   newDatum = Datum . PlutusTx.toBuiltinData $ newDatum'
 
-                  convertToAda = Ada.toValue . Ada.Lovelace . (Hask.*) 1_000_000
-
-                  authorShare' = round $ fromInteger bid * oldDatum.dNft'share
-                  authorShare = convertToAda authorShare'
-                  ownerShare' = bid Hask.- authorShare'
-                  ownerShare = convertToAda ownerShare'
+                  (paidToAuthor, paidToOwner) = calculateShares bid (dNft'share oldDatum)
 
                   nftPolicy' = mintPolicy scrAddress oref' nftId
-                  val' = Value.singleton (scriptCurrencySymbol nftPolicy') nftId.nftId'token 1
 
                   newValue = ciTxOut ^. ciTxOutValue
 
@@ -169,14 +162,14 @@ buy req@(BuyRequestUser nftId bid newPrice) = do
                         , Constraints.typedValidatorLookups txPolicy
                         , Constraints.mintingPolicy nftPolicy'
                         , Constraints.otherScript (validatorScript txPolicy)
-                        , Constraints.unspentOutputs $ Map.singleton oref ciTxOut
+                        , Constraints.unspentOutputs $ Map.singleton nftOref ciTxOut
                         ]
                     , mconcat
                         [ Constraints.mustPayToTheScript newDatum' newValue
                         , Constraints.mustIncludeDatum newDatum
-                        , Constraints.mustPayToPubKey (getUserId oldDatum.dNft'owner) ownerShare
-                        , Constraints.mustPayToPubKey (getUserId oldDatum.dNft'author) authorShare
-                        , Constraints.mustSpendScriptOutput oref (Redeemer . PlutusTx.toBuiltinData $ action)
+                        , Constraints.mustPayToPubKey (getUserId . dNft'owner $ oldDatum) paidToOwner
+                        , Constraints.mustPayToPubKey (getUserId . dNft'author $ oldDatum) paidToAuthor
+                        , Constraints.mustSpendScriptOutput nftOref (Redeemer . PlutusTx.toBuiltinData $ action)
                         ]
                     )
               void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
