@@ -159,7 +159,6 @@ buy (BuyRequestUser nftId bid newPrice) = do
               oref' <- fstUtxo =<< getUserAddr
               let nftPolicy' = mintPolicy scrAddress oref' nftId
                   nftCurrency' = nftCurrency nftId
-                  val' = Value.singleton nftCurrency' nftId.nftId'token 1
                   newDatum' =
                     -- Unserialised Datum
                     DatumNft
