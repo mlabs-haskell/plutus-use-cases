@@ -28,11 +28,13 @@ import Ledger (
   MintingPolicy,
   Redeemer (..),
   ScriptContext (..),
-  TxInInfo(..),
+  TxInInfo (..),
   TxOut (..),
   TxOutRef,
   ValidatorHash,
   Value,
+  findOwnInput,
+  getContinuingOutputs,
   mkMintingPolicyScript,
   ownCurrencySymbol,
   pubKeyOutputsAt,
@@ -43,8 +45,6 @@ import Ledger (
   txInfoInputs,
   txInfoMint,
   txInfoOutputs,
-  findOwnInput,
-  getContinuingOutputs,
  )
 import Ledger.Typed.Scripts (
   DatumType,
@@ -265,9 +265,9 @@ mKTxPolicy datum act ctx =
 
     ------------------------------------------------------------------------------
     -- Check if the NFT is sent to the correct address.
-    tokenSentToCorrectAddress = 
+    tokenSentToCorrectAddress =
       containsNft $ foldMap txOutValue (getContinuingOutputs ctx)
-    
+
     containsNft v = Value.valueOf v (act'cs act) (nftTokenName datum) == 1
 
     ------------------------------------------------------------------------------
@@ -275,8 +275,7 @@ mKTxPolicy datum act ctx =
     oldTxConsumed =
       case findOwnInput ctx of
         Just (TxInInfo _ out) -> containsNft $ txOutValue out
-        Nothing               -> False
-
+        Nothing -> False
 
 data NftTrade
 instance ValidatorTypes NftTrade where
@@ -307,13 +306,15 @@ curSymbol :: Address -> TxOutRef -> NftId -> CurrencySymbol
 curSymbol stateAddr oref nid = scriptCurrencySymbol $ mintPolicy stateAddr oref nid
 
 {-# INLINEABLE nftCurrency #-}
+
 -- | Calculate the NFT `CurrencySymbol` from NftId.
 nftCurrency :: NftId -> CurrencySymbol
-nftCurrency nid = 
-  scriptCurrencySymbol
-    $ mintPolicy txScrAddress (nftId'outRef nid) nid
+nftCurrency nid =
+  scriptCurrencySymbol $
+    mintPolicy txScrAddress (nftId'outRef nid) nid
 
 {-# INLINEABLE nftAsset #-}
+
 -- | Calculate the NFT `AssetClass` from NftId.
 nftAsset :: NftId -> AssetClass
 nftAsset nid = AssetClass (nftCurrency nid, nftId'token nid)
