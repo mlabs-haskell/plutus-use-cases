@@ -133,8 +133,13 @@ buy req@(BuyRequestUser nftId bid newPrice) = do
               oref' <- fstUtxo =<< getUserAddr
               utxosAddr <- getScriptUtxos
 
-              -- Unserialised Datum
-              let newDatum' =
+              
+              let nftPolicy' = mintPolicy scrAddress oref' nftId
+                  nftCurrency = scriptCurrencySymbol nftPolicy'
+                  val' = Value.singleton nftCurrency nftId.nftId'token 1
+
+                  -- Unserialised Datum  
+                  newDatum' =
                     DatumNft
                       { dNft'id = oldDatum.dNft'id
                       , dNft'share = oldDatum.dNft'share
@@ -147,7 +152,9 @@ buy req@(BuyRequestUser nftId bid newPrice) = do
                     BuyAct
                       { act'bid = bid
                       , act'newPrice = newPrice
+                      , act'cs = nftCurrency
                       }
+
                   -- Serialised Datum
                   newDatum = Datum . PlutusTx.toBuiltinData $ newDatum'
 
@@ -157,9 +164,6 @@ buy req@(BuyRequestUser nftId bid newPrice) = do
                   authorShare = convertToAda authorShare'
                   ownerShare' = bid Hask.- authorShare'
                   ownerShare = convertToAda ownerShare'
-
-                  nftPolicy' = mintPolicy scrAddress oref' nftId
-                  val' = Value.singleton (scriptCurrencySymbol nftPolicy') nftId.nftId'token 1
 
                   newValue = ciTxOut ^. ciTxOutValue
 
@@ -200,15 +204,16 @@ setPrice spParams = do
     Hask.Right _ -> Contract.logInfo @Hask.String "New price set"
   where
     mkTxLookups oref ciTxOut datum =
-      let newDatum = datum {dNft'price = spParams.sp'price}
-          redeemer = asRedeemer (SetPriceAct spParams.sp'price)
+      let nftCurrency = scriptCurrencySymbol
+                        $ mintPolicy txScrAddress oref datum.dNft'id
+          newDatum = datum {dNft'price = spParams.sp'price}
+          redeemer = asRedeemer (SetPriceAct spParams.sp'price nftCurrency)
           newValue = ciTxOut ^. ciTxOutValue
-          vScript = txPolicy
           lookups =
             mconcat
               [ Constraints.unspentOutputs $ Map.singleton oref ciTxOut
-              , Constraints.typedValidatorLookups vScript
-              , Constraints.otherScript (validatorScript vScript)
+              , Constraints.typedValidatorLookups txPolicy
+              , Constraints.otherScript (validatorScript txPolicy)
               ]
           tx =
             mconcat
@@ -276,14 +281,17 @@ getNftDatum nftId = do
 
 -- | A hashing function to minimise the data to be attached to the NTFid.
 hashData :: Content -> BuiltinByteString
-hashData (Content b) = sha2_256 b
+-- hashData (Content b) = sha2_256 b
+hashData (Content b) = b
 
 -- | Find NFTs at a specific Address.
 findNft :: Address -> NftId -> Contract w s Text (TxOutRef, ChainIndexTxOut, DatumNft)
 findNft addr nftId = do
   utxos <- Contract.utxosTxOutTxAt addr
   case findData utxos of
-    [v] -> pure v
+    [v] -> do 
+            Contract.logInfo @Hask.String $ Hask.show $ "NFT Found:" <> Hask.show v 
+            pure v
     [] -> Contract.throwError $ "DatumNft not found for " <> pack (Hask.show nftId)
     _ ->
       Contract.throwError $
