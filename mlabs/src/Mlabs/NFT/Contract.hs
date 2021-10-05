@@ -281,8 +281,8 @@ getNftDatum nftId = do
 
 -- | A hashing function to minimise the data to be attached to the NTFid.
 hashData :: Content -> BuiltinByteString
--- hashData (Content b) = sha2_256 b
-hashData (Content b) = b
+hashData (Content b) = sha2_256 b
+-- hashData (Content b) = b
 
 -- | Find NFTs at a specific Address.
 findNft :: Address -> NftId -> Contract w s Text (TxOutRef, ChainIndexTxOut, DatumNft)
