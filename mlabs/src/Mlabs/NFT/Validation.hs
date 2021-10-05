@@ -8,6 +8,7 @@ module Mlabs.NFT.Validation (
   asRedeemer,
   txPolicy,
   txScrAddress,
+  nftCurrency,
   nftAsset,
   mintPolicy,
 ) where
@@ -27,6 +28,7 @@ import Ledger (
   MintingPolicy,
   Redeemer (..),
   ScriptContext (..),
+  TxInInfo(..),
   TxOut (..),
   TxOutRef,
   ValidatorHash,
@@ -41,6 +43,8 @@ import Ledger (
   txInfoInputs,
   txInfoMint,
   txInfoOutputs,
+  findOwnInput,
+  getContinuingOutputs,
  )
 import Ledger.Typed.Scripts (
   DatumType,
@@ -261,11 +265,18 @@ mKTxPolicy datum act ctx =
 
     ------------------------------------------------------------------------------
     -- Check if the NFT is sent to the correct address.
-    tokenSentToCorrectAddress = True
+    tokenSentToCorrectAddress = 
+      containsNft $ foldMap txOutValue (getContinuingOutputs ctx)
+    
+    containsNft v = Value.valueOf v (act'cs act) (nftTokenName datum) == 1
 
     ------------------------------------------------------------------------------
     -- Check if the old Tx containing the token is consumed.
-    oldTxConsumed = True
+    oldTxConsumed =
+      case findOwnInput ctx of
+        Just (TxInInfo _ out) -> containsNft $ txOutValue out
+        Nothing               -> False
+
 
 data NftTrade
 instance ValidatorTypes NftTrade where
@@ -295,14 +306,17 @@ txScrAddress = validatorAddress txPolicy
 curSymbol :: Address -> TxOutRef -> NftId -> CurrencySymbol
 curSymbol stateAddr oref nid = scriptCurrencySymbol $ mintPolicy stateAddr oref nid
 
+{-# INLINEABLE nftCurrency #-}
+-- | Calculate the NFT `CurrencySymbol` from NftId.
+nftCurrency :: NftId -> CurrencySymbol
+nftCurrency nid = 
+  scriptCurrencySymbol
+    $ mintPolicy txScrAddress (nftId'outRef nid) nid
+
 {-# INLINEABLE nftAsset #-}
+-- | Calculate the NFT `AssetClass` from NftId.
 nftAsset :: NftId -> AssetClass
-nftAsset nid = AssetClass (cs, tn)
-  where
-    cs =
-      scriptCurrencySymbol $
-        mintPolicy txScrAddress (nftId'outRef nid) nid
-    tn = nftId'token nid
+nftAsset nid = AssetClass (nftCurrency nid, nftId'token nid)
 
 {-# INLINEABLE calculateShares #-}
 

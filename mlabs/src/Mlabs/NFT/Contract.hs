@@ -59,6 +59,7 @@ import Mlabs.NFT.Validation (
   asRedeemer,
   calculateShares,
   mintPolicy,
+  nftCurrency,
   nftAsset,
   txPolicy,
   txScrAddress,
@@ -157,8 +158,8 @@ buy (BuyRequestUser nftId bid newPrice) = do
               (nftOref, ciTxOut, _) <- findNft txScrAddress nftId
               oref' <- fstUtxo =<< getUserAddr
               let nftPolicy' = mintPolicy scrAddress oref' nftId
-                  nftCurrency = scriptCurrencySymbol nftPolicy'
-                  val' = Value.singleton nftCurrency nftId.nftId'token 1
+                  nftCurrency' = nftCurrency nftId
+                  val' = Value.singleton nftCurrency' nftId.nftId'token 1
                   newDatum' =
                     -- Unserialised Datum
                     DatumNft
@@ -172,11 +173,10 @@ buy (BuyRequestUser nftId bid newPrice) = do
                     BuyAct
                       { act'bid = bid
                       , act'newPrice = newPrice
-                      , act'cs = nftCurrency
+                      , act'cs = nftCurrency'
                       }
                   newDatum = Datum . PlutusTx.toBuiltinData $ newDatum' -- Serialised Datum
                   (paidToAuthor, paidToOwner) = calculateShares bid $ dNft'share oldDatum
-                  nftPolicy' = mintPolicy scrAddress oref' nftId
                   newValue = ciTxOut ^. ciTxOutValue
                   (lookups, tx) =
                     ( mconcat
@@ -203,23 +203,22 @@ setPrice spParams = do
   result <-
     Contract.runError $ do
       ownPkh <- pubKeyHash <$> Contract.ownPubKey
-      (oref, ciTxOut, datum) <- findNft txScrAddress (spParams.sp'nftId)
+      (oref, ciTxOut, datum) <- findNft txScrAddress spParams.sp'nftId
       if isOwner datum ownPkh
         then pure ()
         else Contract.throwError "Only owner can set price"
       let (tx, lookups) = mkTxLookups oref ciTxOut datum
       ledgerTx <- Contract.submitTxConstraintsWith @NftTrade lookups tx
       void $ Contract.awaitTxConfirmed $ Ledger.txId ledgerTx
+
   case result of
     Hask.Left e -> Contract.logError e
     Hask.Right _ -> Contract.logInfo @Hask.String "New price set"
+
   where
     mkTxLookups oref ciTxOut datum =
-      let nftCurrency =
-            scriptCurrencySymbol $
-              mintPolicy txScrAddress oref datum.dNft'id
-          newDatum = datum {dNft'price = spParams.sp'price}
-          redeemer = asRedeemer (SetPriceAct spParams.sp'price nftCurrency)
+      let newDatum = datum {dNft'price = spParams.sp'price}
+          redeemer = asRedeemer (SetPriceAct spParams.sp'price (nftCurrency datum.dNft'id))
           newValue = ciTxOut ^. ciTxOutValue
           lookups =
             mconcat
