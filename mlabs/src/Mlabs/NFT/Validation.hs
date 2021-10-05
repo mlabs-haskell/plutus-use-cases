@@ -174,7 +174,6 @@ mKTxPolicy datum act ctx =
   traceIfFalse
     "Datum does not correspond to NFTId, no datum is present, or more than one suitable datums are present."
     correctDatum
-    && traceIfFalse "Datum is not consistent, illegaly altered." correctNewDatum
     && traceIfFalse "Old transaction is not consumed or NFT not found." oldTxConsumed
     && traceIfFalse "Transaction should not mint anything." noMint
     && traceIfFalse "NFT is not sent to the correct address." tokenSentToCorrectAddress
@@ -255,6 +254,7 @@ mKTxPolicy datum act ctx =
        in dNft'id prevDatum == dNft'id datum
             && dNft'share prevDatum == dNft'share datum
             && dNft'author prevDatum == dNft'author datum
+
     ------------------------------------------------------------------------------
     -- Check no new token is minted.
     noMint = Value.isZero . txInfoMint . scriptContextTxInfo $ ctx

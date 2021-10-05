@@ -156,7 +156,10 @@ buy (BuyRequestUser nftId bid newPrice) = do
               userUtxos <- getUserUtxos
               (nftOref, ciTxOut, _) <- findNft txScrAddress nftId
               oref' <- fstUtxo =<< getUserAddr
-              let newDatum' =
+              let nftPolicy' = mintPolicy scrAddress oref' nftId
+                  nftCurrency = scriptCurrencySymbol nftPolicy'
+                  val' = Value.singleton nftCurrency nftId.nftId'token 1
+                  newDatum' =
                     -- Unserialised Datum
                     DatumNft
                       { dNft'id = oldDatum.dNft'id
