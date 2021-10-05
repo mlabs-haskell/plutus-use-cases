@@ -169,6 +169,7 @@ buy (BuyRequestUser nftId bid newPrice) = do
                     BuyAct
                       { act'bid = bid
                       , act'newPrice = newPrice
+                      , act'cs = nftCurrency
                       }
                   newDatum = Datum . PlutusTx.toBuiltinData $ newDatum' -- Serialised Datum
                   (paidToAuthor, paidToOwner) = calculateShares bid $ dNft'share oldDatum
@@ -211,15 +212,17 @@ setPrice spParams = do
     Hask.Right _ -> Contract.logInfo @Hask.String "New price set"
   where
     mkTxLookups oref ciTxOut datum =
-      let newDatum = datum {dNft'price = spParams.sp'price}
-          redeemer = asRedeemer (SetPriceAct spParams.sp'price)
+      let nftCurrency =
+            scriptCurrencySymbol $
+              mintPolicy txScrAddress oref datum.dNft'id
+          newDatum = datum {dNft'price = spParams.sp'price}
+          redeemer = asRedeemer (SetPriceAct spParams.sp'price nftCurrency)
           newValue = ciTxOut ^. ciTxOutValue
-          vScript = txPolicy
           lookups =
             mconcat
               [ Constraints.unspentOutputs $ Map.singleton oref ciTxOut
-              , Constraints.typedValidatorLookups vScript
-              , Constraints.otherScript (validatorScript vScript)
+              , Constraints.typedValidatorLookups txPolicy
+              , Constraints.otherScript (validatorScript txPolicy)
               ]
           tx =
             mconcat
@@ -294,7 +297,9 @@ findNft :: Address -> NftId -> Contract w s Text (TxOutRef, ChainIndexTxOut, Dat
 findNft addr nftId = do
   utxos <- Contract.utxosTxOutTxAt addr
   case findData utxos of
-    [v] -> pure v
+    [v] -> do
+      Contract.logInfo @Hask.String $ Hask.show $ "NFT Found:" <> Hask.show v
+      pure v
     [] -> Contract.throwError $ "DatumNft not found for " <> pack (Hask.show nftId)
     _ ->
       Contract.throwError $

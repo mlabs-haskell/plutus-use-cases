@@ -79,6 +79,9 @@ data DatumNft = DatumNft
 PlutusTx.unstableMakeIsData ''DatumNft
 PlutusTx.makeLift ''DatumNft
 
+nftTokenName :: DatumNft -> Value.TokenName
+nftTokenName = nftId'token . dNft'id
+
 instance Eq DatumNft where
   {-# INLINEABLE (==) #-}
   (DatumNft id1 share1 author1 owner1 price1) == (DatumNft id2 share2 author2 owner2 price2) =
@@ -92,11 +95,13 @@ data UserAct
         act'bid :: Integer
       , -- | new price for NFT (Nothing locks NFT)
         act'newPrice :: Maybe Integer
+      , act'cs :: CurrencySymbol
       }
   | -- | Set new price for NFT
     SetPriceAct
       { -- | new price for NFT (Nothing locks NFT)
         act'newPrice :: Maybe Integer
+      , act'cs :: CurrencySymbol
       }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
@@ -106,8 +111,13 @@ PlutusTx.unstableMakeIsData ''UserAct
 
 instance Eq UserAct where
   {-# INLINEABLE (==) #-}
-  (BuyAct bid1 newPrice1) == (BuyAct bid2 newPrice2) = bid1 == bid2 && newPrice1 == newPrice2
-  (SetPriceAct newPrice1) == (SetPriceAct newPrice2) = newPrice1 == newPrice2
+  (BuyAct bid1 newPrice1 cs1) == (BuyAct bid2 newPrice2 cs2) =
+    bid1 == bid2
+      && newPrice1 == newPrice2
+      && cs1 == cs2
+  (SetPriceAct newPrice1 cs1) == (SetPriceAct newPrice2 cs2) =
+    newPrice1 == newPrice2
+      && cs1 == cs2
   _ == _ = False
 
 asRedeemer :: UserAct -> Redeemer
@@ -161,11 +171,11 @@ mintPolicy stateAddr oref nid =
 -- | A validator script for the user actions.
 mKTxPolicy :: DatumNft -> UserAct -> ScriptContext -> Bool
 mKTxPolicy datum act ctx =
-  -- ? maybe, some check that datum corresponds to NftId could be added
   traceIfFalse
     "Datum does not correspond to NFTId, no datum is present, or more than one suitable datums are present."
     correctDatum
-    && traceIfFalse "Old transaction is not consumed." oldTxConsumed
+    && traceIfFalse "Datum is not consistent, illegaly altered." correctNewDatum
+    && traceIfFalse "Old transaction is not consumed or NFT not found." oldTxConsumed
     && traceIfFalse "Transaction should not mint anything." noMint
     && traceIfFalse "NFT is not sent to the correct address." tokenSentToCorrectAddress
     && case act of
