@@ -55,8 +55,6 @@ import Ledger (
   txInfoInputs,
   txInfoMint,
   txInfoOutputs,
-  findOwnInput,
-  getContinuingOutputs,
   txInfoSignatories,
   valuePaidTo,
  )
@@ -264,25 +262,25 @@ mKTxPolicy datum act ctx =
     correctNewOwner = True
 
     ------------------------------------------------------------------------------
-    -- Check if the Author is being reimbursed accordingly.
-    correctPaymentAuthor bid =
+    -- Check if the Person is being reimbursed accordingly, with the help of 2
+    -- getter functions. Helper function.
+    correctPayment f g bid =
       let info = scriptContextTxInfo ctx
-          -- fee = txInfoFee info
-          ada = assetClass Ada.adaSymbol Ada.adaToken
-          authorId = getUserId . dNft'author $ datum
-          authorGetsAda = assetClassValueOf (valuePaidTo info authorId) ada
-          authorWantsAda = assetClassValueOf (snd $ calculateShares bid (dNft'share datum)) ada
-       in authorGetsAda >= authorWantsAda
+          personId = getUserId . f $ datum
+          authorShare = dNft'share datum
+          personGetsAda = getAda $ valuePaidTo info personId
+          personWantsAda = getAda $ g bid authorShare
+       in personGetsAda >= personWantsAda
+      where
+        getAda = flip assetClassValueOf $ assetClass Ada.adaSymbol Ada.adaToken
+
+    ------------------------------------------------------------------------------
+    -- Check if the Author is being reimbursed accordingly.
+    correctPaymentAuthor = correctPayment dNft'author calculateAuthorShare
 
     ------------------------------------------------------------------------------
     -- Check if the Current Owner is being reimbursed accordingly.
-    correctPaymentOwner bid =
-      let info = scriptContextTxInfo ctx
-          --fee = txInfoFee info
-          ada = assetClass Ada.adaSymbol Ada.adaToken
-          ownerGetsAda = assetClassValueOf ({-(<> fee) $-} valuePaidTo info $ getUserId . dNft'author $ datum) ada
-          ownerWantsAda = assetClassValueOf (snd $ calculateShares bid (dNft'share datum)) ada
-       in ownerGetsAda >= ownerWantsAda
+    correctPaymentOwner = correctPayment dNft'author calculateOwnerShare
 
     ------------------------------------------------------------------------------
     -- Check if the new Datum is correctly.
@@ -320,7 +318,7 @@ mKTxPolicy datum act ctx =
     prevTxConsumed =
       case findOwnInput ctx of
         Just (TxInInfo _ out) -> containsNft $ txOutValue out
-        Nothing               -> False
+        Nothing -> False
 
     ------------------------------------------------------------------------------
     -- Check if new price non-negative.
@@ -328,15 +326,14 @@ mKTxPolicy datum act ctx =
 
     ------------------------------------------------------------------------------
     -- Check that price set by NFT owner.
-    ownerSetsPrice = 
+    ownerSetsPrice =
       case txInfoSignatories $ scriptContextTxInfo ctx of
-        [pkh] -> pkh == getUserId  (dNft'owner datum)
-        _     -> False
+        [pkh] -> pkh == getUserId (dNft'owner datum)
+        _ -> False
 
 {-# INLINEABLE priceNotNegative #-}
 priceNotNegative :: Maybe Integer -> Bool
 priceNotNegative = maybe True (>= 0)
-
 
 data NftTrade
 instance ValidatorTypes NftTrade where
@@ -392,3 +389,15 @@ calculateShares bid authorShare = (toOwner, toAuthor)
     toAuthor = adaToLovelaceVal toAuthor'
     toOwner' = bid - toAuthor'
     toOwner = adaToLovelaceVal toOwner'
+
+{-# INLINEABLE calculateOwnerShare #-}
+
+-- | Returns the calculated value of shares.
+calculateOwnerShare :: Integer -> Rational -> Value
+calculateOwnerShare x y = fst $ calculateShares x y
+
+{-# INLINEABLE calculateAuthorShare #-}
+
+-- | Returns the calculated value of shares.
+calculateAuthorShare :: Integer -> Rational -> Value
+calculateAuthorShare x y = snd $ calculateShares x y

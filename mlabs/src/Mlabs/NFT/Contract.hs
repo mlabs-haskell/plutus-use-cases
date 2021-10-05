@@ -61,9 +61,9 @@ import Mlabs.NFT.Validation (
   mintPolicy,
   nftAsset,
   nftCurrency,
+  priceNotNegative,
   txPolicy,
   txScrAddress,
-  priceNotNegative
  )
 
 import Mlabs.Plutus.Contract (readDatum', selectForever)
@@ -238,7 +238,7 @@ setPrice spParams = do
       if priceNotNegative spParams.sp'price
         then pure ()
         else Contract.throwError "New price can not be negative"
-        
+
     isOwner datum pkh = pkh == datum.dNft'owner.getUserId
 
 -- ENDPOINTS --
