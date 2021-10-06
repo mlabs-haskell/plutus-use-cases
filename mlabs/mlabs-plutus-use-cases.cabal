@@ -156,7 +156,6 @@ library
     Mlabs.NFT.Types
     Mlabs.NFT.Contract
     Mlabs.NFT.Validation
-    Mlabs.NFT.Trace
 
 executable mlabs-plutus-use-cases
   import:  common-imports
@@ -266,6 +265,7 @@ Test-suite mlabs-plutus-use-cases-tests
     Test.Nft.Init
     Test.Nft.Logic
     Test.Utils
+    Test.NFT.Trace
                      
   default-extensions:
     RecordWildCards

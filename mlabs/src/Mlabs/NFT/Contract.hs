@@ -1,7 +1,6 @@
 module Mlabs.NFT.Contract (
   NFTAppSchema,
   schemas,
-  userEndpoints,
   endpoints,
   queryEndpoints,
 ) where
@@ -11,7 +10,7 @@ import Prelude (mconcat, (<>))
 import Prelude qualified as Hask
 
 import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right)
-import Control.Monad (forever, join, void)
+import Control.Monad (join, void)
 import Data.List qualified as L
 import Data.Map qualified as Map
 import Data.Monoid (Last (..))
@@ -202,11 +201,13 @@ buy (BuyRequestUser nftId bid newPrice) = do
                         , Constraints.mustIncludeDatum newDatum
                         , Constraints.mustPayToPubKey (getUserId . dNft'owner $ oldDatum) paidToOwner
                         , Constraints.mustPayToPubKey (getUserId . dNft'author $ oldDatum) paidToAuthor
-                        , Constraints.mustSpendScriptOutput nftOref (Redeemer . PlutusTx.toBuiltinData $ action)
+                        , Constraints.mustSpendScriptOutput
+                            nftOref
+                            (Redeemer . PlutusTx.toBuiltinData $ action)
                         ]
                     )
               void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
-              Contract.logInfo @Hask.String $ printf "Bought %s" $ Hask.show val
+              void $ Contract.logInfo @Hask.String $ printf "Bought %s" $ Hask.show val
 
 -- SET PRICE --
 setPrice :: SetPriceParams -> Contract w NFTAppSchema Text ()
@@ -276,6 +277,8 @@ queryCurrentOwner nftid = do
         "Current owner of: " <> Hask.show nftid <> " is: " <> Hask.show owner
 
 -- ENDPOINTS --
+
+-- | User Endpoints .
 endpoints :: UserContract ()
 endpoints =
   selectForever
@@ -283,9 +286,6 @@ endpoints =
     , endpoint @"buy" buy
     , endpoint @"set-price" setPrice
     ]
-
-userEndpoints :: UserContract ()
-userEndpoints = selectForever [endpoint @"set-price" setPrice]
 
 -- Query Endpoints are used for Querying, with no on-chain tx generation.
 queryEndpoints :: QueryContract ()
@@ -331,7 +331,7 @@ getNftDatum nftId = do
             . _Right
             . to (PlutusTx.fromBuiltinData @DatumNft . getDatum)
             . _Just
-            . filtered (\d -> d.dNft'id Hask.== nftId)
+            . filtered (\d -> dNft'id d == nftId)
   Contract.logInfo @Hask.String $ Hask.show $ "Datum Found:" <> Hask.show datums
   Contract.logInfo @Hask.String $ Hask.show $ "Datum length:" <> Hask.show (Hask.length datums)
   case datums of
@@ -370,6 +370,6 @@ findNft addr nftId = do
     readTxData (oref, (ciTxOut, _)) = (oref,ciTxOut,) <$> readDatum' ciTxOut
     hasCorrectNft (_, ciTxOut, datum) =
       let (cs, tn) = unAssetClass $ nftAsset nftId
-       in tn Hask.== nftId'token nftId -- sanity check
-            && datum.dNft'id Hask.== nftId -- check that Datum has correct NftId
-            && valueOf (ciTxOut ^. ciTxOutValue) cs tn Hask.== 1 -- check that UTXO has single NFT in Value
+       in tn == nftId'token nftId -- sanity check
+            && datum.dNft'id == nftId -- check that Datum has correct NftId
+            && valueOf (ciTxOut ^. ciTxOutValue) cs tn == 1 -- check that UTXO has single NFT in Value
