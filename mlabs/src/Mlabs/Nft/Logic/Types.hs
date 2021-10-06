@@ -26,12 +26,13 @@ module Mlabs.Nft.Logic.Types (
 import PlutusTx.Prelude
 
 import Data.Aeson (FromJSON, ToJSON)
+import qualified Data.OpenApi.Schema as OpenApi
 import GHC.Generics (Generic)
 import Playground.Contract (ToSchema, TxOutRef)
 import Plutus.V1.Ledger.TxId (TxId (TxId))
 import Plutus.V1.Ledger.Value (TokenName (..), tokenName)
-import PlutusTx qualified
-import Prelude qualified as Hask (Eq, Show)
+import qualified PlutusTx
+import qualified Prelude as Hask (Eq, Show)
 
 import Mlabs.Emulator.Types (UserId (..))
 
@@ -62,7 +63,7 @@ data NftId = NftId
     nftId'outRef :: TxOutRef
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
-  deriving anyclass (FromJSON, ToJSON, ToSchema)
+  deriving anyclass (FromJSON, ToJSON, ToSchema, OpenApi.ToSchema)
 
 -- deriving newtype instance ToSchema TxId
 -- deriving instance ToSchema TxOutRef
