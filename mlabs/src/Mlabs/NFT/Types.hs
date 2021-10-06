@@ -2,6 +2,7 @@
 
 module Mlabs.NFT.Types (
   UserId (..),
+  QueryResponse (..),
   NftId (..),
   BuyRequestUser (..),
   MintParams (..),
@@ -14,6 +15,7 @@ import PlutusTx.Prelude
 import Prelude qualified as Hask
 
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Monoid (Last)
 import GHC.Generics (Generic)
 
 import Ledger (PubKeyHash, TokenName, TxOutRef)
@@ -150,3 +152,10 @@ instance Eq BuyRequestUser where
   {-# INLINEABLE (==) #-}
   (BuyRequestUser nftId1 price1 newPrice1) == (BuyRequestUser nftId2 price2 newPrice2) =
     nftId1 == nftId2 && price1 == price2 && newPrice1 == newPrice2
+
+-- | A datatype used by the QueryContract to return a response
+data QueryResponse
+  = QueryCurrentOwner (Last UserId)
+  | QueryCurrentPrice (Last Integer)
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON)

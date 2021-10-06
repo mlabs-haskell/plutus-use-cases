@@ -3,6 +3,7 @@ module Mlabs.NFT.Contract (
   schemas,
   userEndpoints,
   endpoints,
+  queryEndpoints,
 ) where
 
 import PlutusTx.Prelude hiding (mconcat, (<>))
@@ -10,7 +11,7 @@ import Prelude (mconcat, (<>))
 import Prelude qualified as Hask
 
 import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right)
-import Control.Monad (forever, void)
+import Control.Monad (forever, join, void)
 import Data.List qualified as L
 import Data.Map qualified as Map
 import Data.Monoid (Last (..))
@@ -18,7 +19,7 @@ import Data.Text (Text, pack)
 
 import Text.Printf (printf)
 
-import Plutus.Contract (Contract, Endpoint, endpoint, type (.\/))
+import Plutus.Contract (Contract, Endpoint, endpoint, utxosTxOutTxAt, type (.\/))
 import Plutus.Contract qualified as Contract
 import PlutusTx qualified
 
@@ -48,6 +49,7 @@ import Mlabs.NFT.Types (
   Content (..),
   MintParams,
   NftId (..),
+  QueryResponse (..),
   SetPriceParams,
   UserId (..),
  )
@@ -68,20 +70,29 @@ import Mlabs.NFT.Validation (
 
 import Mlabs.Plutus.Contract (readDatum', selectForever)
 
-type AuthorContract a = Contract (Last NftId) NFTAppSchema Text a
+-- | A contract used exclusively for query actions.
+type QueryContract a = Contract QueryResponse NFTAppSchema Text a
+
+-- | A contract used for all user actions.
+type UserContract a = Contract (Last NftId) NFTAppSchema Text a
 
 -- | A common App schema works for now.
 type NFTAppSchema =
-  Endpoint "buy" BuyRequestUser
-    .\/ Endpoint "mint" MintParams
+  -- Author Endpoint
+  Endpoint "mint" MintParams
+    -- User Action Endpoints
+    .\/ Endpoint "buy" BuyRequestUser
     .\/ Endpoint "set-price" SetPriceParams
+    -- Query Endpoints
+    .\/ Endpoint "query-current-owner" NftId
+    .\/ Endpoint "query-current-price" NftId
 
 mkSchemaDefinitions ''NFTAppSchema
 
 -- MINT --
 
 -- | Mints an NFT and sends it to the App Address.
-mint :: MintParams -> AuthorContract ()
+mint :: MintParams -> UserContract ()
 mint nftContent = do
   addr <- getUserAddr
   nft <- nftInit nftContent
@@ -207,10 +218,7 @@ setPrice spParams = do
       let (tx, lookups) = mkTxLookups oref ciTxOut datum
       ledgerTx <- Contract.submitTxConstraintsWith @NftTrade lookups tx
       void $ Contract.awaitTxConfirmed $ Ledger.txId ledgerTx
-
-  case result of
-    Hask.Left e -> Contract.logError e
-    Hask.Right _ -> Contract.logInfo @Hask.String "New price set"
+  either Contract.logError (const $ Contract.logInfo @Hask.String "New price set") result
   where
     mkTxLookups oref ciTxOut datum =
       let newDatum = datum {dNft'price = spParams.sp'price}
@@ -241,38 +249,71 @@ setPrice spParams = do
 
     isOwner datum pkh = pkh == datum.dNft'owner.getUserId
 
--- ENDPOINTS --
-endpoints :: Contract (Last NftId) NFTAppSchema Text ()
-endpoints = forever $ do
-  Contract.awaitPromise $
-    Hask.foldr1
-      Contract.select
-      [ endpoint @"mint" mint
-      , endpoint @"buy" buy
-      ]
+{- | Query the current price of a given NFTid. Writes it to the Writer instance
+ and also returns it, to be used in other contracts.
+-}
+queryCurrentPrice :: NftId -> QueryContract QueryResponse
+queryCurrentPrice nftid = do
+  price <- wrap <$> getsNftDatum dNft'price nftid
+  Contract.tell price >> log price >> return price
+  where
+    wrap = QueryCurrentPrice . Last . join
+    log price =
+      Contract.logInfo @Hask.String $
+        "Current price of: " <> Hask.show nftid <> " is: " <> Hask.show price
 
-userEndpoints :: Contract w NFTAppSchema Text ()
-userEndpoints =
-  selectForever [endpoint @"set-price" setPrice]
+{- | Query the current owner of a given NFTid. Writes it to the Writer instance
+ and also returns it, to be used in other contracts.
+-}
+queryCurrentOwner :: NftId -> QueryContract QueryResponse
+queryCurrentOwner nftid = do
+  ownerResp <- wrap <$> getsNftDatum dNft'owner nftid
+  Contract.tell ownerResp >> log ownerResp >> return ownerResp
+  where
+    wrap = QueryCurrentOwner . Last
+    log owner =
+      Contract.logInfo @Hask.String $
+        "Current owner of: " <> Hask.show nftid <> " is: " <> Hask.show owner
+
+-- ENDPOINTS --
+endpoints :: UserContract ()
+endpoints =
+  selectForever
+    [ endpoint @"mint" mint
+    , endpoint @"buy" buy
+    , endpoint @"set-price" setPrice
+    ]
+
+userEndpoints :: UserContract ()
+userEndpoints = selectForever [endpoint @"set-price" setPrice]
+
+-- Query Endpoints are used for Querying, with no on-chain tx generation.
+queryEndpoints :: QueryContract ()
+queryEndpoints =
+  selectForever
+    [ endpoint @"query-current-price" queryCurrentPrice
+    , endpoint @"query-current-owner" queryCurrentOwner
+    ]
 
 -- HELPER FUNCTIONS AND CONTRACTS --
+
+-- | Get the current Wallet's publick key.
 getUserAddr :: Contract w s Text Address
 getUserAddr = pubKeyAddress <$> Contract.ownPubKey
 
+-- | Get the current wallet's utxos.
 getUserUtxos :: Contract w s Text (Map.Map TxOutRef Ledger.ChainIndexTxOut)
-getUserUtxos = Contract.utxosAt =<< getUserAddr
+getUserUtxos = getAddrUtxos =<< getUserAddr
 
---getScriptUtxos :: Contract w s Text (Map.Map TxOutRef Ledger.ChainIndexTxOut)
---getScriptUtxos = Contract.utxosAt txScrAddress
-
+-- | Get the current wallet's userId.
 getUId :: Contract w s Text UserId
 getUId = UserId . pubKeyHash <$> Contract.ownPubKey
 
--- | Get the user's ChainIndexTxOut
-getAddrUtxos :: Address -> Contract w s Text [Ledger.ChainIndexTxOut]
-getAddrUtxos adr = fmap fst . Map.elems <$> Contract.utxosTxOutTxAt adr
+-- | Get the ChainIndexTxOut at an address.
+getAddrUtxos :: Address -> Contract w s Text (Map.Map TxOutRef ChainIndexTxOut)
+getAddrUtxos adr = Map.map fst <$> utxosTxOutTxAt adr
 
--- | Get first utxo at address.
+-- | Get first utxo at address. Will throw an error if no utxo can be found.
 fstUtxo :: Address -> Contract w s Text TxOutRef
 fstUtxo address = do
   utxos <- Contract.utxosAt address
@@ -280,9 +321,10 @@ fstUtxo address = do
     [] -> Contract.throwError @Text "No utxo found at address."
     x : _ -> pure x
 
+-- | Returns the Datum of a specific nftId from the Script address.
 getNftDatum :: NftId -> Contract w s Text (Maybe DatumNft)
 getNftDatum nftId = do
-  utxos :: [Ledger.ChainIndexTxOut] <- getAddrUtxos txScrAddress
+  utxos :: [Ledger.ChainIndexTxOut] <- Map.elems <$> getAddrUtxos txScrAddress
   let datums :: [DatumNft] =
         utxos
           ^.. traversed . Ledger.ciTxOutDatum
@@ -295,13 +337,19 @@ getNftDatum nftId = do
   case datums of
     [x] -> pure $ Just x
     [] -> Contract.throwError "No Datum can be found."
-    _ : _ -> Contract.throwError "More than one suitable datums can be found."
+    _ : _ -> Contract.throwError "More than one suitable Datums can be found."
+
+{- | Gets the Datum of a specific nftId from the Script address, and applies an
+ extraction function to it.
+-}
+getsNftDatum :: (DatumNft -> b) -> NftId -> Contract a s Text (Maybe b)
+getsNftDatum f = fmap (fmap f) . getNftDatum
 
 -- | A hashing function to minimise the data to be attached to the NTFid.
 hashData :: Content -> BuiltinByteString
 hashData (Content b) = sha2_256 b
 
--- | Find NFTs at a specific Address.
+-- | Find NFTs at a specific Address. Will throw an error if none or many are found.
 findNft :: Address -> NftId -> Contract w s Text (TxOutRef, ChainIndexTxOut, DatumNft)
 findNft addr nftId = do
   utxos <- Contract.utxosTxOutTxAt addr
