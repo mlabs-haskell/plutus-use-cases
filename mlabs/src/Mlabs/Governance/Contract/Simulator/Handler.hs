@@ -25,6 +25,7 @@ import Data.Monoid (Last (..))
 import Data.Text (Text, pack)
 import Data.Text.Prettyprint.Doc (Pretty (..), viaShow)
 import GHC.Generics (Generic)
+import qualified Data.OpenApi.Schema as OpenApi
 
 import Control.Monad.Freer (interpret)
 import Plutus.Contract (Contract, EmptySchema, awaitTxConfirmed, mapError, ownPubKey, submitTx, tell)
@@ -58,7 +59,7 @@ data GovernanceContracts
   = Bootstrap
   | Governance AssetClassGov
   deriving (Show, Generic)
-  deriving anyclass (FromJSON, ToJSON)
+  deriving anyclass (FromJSON, ToJSON, OpenApi.ToSchema)
 
 instance Pretty GovernanceContracts where
   pretty = viaShow
