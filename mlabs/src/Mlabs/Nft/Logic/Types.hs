@@ -26,13 +26,13 @@ module Mlabs.Nft.Logic.Types (
 import PlutusTx.Prelude
 
 import Data.Aeson (FromJSON, ToJSON)
-import qualified Data.OpenApi.Schema as OpenApi
+import Data.OpenApi.Schema qualified as OpenApi
 import GHC.Generics (Generic)
 import Playground.Contract (ToSchema, TxOutRef)
 import Plutus.V1.Ledger.TxId (TxId (TxId))
 import Plutus.V1.Ledger.Value (TokenName (..), tokenName)
-import qualified PlutusTx
-import qualified Prelude as Hask (Eq, Show)
+import PlutusTx qualified
+import Prelude qualified as Hask (Eq, Show)
 
 import Mlabs.Emulator.Types (UserId (..))
 

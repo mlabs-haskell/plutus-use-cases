@@ -22,10 +22,10 @@ import Mlabs.Governance.Contract.Validation (AssetClassGov (..))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Default (Default (def))
 import Data.Monoid (Last (..))
+import Data.OpenApi.Schema qualified as OpenApi
 import Data.Text (Text, pack)
 import Data.Text.Prettyprint.Doc (Pretty (..), viaShow)
 import GHC.Generics (Generic)
-import qualified Data.OpenApi.Schema as OpenApi
 
 import Control.Monad.Freer (interpret)
 import Plutus.Contract (Contract, EmptySchema, awaitTxConfirmed, mapError, ownPubKey, submitTx, tell)

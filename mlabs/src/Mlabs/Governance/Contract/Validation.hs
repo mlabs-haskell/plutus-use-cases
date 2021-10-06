@@ -26,8 +26,8 @@ import Prelude qualified as Hask
 
 import Data.Bifunctor (first)
 import Data.Coerce (coerce)
+import Data.OpenApi.Schema qualified as OpenApi
 import GHC.Generics (Generic)
-import qualified Data.OpenApi.Schema as OpenApi
 
 import Playground.Contract (FromJSON, ToJSON, ToSchema)
 import PlutusTx qualified

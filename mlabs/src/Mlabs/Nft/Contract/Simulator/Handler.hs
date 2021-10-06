@@ -20,25 +20,25 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Default (Default (def))
 import Data.Functor (void)
 import Data.Monoid (Last)
-import qualified Data.OpenApi.Schema as OpenApi
+import Data.OpenApi.Schema qualified as OpenApi
 import Data.Text (Text, pack)
 import Data.Text.Prettyprint.Doc (Pretty (..), viaShow)
 import GHC.Generics (Generic)
 import Plutus.Contract (Contract, mapError)
 import Plutus.PAB.Effects.Contract (ContractEffect (..))
 import Plutus.PAB.Effects.Contract.Builtin (Builtin, SomeBuiltin (..))
-import qualified Plutus.PAB.Effects.Contract.Builtin as Builtin
+import Plutus.PAB.Effects.Contract.Builtin qualified as Builtin
 import Plutus.PAB.Monitoring.PABLogMsg (PABMultiAgentMsg (..))
 import Plutus.PAB.Simulator (
   Simulation,
   SimulatorEffectHandlers,
  )
-import qualified Plutus.PAB.Simulator as Simulator
+import Plutus.PAB.Simulator qualified as Simulator
 import Plutus.PAB.Types (PABError (..))
-import qualified Plutus.PAB.Webserver.Server as PAB.Server
+import Plutus.PAB.Webserver.Server qualified as PAB.Server
 
-import qualified Mlabs.Nft.Contract.Api as Nft
-import qualified Mlabs.Nft.Contract.Server as Nft
+import Mlabs.Nft.Contract.Api qualified as Nft
+import Mlabs.Nft.Contract.Server qualified as Nft
 import Mlabs.Nft.Logic.Types (NftId)
 
 -- | Shortcut for Simulator monad for NFT case
