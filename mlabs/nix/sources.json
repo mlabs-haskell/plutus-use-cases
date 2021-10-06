@@ -12,6 +12,18 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "version": "94153b676617f8f33abe8d8182c37377d2784bd1"
     },
+    "cardano-addresses": {
+        "branch": "master",
+        "description": "Addresses and mnemonic manipulation & derivations",
+        "homepage": "",
+        "owner": "input-output-hk",
+        "repo": "cardano-addresses",
+        "rev": "c3d5a0cf6ff1270614c7f24d7f754f8b9ca4a693",
+        "sha256": "0b9cz2f71nc22c9f726a05afhrnpz42nicm5b3qkxvxmj1a0n0pr",
+        "type": "tarball",
+        "url": "https://github.com/input-output-hk/cardano-addresses/archive/c3d5a0cf6ff1270614c7f24d7f754f8b9ca4a693.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "cardano-base": {
         "branch": "master",
         "description": "Code used throughout the Cardano eco-system",
@@ -77,6 +89,18 @@
         "url": "https://github.com/input-output-hk/cardano-prelude/archive/fd773f7a58412131512b9f694ab95653ac430852.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "version": "fd773f7a58412131512b9f694ab95653ac430852"
+    },
+    "cardano-wallet": {
+        "branch": "master",
+        "description": "HTTP server & command-line for managing UTxOs and HD wallets in Cardano.",
+        "homepage": "",
+        "owner": "input-output-hk",
+        "repo": "cardano-wallet",
+        "rev": "ba3d8d5c8cde7b7aba81e596d4eea425022c49fd",
+        "sha256": "1ii187asf1z87gd4bq5iqjlihx9gq5w5mp3dxd55zwcb815gh9ha",
+        "type": "tarball",
+        "url": "https://github.com/input-output-hk/cardano-wallet/archive/ba3d8d5c8cde7b7aba81e596d4eea425022c49fd.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "flat": {
         "branch": "master",
