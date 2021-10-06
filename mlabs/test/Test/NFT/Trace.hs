@@ -1,4 +1,4 @@
-module Mlabs.NFT.Trace where
+module Test.NFT.Trace where
 
 import PlutusTx.Prelude
 import Prelude qualified as Hask
@@ -66,12 +66,12 @@ setPriceTrace = do
     Just nid -> return nid
   logInfo $ Hask.show nftId
   void $ Trace.waitNSlots 1
-  authUseH :: AppTraceHandle <- activateContractWallet wallet1 userEndpoints
+  authUseH :: AppTraceHandle <- activateContractWallet wallet1 endpoints
   callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just 20))
   void $ Trace.waitNSlots 1
   callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just (-20)))
   void $ Trace.waitNSlots 1
-  userUseH :: AppTraceHandle <- activateContractWallet wallet2 userEndpoints
+  userUseH :: AppTraceHandle <- activateContractWallet wallet2 endpoints
   callEndpoint @"set-price" userUseH (SetPriceParams nftId Nothing)
   void $ Trace.waitNSlots 1
   callEndpoint @"set-price" userUseH (SetPriceParams nftId (Just 30))
