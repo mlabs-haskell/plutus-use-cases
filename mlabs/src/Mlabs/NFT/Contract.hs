@@ -46,10 +46,10 @@ import Playground.Contract (mkSchemaDefinitions)
 import Mlabs.NFT.Types (
   BuyRequestUser (..),
   Content (..),
-  MintParams,
+  MintParams (..),
   NftId (..),
   QueryResponse (..),
-  SetPriceParams,
+  SetPriceParams (..),
   UserId (..),
  )
 
@@ -97,10 +97,10 @@ mint nftContent = do
   nft <- nftInit nftContent
   utxos <- Contract.utxosAt addr
   oref <- fstUtxo addr
-  let nftId = nft.dNft'id
+  let nftId = dNft'id nft
       scrAddress = txScrAddress
       nftPolicy = mintPolicy scrAddress oref nftId
-      val = Value.singleton (scriptCurrencySymbol nftPolicy) nftId.nftId'token 1
+      val = Value.singleton (scriptCurrencySymbol nftPolicy) (nftId'token nftId) 1
       (lookups, tx) =
         ( mconcat
             [ Constraints.unspentOutputs utxos
@@ -114,7 +114,7 @@ mint nftContent = do
             ]
         )
   void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
-  Contract.tell $ Last . Just $ nftId
+  Contract.tell . Last . Just $ nftId
   Contract.logInfo @Hask.String $ printf "forged %s" (Hask.show val)
 
 -- | Initialise an NFT using the current wallet.
@@ -125,21 +125,21 @@ nftInit mintP = do
   pure $
     DatumNft
       { dNft'id = nftId
-      , dNft'share = mintP.mp'share
+      , dNft'share = mp'share mintP
       , dNft'author = user
       , dNft'owner = user
-      , dNft'price = mintP.mp'price
+      , dNft'price = mp'price mintP
       }
 
 -- | Initialise new NftId
 nftIdInit :: MintParams -> Contract w s Text NftId
-nftIdInit mintP = do
+nftIdInit mP = do
   userAddress <- getUserAddr
   oref <- fstUtxo userAddress
-  let hData = hashData mintP.mp'content
+  let hData = hashData $ mp'content mP
   pure $
     NftId
-      { nftId'title = mintP.mp'title
+      { nftId'title = mp'title mP
       , nftId'token = TokenName hData
       , nftId'outRef = oref
       }
@@ -155,13 +155,13 @@ buy (BuyRequestUser nftId bid newPrice) = do
     Nothing -> Contract.logError @Hask.String "NFT Cannot be found."
     Just oldDatum -> do
       let scrAddress = txScrAddress
-          oref = oldDatum.dNft'id.nftId'outRef
+          oref = nftId'outRef . dNft'id $ oldDatum
           nftPolicy = mintPolicy scrAddress oref nftId
-          val = Value.singleton (scriptCurrencySymbol nftPolicy) nftId.nftId'token 1
-      case oldDatum.dNft'price of
+          val = Value.singleton (scriptCurrencySymbol nftPolicy) (nftId'token nftId) 1
+      case dNft'price oldDatum of
         Nothing -> Contract.logError @Hask.String "NFT not for sale."
         Just price ->
-          if bid Hask.< price
+          if bid < price
             then Contract.logError @Hask.String "Bid Price is too low."
             else do
               user <- getUId
@@ -173,9 +173,9 @@ buy (BuyRequestUser nftId bid newPrice) = do
                   newDatum' =
                     -- Unserialised Datum
                     DatumNft
-                      { dNft'id = oldDatum.dNft'id
-                      , dNft'share = oldDatum.dNft'share
-                      , dNft'author = oldDatum.dNft'author
+                      { dNft'id = dNft'id oldDatum
+                      , dNft'share = dNft'share oldDatum
+                      , dNft'author = dNft'author oldDatum
                       , dNft'owner = user
                       , dNft'price = newPrice
                       }
@@ -214,7 +214,7 @@ setPrice :: SetPriceParams -> Contract w NFTAppSchema Text ()
 setPrice spParams = do
   result <-
     Contract.runError $ do
-      (oref, ciTxOut, datum) <- findNft txScrAddress spParams.sp'nftId
+      (oref, ciTxOut, datum) <- findNft txScrAddress $ sp'nftId spParams
       runOffChainChecks datum
       let (tx, lookups) = mkTxLookups oref ciTxOut datum
       ledgerTx <- Contract.submitTxConstraintsWith @NftTrade lookups tx
@@ -222,8 +222,8 @@ setPrice spParams = do
   either Contract.logError (const $ Contract.logInfo @Hask.String "New price set") result
   where
     mkTxLookups oref ciTxOut datum =
-      let newDatum = datum {dNft'price = spParams.sp'price}
-          redeemer = asRedeemer (SetPriceAct spParams.sp'price (nftCurrency datum.dNft'id))
+      let newDatum = datum {dNft'price = sp'price spParams}
+          redeemer = asRedeemer $ SetPriceAct (sp'price spParams) $ nftCurrency (dNft'id datum)
           newValue = ciTxOut ^. ciTxOutValue
           lookups =
             mconcat
@@ -244,11 +244,11 @@ setPrice spParams = do
       if isOwner datum ownPkh
         then pure ()
         else Contract.throwError "Only owner can set price"
-      if priceNotNegative spParams.sp'price
+      if priceNotNegative (sp'price spParams)
         then pure ()
         else Contract.throwError "New price can not be negative"
 
-    isOwner datum pkh = pkh == datum.dNft'owner.getUserId
+    isOwner datum pkh = pkh == (getUserId . dNft'owner) datum
 
 {- | Query the current price of a given NFTid. Writes it to the Writer instance
  and also returns it, to be used in other contracts.
@@ -357,11 +357,11 @@ findNft addr nftId = do
     [v] -> do
       Contract.logInfo @Hask.String $ Hask.show $ "NFT Found:" <> Hask.show v
       pure v
-    [] -> Contract.throwError $ "DatumNft not found for " <> pack (Hask.show nftId)
+    [] -> Contract.throwError $ "DatumNft not found for " <> (pack . Hask.show) nftId
     _ ->
       Contract.throwError $
         "Should not happen! More than one DatumNft found for "
-          <> pack (Hask.show nftId)
+          <> (pack . Hask.show) nftId
   where
     findData =
       L.filter hasCorrectNft -- filter only datums with desired NftId

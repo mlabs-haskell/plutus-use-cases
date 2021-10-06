@@ -116,17 +116,19 @@ instance Eq DatumNft where
 data UserAct
   = -- | Buy NFT and set new price
     BuyAct
-      { -- | price to buy
+      { -- | price to buy.
         act'bid :: Integer
-      , -- | new price for NFT (Nothing locks NFT)
+      , -- | new price for NFT (Nothing locks NFT).
         act'newPrice :: Maybe Integer
-      , act'cs :: CurrencySymbol
+      , -- | CurencySymbol of the NFT the user is attempting to buy.
+        act'cs :: CurrencySymbol
       }
   | -- | Set new price for NFT
     SetPriceAct
       { -- | new price for NFT (Nothing locks NFT)
         act'newPrice :: Maybe Integer
-      , act'cs :: CurrencySymbol
+      , -- | Currency Symbol of the NFT the user is attempting to set the price of
+        act'cs :: CurrencySymbol
       }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
