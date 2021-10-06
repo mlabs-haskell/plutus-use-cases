@@ -55,14 +55,13 @@
         "branch": "master",
         "description": "A formal specification and executable model of the ledger rules introduced by the Shelley release",
         "homepage": "",
-        "owner": "input-output-hk",
+        "owner": "raduom",
         "repo": "cardano-ledger-specs",
-        "rev": "8efcfc755faae4db3a64ad45343235fce3ed5c47",
-        "sha256": "13mj8nqk4jglyl96d6zm3dbjmx2qn5gwn06g7cmanxiwfkfm7bi1",
+        "rev": "4726325a49310787a672a67e3870913e59fce7fe",
+        "sha256": "1m8yblkyb1ag290vsmkwrq6hl5ilgacybnpsm7v16kw4izjdvnrg",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/cardano-ledger-specs/archive/8efcfc755faae4db3a64ad45343235fce3ed5c47.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "version": "b8f1ebb46a91f1c634e616feb89ae34de5937e17"
+        "url": "https://github.com/raduom/cardano-ledger-specs/archive/4726325a49310787a672a67e3870913e59fce7fe.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "cardano-node": {
         "branch": "master",
