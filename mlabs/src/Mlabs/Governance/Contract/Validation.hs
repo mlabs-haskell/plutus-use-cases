@@ -1,10 +1,4 @@
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -fno-ignore-interface-pragmas #-}
-{-# OPTIONS_GHC -fno-omit-interface-pragmas #-}
-{-# OPTIONS_GHC -fno-specialise #-}
-{-# OPTIONS_GHC -fno-strictness #-}
-{-# OPTIONS_GHC -fobject-code #-}
 
 -- | Validation, on-chain code for governance application
 module Mlabs.Governance.Contract.Validation (
@@ -45,7 +39,8 @@ data AssetClassGov = AssetClassGov
   { acGovCurrencySymbol :: !CurrencySymbol
   , acGovTokenName :: !TokenName
   }
-  deriving (Hask.Show, Hask.Eq, Generic, ToJSON, FromJSON, ToSchema)
+  deriving stock (Hask.Show, Hask.Eq, Generic)
+  deriving anyclass (ToJSON, FromJSON, ToSchema)
 
 instance Eq AssetClassGov where
   {-# INLINEABLE (==) #-}
@@ -59,7 +54,7 @@ PlutusTx.makeLift ''AssetClassGov
 data GovernanceRedeemer
   = GRDeposit !Integer
   | GRWithdraw !Integer
-  deriving (Hask.Show)
+  deriving stock (Hask.Show)
 
 instance Eq GovernanceRedeemer where
   {-# INLINEABLE (==) #-}
@@ -70,11 +65,11 @@ instance Eq GovernanceRedeemer where
 PlutusTx.unstableMakeIsData ''GovernanceRedeemer
 PlutusTx.makeLift ''GovernanceRedeemer
 
-data GovernanceDatum = GovernanceDatum
-  { gdPubKeyHash :: !PubKeyHash
-  , gdxGovCurrencySymbol :: !CurrencySymbol
+newtype GovernanceDatum = GovernanceDatum
+  { gdPubKeyHash :: PubKeyHash
   }
-  deriving (Hask.Show)
+  deriving stock (Hask.Show)
+  deriving newtype (Eq)
 
 PlutusTx.unstableMakeIsData ''GovernanceDatum
 PlutusTx.makeLift ''GovernanceDatum
@@ -85,13 +80,10 @@ instance Validators.ValidatorTypes Governance where
   type RedeemerType Governance = GovernanceRedeemer
 
 -- | governance validator
-{-# INLINEABLE govValidator #-}
-
 mkValidator :: AssetClassGov -> GovernanceDatum -> GovernanceRedeemer -> ScriptContext -> Bool
 mkValidator gov datum redeemer ctx =
   traceIfFalse "incorrect value from redeemer" checkCorrectValue
     && traceIfFalse "incorrect minting script involvenment" checkForging
-    && traceIfFalse "invalid datum update" checkCorrectDatumUpdate
   where
     info = scriptContextTxInfo ctx
 
@@ -100,19 +92,19 @@ mkValidator gov datum redeemer ctx =
       Just o -> o
       Nothing -> traceError "no self in input"
 
-    ownOutput :: Contexts.TxOut
-    ownOutput = case Contexts.getContinuingOutputs ctx of
-      [o] -> o -- this may crash here, may need to filter by pkh
-      _ -> traceError "expected exactly one continuing output"
-
-    outputDatum :: GovernanceDatum
-    outputDatum = case txOutDatumHash ownOutput of
+    outputDatumFor :: Contexts.TxOut -> GovernanceDatum
+    outputDatumFor utxo = case txOutDatumHash utxo of
       Nothing -> traceError "no datum hash on governance"
       Just h -> case findDatum h info of
         Nothing -> traceError "no datum on governance"
         Just (Datum d) -> case PlutusTx.fromBuiltinData d of
           Nothing -> traceError "no datum parse"
           Just gd -> gd
+
+    ownOutput :: Contexts.TxOut
+    ownOutput = case filter ((datum ==) . outputDatumFor) $ Contexts.getContinuingOutputs ctx of
+      [o] -> o
+      _ -> traceError "expected exactly one continuing output with the same datum"
 
     valueIn :: Value
     valueIn = txOutValue $ txInInfoResolved ownInput
@@ -124,7 +116,7 @@ mkValidator gov datum redeemer ctx =
     pkh = gdPubKeyHash datum
 
     xGov :: CurrencySymbol
-    xGov = gdxGovCurrencySymbol datum
+    xGov = acGovCurrencySymbol gov
 
     --- checks
 
@@ -141,11 +133,6 @@ mkValidator gov datum redeemer ctx =
       GRDeposit n -> n > 0 && valueIn + govSingleton gov n == valueOut
       GRWithdraw n -> n > 0 && valueIn - govSingleton gov n == valueOut
 
-    checkCorrectDatumUpdate :: Bool
-    checkCorrectDatumUpdate =
-      pkh == gdPubKeyHash outputDatum
-        && xGov == gdxGovCurrencySymbol outputDatum
-
 govInstance :: AssetClassGov -> Validators.TypedValidator Governance
 govInstance gov =
   Validators.mkTypedValidator @Governance
@@ -156,6 +143,7 @@ govInstance gov =
   where
     wrap = Validators.wrapValidator @GovernanceDatum @GovernanceRedeemer
 
+{-# INLINEABLE govValidator #-}
 govValidator :: AssetClassGov -> Validator
 govValidator = Validators.validatorScript . govInstance
 
@@ -216,7 +204,7 @@ mkPolicy vh AssetClassGov {..} _ ctx =
 
     -- checks
 
-    -- mintedDeposit \subseteq differenceGovDeposits => minteddeposit == differencegovdeposits
+    -- mintedDeposit \subseteq differenceGovDeposits => mintedDeposit == differenceGovDeposits
     checkMintedSubsetGovDeposits :: Bool
     checkMintedSubsetGovDeposits = foldr memb True (map (first coerce) mintedDeposit)
       where

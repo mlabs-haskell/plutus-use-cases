@@ -13,6 +13,7 @@ module Mlabs.Governance.Contract.Api (
   Withdraw (..),
   ProvideRewards (..),
   QueryBalance (..),
+  ClaimVote (..),
   GovernanceSchema,
 ) where
 
@@ -48,6 +49,14 @@ newtype Withdraw = Withdraw [(PubKeyHash, Integer)]
 
 PlutusTx.unstableMakeIsData ''Withdraw
 
+{- | Given a pair @(pkh, amount)@, this will take @amount@
+ xGOV for @phk@ which you own and make it match your own public key.
+-}
+newtype ClaimVote = ClaimVote (PubKeyHash, Integer)
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving newtype (FromJSON, ToJSON)
+  deriving anyclass (ToSchema)
+
 newtype ProvideRewards = ProvideRewards Value
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving newtype (FromJSON, ToJSON)
@@ -62,6 +71,7 @@ newtype QueryBalance = QueryBalance PubKeyHash
 type GovernanceSchema =
   Call Deposit
     .\/ Call Withdraw
+    .\/ Call ClaimVote
     .\/ Call ProvideRewards
     .\/ Call QueryBalance
 
@@ -72,6 +82,9 @@ instance IsEndpoint Deposit where
 
 instance IsEndpoint Withdraw where
   type EndpointSymbol Withdraw = "withdraw"
+
+instance IsEndpoint ClaimVote where
+  type EndpointSymbol ClaimVote = "claim-vote"
 
 instance IsEndpoint ProvideRewards where
   type EndpointSymbol ProvideRewards = "provide-rewards"

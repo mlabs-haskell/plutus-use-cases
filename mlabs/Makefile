@@ -54,7 +54,6 @@ stack-test-watch:
 # Add folder locations to the list to be reformatted. 
 fourmolu-format:
 	@ echo "> Formatting all .hs files"
-	fourmolu -i $$(find src/  -iregex ".*.hs")
-	fourmolu -i $$(find test/ -iregex ".*.hs")
-	fourmolu -i $$(find app/  -iregex ".*.hs")
-
+	fourmolu -o-XTypeApplications -o-XImportQualifiedPost -o-XTemplateHaskell -i $$(find src/  -iregex ".*.hs")
+	fourmolu -o-XTypeApplications -o-XImportQualifiedPost -o-XTemplateHaskell -i $$(find test/ -iregex ".*.hs")
+	fourmolu -o-XTypeApplications -o-XImportQualifiedPost -o-XTemplateHaskell -i $$(find app/  -iregex ".*.hs")
