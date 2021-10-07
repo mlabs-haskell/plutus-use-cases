@@ -6,6 +6,7 @@ module Mlabs.NFT.Types (
   NftId (..),
   BuyRequestUser (..),
   MintParams (..),
+  MintAct (..),
   SetPriceParams (..),
   Content (..),
   Title (..),
@@ -18,9 +19,22 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Monoid (Last)
 import GHC.Generics (Generic)
 
-import Ledger (PubKeyHash, TokenName, TxOutRef)
+import Ledger (PubKeyHash, TokenName, TxOutRef,  CurrencySymbol)
 import PlutusTx qualified
 import Schema (ToSchema)
+
+-- | Mint Redeemer
+data MintAct
+  = -- | Mint Redeemer 
+    Mint 
+  | -- | Query the Minting Script for Authenticity.
+    Check
+      {  mr'currencySymbol   :: CurrencySymbol 
+      }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (ToJSON, FromJSON)
+PlutusTx.unstableMakeIsData ''MintAct
+PlutusTx.makeLift ''MintAct
 
 -- ON-CHAIN TYPES --
 newtype Content = Content {getContent :: BuiltinByteString}

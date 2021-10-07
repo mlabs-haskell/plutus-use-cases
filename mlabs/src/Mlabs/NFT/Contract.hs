@@ -9,7 +9,7 @@ import PlutusTx.Prelude hiding (mconcat, (<>))
 import Prelude (mconcat, (<>))
 import Prelude qualified as Hask
 
-import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right)
+import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right, at, (^?))
 import Control.Monad (join, void)
 import Data.List qualified as L
 import Data.Map qualified as Map
@@ -18,9 +18,13 @@ import Data.Text (Text, pack)
 
 import Text.Printf (printf)
 
+import Plutus.V1.Ledger.Value (symbols)
 import Plutus.Contract (Contract, Endpoint, endpoint, utxosTxOutTxAt, type (.\/))
 import Plutus.Contract qualified as Contract
 import PlutusTx qualified
+import Plutus.ChainIndex.Tx (
+  ChainIndexTx,
+                 )
 
 import Ledger (
   Address,
@@ -35,6 +39,7 @@ import Ledger (
   pubKeyHash,
   scriptCurrencySymbol,
   txId,
+  CurrencySymbol,
  )
 
 import Ledger.Constraints qualified as Constraints
@@ -51,6 +56,7 @@ import Mlabs.NFT.Types (
   QueryResponse (..),
   SetPriceParams (..),
   UserId (..),
+  MintAct (..),
  )
 
 import Mlabs.NFT.Validation (
@@ -74,6 +80,8 @@ type QueryContract a = Contract QueryResponse NFTAppSchema Text a
 
 -- | A contract used for all user actions.
 type UserContract a = Contract (Last NftId) NFTAppSchema Text a
+
+type GenericContract a = forall w s  . Contract w s Text a
 
 -- | A common App schema works for now.
 type NFTAppSchema =
@@ -100,6 +108,7 @@ mint nftContent = do
   let nftId = dNft'id nft
       scrAddress = txScrAddress
       nftPolicy = mintPolicy scrAddress oref nftId
+      mintRedeemer = asRedeemer Mint 
       val = Value.singleton (scriptCurrencySymbol nftPolicy) (nftId'token nftId) 1
       (lookups, tx) =
         ( mconcat
@@ -108,7 +117,7 @@ mint nftContent = do
             , Constraints.typedValidatorLookups txPolicy
             ]
         , mconcat
-            [ Constraints.mustMintValue val
+            [ Constraints.mustMintValueWithRedeemer mintRedeemer val
             , Constraints.mustSpendPubKeyOutput oref
             , Constraints.mustPayToTheScript nft val
             ]
@@ -116,6 +125,49 @@ mint nftContent = do
   void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
   Contract.tell . Last . Just $ nftId
   Contract.logInfo @Hask.String $ printf "forged %s" (Hask.show val)
+
+-- | Request tells if a Datum and its coin were produced correctly.
+testAuthenticNFT :: CurrencySymbol ->  TxOutRef -> GenericContract Bool 
+testAuthenticNFT cSymbol txRef = do
+  utxos <- getScriptAddrUtxos
+  let utxo' :: Maybe (ChainIndexTxOut,ChainIndexTx)= utxos Map.!? txRef 
+  case utxo' of 
+    Nothing -> do
+      Contract.logError @Hask.String "Authenticity test cannot find TxOutRef at Script Address. Failing." 
+      pure False 
+    Just (x,_) -> do
+      if not $ elem cSymbol $ symbols $ x ^. ciTxOutValue then do 
+          Contract.logError @Hask.String 
+            "Authenticity test cannot find Token in utxo. Failing." 
+          pure False 
+      else  do
+        datum <- getCxDatum
+        queryMint cSymbol datum
+
+  where
+    getCxDatum = error () -- todo: need to implement this 
+    
+    -- | Mints an NFT and sends it to the App Address.
+    queryMint :: CurrencySymbol -> DatumNft -> GenericContract Bool
+    queryMint  cSymbol datum = do
+      let mintRedeemer = asRedeemer $ Check cSymbol 
+          datumNftId =  dNft'id datum
+          datumOref = nftId'outRef datumNftId 
+          val = mempty
+          nftPolicy = mintPolicy txScrAddress datumOref datumNftId
+          (lookups, tx) =
+            ( mconcat
+                [ Constraints.mintingPolicy nftPolicy
+                ]
+            , mconcat
+                [ Constraints.mustMintValueWithRedeemer mintRedeemer val
+                ]
+            )
+      void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
+      pure True 
+
+getScriptAddrUtxos :: GenericContract (Map.Map TxOutRef (ChainIndexTxOut,ChainIndexTx))
+getScriptAddrUtxos  =  utxosTxOutTxAt txScrAddress
 
 -- | Initialise an NFT using the current wallet.
 nftInit :: MintParams -> Contract w s Text DatumNft

@@ -20,12 +20,9 @@ import Prelude qualified as Hask
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Plutus.V1.Ledger.Ada qualified as Ada (
-  Ada (..),
   adaSymbol,
   adaToken,
-  adaValueOf,
   lovelaceValueOf,
-  toValue,
  )
 
 import Ledger (
@@ -46,12 +43,10 @@ import Ledger (
   getContinuingOutputs,
   mkMintingPolicyScript,
   ownCurrencySymbol,
-  pubKeyOutputsAt,
   scriptContextTxInfo,
   scriptCurrencySymbol,
   txInInfoOutRef,
   txInfoData,
-  txInfoFee,
   txInfoInputs,
   txInfoMint,
   txInfoOutputs,
@@ -147,22 +142,53 @@ instance Eq UserAct where
       && cs1 == cs2
   _ == _ = False
 
-asRedeemer :: UserAct -> Redeemer
+asRedeemer :: PlutusTx.ToData a => a -> Redeemer
 asRedeemer = Redeemer . PlutusTx.toBuiltinData
+
 
 {-# INLINEABLE mkMintPolicy #-}
 
 -- | Minting policy for NFTs.
-mkMintPolicy :: Address -> TxOutRef -> NftId -> () -> ScriptContext -> Bool
-mkMintPolicy stateAddr oref (NftId _ token outRef) _ ctx =
+mkMintPolicy :: Address -> TxOutRef -> NftId -> MintAct -> ScriptContext -> Bool
+mkMintPolicy stateAddr oref (NftId _ token outRef) mAct ctx =
   -- ? maybe author could be checked also, their key should be in signatures.
-  traceIfFalse "UTXO not consumed" hasUtxo
-    && traceIfFalse "Wrong amount minted" checkMintedAmount
-    && traceIfFalse "Does not pay to state" paysToState
-    && traceIfFalse "NFTid TxOutRef and minting TxOutRef are different" sameORef
+  case mAct of 
+    Check {} -> 
+      queryFail  "No minting is allowed through querrying." noMint -- never remove this test
+      && queryFail "Minted currency symbol does not match provided currency." 
+        (testMatch $ mr'currencySymbol  mAct)
+    Mint {} ->
+      mintFail "UTXO will not be consumed." hasUtxo
+        && mintFail "Wrong amount minted" checkMintedAmount
+        && mintFail "Does not pay to state" paysToState
+        && mintFail "NFTid TxOutRef and minting TxOutRef are different" sameORef
   where
-    info = scriptContextTxInfo ctx
+    -- Helper functions. 
+    mintFail :: BuiltinString -> Bool -> Bool
+    mintFail xInfo test = traceIfFalse ("NFT Minting failed. " <> xInfo) test
 
+    queryFail :: BuiltinString -> Bool -> Bool
+    queryFail xInfo test = traceIfFalse ("NFT Query failed. " <> xInfo) test
+
+    info = scriptContextTxInfo ctx
+    ----------------------------------------------------------------------------
+    -- Check Action - Tests 
+    -- 
+    -- Extra atention should be given that the minting policy doesn't allow a
+    -- token to be minted through this branch of logic -  as this would be a
+    -- backdoor to incorrect minting.
+    
+    -- | Check that no token is minted during a query
+    noMint :: Bool
+    noMint = isZero . txInfoMint $ info  
+    
+    -- Test that the currency symbol that would be minted by these specific
+    -- configurations matches the currency symbol provided. If it matches, then
+    -- the NFT is authentic - if not then it is a forgery.
+    testMatch =  ( ownCurrencySymbol ctx == )
+
+    ----------------------------------------------------------------------------
+    -- Minting Action - Tests 
     hasUtxo =
       any (\inp -> txInInfoOutRef inp == oref) $
         txInfoInputs info
