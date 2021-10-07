@@ -6,6 +6,7 @@ module Mlabs.NFT.Types (
   NftId (..),
   BuyRequestUser (..),
   MintParams (..),
+  MintAct (..),
   SetPriceParams (..),
   Content (..),
   Title (..),
@@ -22,7 +23,31 @@ import Ledger (PubKeyHash, TokenName, TxOutRef)
 import PlutusTx qualified
 import Schema (ToSchema)
 
+--------------------------------------------------------------------------------
 -- ON-CHAIN TYPES --
+
+-- | Minting Policy Redeemer
+data MintAct
+  = -- | Mint Redeemer.
+    Mint
+      { -- | The datum hash.
+        mint'tokenName :: TokenName
+      }
+  | -- | Any user action.
+    TxAction
+      { -- | The previous hash datum.
+        mTx'fromCurrencySymbol :: TokenName
+      , -- | The current hash datum.
+        mTx'toCurrencySymbol :: TokenName
+      }
+  | -- | Any other check. Will fail mining.
+    Check
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (ToJSON, FromJSON)
+
+PlutusTx.unstableMakeIsData ''MintAct
+PlutusTx.makeLift ''MintAct
+
 newtype Content = Content {getContent :: BuiltinByteString}
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
@@ -61,8 +86,8 @@ data NftId = NftId
   { -- | Content Title.
     nftId'title :: Title
   , -- | token name is identified by content of the NFT (it's hash of it)
-    nftId'token :: TokenName
-  , -- | TxOutRef which was used to mint current NFT
+    nftId'contentHash :: BuiltinByteString
+  , -- | TxOutRef which was consumed when NFT was minted.
     nftId'outRef :: TxOutRef
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
@@ -99,6 +124,7 @@ instance Eq NftContent where
   (NftContent title1 data1 author1) == (NftContent title2 data2 author2) =
     title1 == title2 && data1 == data2 && author1 == author2
 
+--------------------------------------------------------------------------------
 -- ENDPOINTS PARAMETERS --
 
 -- | Parameters that need to be submitted when minting a new NFT.
