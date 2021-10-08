@@ -157,6 +157,7 @@ library
     Mlabs.NFT.Types
     Mlabs.NFT.Contract
     Mlabs.NFT.Validation
+    Mlabs.NFT.Api
 
 executable mlabs-plutus-use-cases
   import:  common-imports

@@ -15,6 +15,7 @@ import Wallet.Emulator qualified as Emulator
 
 import Mlabs.Utils.Wallet (walletFromNumber)
 
+import Mlabs.NFT.Api
 import Mlabs.NFT.Contract
 import Mlabs.NFT.Types
 

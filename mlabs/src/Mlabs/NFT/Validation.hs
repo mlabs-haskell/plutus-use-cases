@@ -145,25 +145,25 @@ instance Eq UserAct where
 asRedeemer :: PlutusTx.ToData a => a -> Redeemer
 asRedeemer = Redeemer . PlutusTx.toBuiltinData
 
-
 {-# INLINEABLE mkMintPolicy #-}
 
 -- | Minting policy for NFTs.
 mkMintPolicy :: Address -> TxOutRef -> NftId -> MintAct -> ScriptContext -> Bool
 mkMintPolicy stateAddr oref (NftId _ token outRef) mAct ctx =
   -- ? maybe author could be checked also, their key should be in signatures.
-  case mAct of 
-    Check {} -> 
-      queryFail  "No minting is allowed through querrying." noMint -- never remove this test
-      && queryFail "Minted currency symbol does not match provided currency." 
-        (testMatch $ mr'currencySymbol  mAct)
-    Mint {} ->
+  case mAct of
+    Check currSymbol ->
+      queryFail "No minting is allowed through querrying." noMint -- never remove this test
+        && queryFail
+          "Minted currency symbol does not match provided currency."
+          (testMatch currSymbol)
+    Mint ->
       mintFail "UTXO will not be consumed." hasUtxo
         && mintFail "Wrong amount minted" checkMintedAmount
         && mintFail "Does not pay to state" paysToState
         && mintFail "NFTid TxOutRef and minting TxOutRef are different" sameORef
   where
-    -- Helper functions. 
+    -- Helper functions.
     mintFail :: BuiltinString -> Bool -> Bool
     mintFail xInfo test = traceIfFalse ("NFT Minting failed. " <> xInfo) test
 
@@ -172,23 +172,22 @@ mkMintPolicy stateAddr oref (NftId _ token outRef) mAct ctx =
 
     info = scriptContextTxInfo ctx
     ----------------------------------------------------------------------------
-    -- Check Action - Tests 
-    -- 
+    -- Check Action - Tests
+    --
     -- Extra atention should be given that the minting policy doesn't allow a
     -- token to be minted through this branch of logic -  as this would be a
     -- backdoor to incorrect minting.
-    
-    -- | Check that no token is minted during a query
+
     noMint :: Bool
-    noMint = isZero . txInfoMint $ info  
-    
+    noMint = isZero . txInfoMint $ info
+
     -- Test that the currency symbol that would be minted by these specific
     -- configurations matches the currency symbol provided. If it matches, then
     -- the NFT is authentic - if not then it is a forgery.
-    testMatch =  ( ownCurrencySymbol ctx == )
+    testMatch = (ownCurrencySymbol ctx ==)
 
     ----------------------------------------------------------------------------
-    -- Minting Action - Tests 
+    -- Minting Action - Tests
     hasUtxo =
       any (\inp -> txInInfoOutRef inp == oref) $
         txInfoInputs info

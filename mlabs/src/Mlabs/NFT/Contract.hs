@@ -1,15 +1,19 @@
 module Mlabs.NFT.Contract (
-  NFTAppSchema,
-  schemas,
-  endpoints,
-  queryEndpoints,
+  QueryContract,
+  UserContract,
+  GenericContract,
+  mint,
+  buy,
+  setPrice,
+  queryCurrentOwner,
+  queryCurrentPrice,
 ) where
 
 import PlutusTx.Prelude hiding (mconcat, (<>))
 import Prelude (mconcat, (<>))
 import Prelude qualified as Hask
 
-import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right, at, (^?))
+import Control.Lens (at, filtered, to, traversed, (^.), (^..), (^?), _Just, _Right)
 import Control.Monad (join, void)
 import Data.List qualified as L
 import Data.Map qualified as Map
@@ -18,17 +22,16 @@ import Data.Text (Text, pack)
 
 import Text.Printf (printf)
 
-import Plutus.V1.Ledger.Value (symbols)
+import Plutus.ChainIndex.Tx (ChainIndexTx, citxData)
 import Plutus.Contract (Contract, Endpoint, endpoint, utxosTxOutTxAt, type (.\/))
 import Plutus.Contract qualified as Contract
+import Plutus.V1.Ledger.Value (symbols)
 import PlutusTx qualified
-import Plutus.ChainIndex.Tx (
-  ChainIndexTx,
-                 )
 
 import Ledger (
   Address,
   ChainIndexTxOut,
+  CurrencySymbol,
   Datum (..),
   Redeemer (..),
   TxOutRef,
@@ -39,7 +42,6 @@ import Ledger (
   pubKeyHash,
   scriptCurrencySymbol,
   txId,
-  CurrencySymbol,
  )
 
 import Ledger.Constraints qualified as Constraints
@@ -51,13 +53,15 @@ import Playground.Contract (mkSchemaDefinitions)
 import Mlabs.NFT.Types (
   BuyRequestUser (..),
   Content (..),
+  MintAct (..),
   MintParams (..),
   NftId (..),
   QueryResponse (..),
   SetPriceParams (..),
   UserId (..),
-  MintAct (..),
  )
+
+import Mlabs.Plutus.Contract (readDatum')
 
 import Mlabs.NFT.Validation (
   DatumNft (..),
@@ -73,29 +77,16 @@ import Mlabs.NFT.Validation (
   txScrAddress,
  )
 
-import Mlabs.Plutus.Contract (readDatum', selectForever)
-
 -- | A contract used exclusively for query actions.
-type QueryContract a = Contract QueryResponse NFTAppSchema Text a
+type QueryContract a = forall s. Contract QueryResponse s Text a
 
 -- | A contract used for all user actions.
-type UserContract a = Contract (Last NftId) NFTAppSchema Text a
+type UserContract a = forall s. Contract (Last NftId) s Text a
 
-type GenericContract a = forall w s  . Contract w s Text a
+-- | A Generic Contract used for aux functions and helpers.
+type GenericContract a = forall w s. Contract w s Text a
 
--- | A common App schema works for now.
-type NFTAppSchema =
-  -- Author Endpoint
-  Endpoint "mint" MintParams
-    -- User Action Endpoints
-    .\/ Endpoint "buy" BuyRequestUser
-    .\/ Endpoint "set-price" SetPriceParams
-    -- Query Endpoints
-    .\/ Endpoint "query-current-owner" NftId
-    .\/ Endpoint "query-current-price" NftId
-
-mkSchemaDefinitions ''NFTAppSchema
-
+--------------------------------------------------------------------------------
 -- MINT --
 
 -- | Mints an NFT and sends it to the App Address.
@@ -108,7 +99,7 @@ mint nftContent = do
   let nftId = dNft'id nft
       scrAddress = txScrAddress
       nftPolicy = mintPolicy scrAddress oref nftId
-      mintRedeemer = asRedeemer Mint 
+      mintRedeemer = asRedeemer Mint
       val = Value.singleton (scriptCurrencySymbol nftPolicy) (nftId'token nftId) 1
       (lookups, tx) =
         ( mconcat
@@ -127,32 +118,47 @@ mint nftContent = do
   Contract.logInfo @Hask.String $ printf "forged %s" (Hask.show val)
 
 -- | Request tells if a Datum and its coin were produced correctly.
-testAuthenticNFT :: CurrencySymbol ->  TxOutRef -> GenericContract Bool 
-testAuthenticNFT cSymbol txRef = do
+testAuthenticNFT :: NftId -> GenericContract Bool
+testAuthenticNFT nftid = do
+  (txRef, _, _) <- findNft txScrAddress nftid
   utxos <- getScriptAddrUtxos
-  let utxo' :: Maybe (ChainIndexTxOut,ChainIndexTx)= utxos Map.!? txRef 
-  case utxo' of 
+  let utxo' :: Maybe (ChainIndexTxOut, ChainIndexTx) = utxos Map.!? txRef
+  case utxo' of
     Nothing -> do
-      Contract.logError @Hask.String "Authenticity test cannot find TxOutRef at Script Address. Failing." 
-      pure False 
-    Just (x,_) -> do
-      if not $ elem cSymbol $ symbols $ x ^. ciTxOutValue then do 
-          Contract.logError @Hask.String 
-            "Authenticity test cannot find Token in utxo. Failing." 
-          pure False 
-      else  do
-        datum <- getCxDatum
-        queryMint cSymbol datum
-
+      Contract.logError @Hask.String "Authenticity test cannot find TxOutRef at Script Address. Failing."
+      pure False
+    Just (x, y) -> do
+      case symbols $ x ^. ciTxOutValue of
+        [] -> do
+          -- No Symbols with transaction
+          Contract.logError @Hask.String
+            "Authenticity test cannot find Token in utxo. Failing."
+          pure False
+        _ : _ : _ -> do
+          -- Too many symbols in transaction
+          Contract.logError @Hask.String
+            "Too many cSymbols. Failing."
+          pure False
+        [cSymbol] -> do
+          -- one symbol
+          datum <- getCxDatum y
+          queryMint cSymbol datum
   where
-    getCxDatum = error () -- todo: need to implement this 
-    
-    -- | Mints an NFT and sends it to the App Address.
+    getCxDatum citx = do
+      let datum =
+            firstJust
+              . fmap (PlutusTx.fromBuiltinData @DatumNft . unwrapDatum)
+              . Map.elems
+              $ citx ^. citxData
+      case datum of
+        [x] -> return x
+        _ -> Contract.throwError "Validation Failed. Could not establish adequate datum."
+
     queryMint :: CurrencySymbol -> DatumNft -> GenericContract Bool
-    queryMint  cSymbol datum = do
-      let mintRedeemer = asRedeemer $ Check cSymbol 
-          datumNftId =  dNft'id datum
-          datumOref = nftId'outRef datumNftId 
+    queryMint cSymbol datum = do
+      let mintRedeemer = asRedeemer $ Check cSymbol
+          datumNftId = dNft'id datum
+          datumOref = nftId'outRef datumNftId
           val = mempty
           nftPolicy = mintPolicy txScrAddress datumOref datumNftId
           (lookups, tx) =
@@ -164,10 +170,18 @@ testAuthenticNFT cSymbol txRef = do
                 ]
             )
       void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
-      pure True 
+      Contract.logInfo @Hask.String "The NFTid is healthy and in a good state at the address."
+      pure True
 
-getScriptAddrUtxos :: GenericContract (Map.Map TxOutRef (ChainIndexTxOut,ChainIndexTx))
-getScriptAddrUtxos  =  utxosTxOutTxAt txScrAddress
+    unwrapDatum (Datum b) = b
+
+    firstJust = \case
+      Just x : xs -> [x]
+      Nothing : xs -> firstJust xs
+      [] -> []
+
+getScriptAddrUtxos :: GenericContract (Map.Map TxOutRef (ChainIndexTxOut, ChainIndexTx))
+getScriptAddrUtxos = utxosTxOutTxAt txScrAddress
 
 -- | Initialise an NFT using the current wallet.
 nftInit :: MintParams -> Contract w s Text DatumNft
@@ -200,7 +214,7 @@ nftIdInit mP = do
  Attempts to buy a new NFT by changing the owner, pays the current owner and
  the author, and sets a new price for the NFT.
 -}
-buy :: BuyRequestUser -> Contract w NFTAppSchema Text ()
+buy :: BuyRequestUser -> UserContract ()
 buy (BuyRequestUser nftId bid newPrice) = do
   oldDatum' <- getNftDatum nftId
   case oldDatum' of
@@ -262,7 +276,7 @@ buy (BuyRequestUser nftId bid newPrice) = do
               void $ Contract.logInfo @Hask.String $ printf "Bought %s" $ Hask.show val
 
 -- SET PRICE --
-setPrice :: SetPriceParams -> Contract w NFTAppSchema Text ()
+setPrice :: SetPriceParams -> UserContract ()
 setPrice spParams = do
   result <-
     Contract.runError $ do
@@ -290,7 +304,7 @@ setPrice spParams = do
               ]
        in (tx, lookups)
 
-    runOffChainChecks :: DatumNft -> Contract w NFTAppSchema Text ()
+    runOffChainChecks :: DatumNft -> UserContract ()
     runOffChainChecks datum = do
       ownPkh <- pubKeyHash <$> Contract.ownPubKey
       if isOwner datum ownPkh
@@ -327,25 +341,6 @@ queryCurrentOwner nftid = do
     log owner =
       Contract.logInfo @Hask.String $
         "Current owner of: " <> Hask.show nftid <> " is: " <> Hask.show owner
-
--- ENDPOINTS --
-
--- | User Endpoints .
-endpoints :: UserContract ()
-endpoints =
-  selectForever
-    [ endpoint @"mint" mint
-    , endpoint @"buy" buy
-    , endpoint @"set-price" setPrice
-    ]
-
--- Query Endpoints are used for Querying, with no on-chain tx generation.
-queryEndpoints :: QueryContract ()
-queryEndpoints =
-  selectForever
-    [ endpoint @"query-current-price" queryCurrentPrice
-    , endpoint @"query-current-owner" queryCurrentOwner
-    ]
 
 -- HELPER FUNCTIONS AND CONTRACTS --
 

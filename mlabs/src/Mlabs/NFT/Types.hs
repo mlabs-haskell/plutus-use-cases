@@ -19,20 +19,21 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Monoid (Last)
 import GHC.Generics (Generic)
 
-import Ledger (PubKeyHash, TokenName, TxOutRef,  CurrencySymbol)
+import Ledger (CurrencySymbol, PubKeyHash, TokenName, TxOutRef)
 import PlutusTx qualified
 import Schema (ToSchema)
 
 -- | Mint Redeemer
 data MintAct
-  = -- | Mint Redeemer 
-    Mint 
+  = -- | Mint Redeemer
+    Mint
   | -- | Query the Minting Script for Authenticity.
     Check
-      {  mr'currencySymbol   :: CurrencySymbol 
+      { mr'currencySymbol :: CurrencySymbol
       }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
+
 PlutusTx.unstableMakeIsData ''MintAct
 PlutusTx.makeLift ''MintAct
 
