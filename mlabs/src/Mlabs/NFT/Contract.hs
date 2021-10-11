@@ -80,6 +80,8 @@ import Mlabs.NFT.Validation (
   txScrAddress,
  )
 
+import qualified PlutusTx.Numeric as N
+
 -- | A contract used exclusively for query actions.
 type QueryContract a = forall s. Contract QueryResponse s Text a
 
@@ -248,6 +250,7 @@ buy (BuyRequestUser nftId bid newPrice) = do
 
               (nftOref, ciTxOut, datum) <- findNft txScrAddress nftId
               oref' <- fstUtxo =<< getUserAddr
+              
               let 
                   nftCurrency' = nftCurrency nftId
                   newDatum' =
@@ -267,16 +270,17 @@ buy (BuyRequestUser nftId bid newPrice) = do
                       }
                   newDatum = Datum . PlutusTx.toBuiltinData $ newDatum' -- Serialised Datum
                   (paidToAuthor, paidToOwner) = calculateShares bid $ dNft'share oldDatum
-                  newValue = ciTxOut ^. ciTxOutValue
                   
                   fromToken = (nftId'token $ nftId)
                   toToken = (nftId'token $ nftId)
 
                   -- TEST MINT
-                  nftPolicy = mintPolicy scrAddress nftOref nftId
+                  -- nftPolicy = mintPolicy scrAddress nftOref nftId
                   mintRedeemer = asRedeemer $ TxAction fromToken toToken
-                  val = Value.singleton (scriptCurrencySymbol nftPolicy) (TokenName "AAA") (-1)
-                  val' = Value.singleton (scriptCurrencySymbol nftPolicy) (TokenName "BBB") (1)
+                  valAAA = Value.singleton (scriptCurrencySymbol nftPolicy) (TokenName "AAA") 1
+                  negAAA = negate valAAA
+                  valBBB = Value.singleton (scriptCurrencySymbol nftPolicy) (TokenName "BBB") 1
+                  newValue = valBBB
 
                   (lookups, tx) =
                     ( mconcat
@@ -291,8 +295,8 @@ buy (BuyRequestUser nftId bid newPrice) = do
                     , mconcat
                         [ Constraints.mustPayToTheScript newDatum' newValue
                         , Constraints.mustIncludeDatum newDatum
-                        , Constraints.mustMintValueWithRedeemer mintRedeemer val
-                        , Constraints.mustMintValueWithRedeemer mintRedeemer val'
+                        , Constraints.mustMintValueWithRedeemer mintRedeemer negAAA
+                        , Constraints.mustMintValueWithRedeemer mintRedeemer valBBB
                         , Constraints.mustPayToPubKey (getUserId . dNft'owner $ oldDatum) paidToOwner
                         , Constraints.mustPayToPubKey (getUserId . dNft'author $ oldDatum) paidToAuthor
                         , Constraints.mustSpendScriptOutput
@@ -300,8 +304,13 @@ buy (BuyRequestUser nftId bid newPrice) = do
                             (Redeemer . PlutusTx.toBuiltinData $ action)
                         ]
                     )
+              void $ Contract.logInfo @Hask.String $ printf "NEW VALUE %s" $ Hask.show newValue
+              void $ Contract.logInfo @Hask.String $ printf "SCRIPT VALUE %s" $ Hask.show (ciTxOut ^. ciTxOutValue)
+              void $ Contract.logInfo @Hask.String $ printf "TO AUTH %s" $ Hask.show paidToAuthor
+              void $ Contract.logInfo @Hask.String $ printf "TO OWNER %s" $ Hask.show paidToOwner
+              void $ Contract.logInfo @Hask.String $ printf "NEG AAA %s" $ Hask.show negAAA
               void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
-              void $ Contract.logInfo @Hask.String $ printf "Bought %s" $ Hask.show val
+              -- void $ Contract.logInfo @Hask.String $ printf "Bought %s" $ Hask.show val
 
 -- SET PRICE --
 setPrice :: SetPriceParams -> UserContract ()
