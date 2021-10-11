@@ -152,16 +152,17 @@ mkMintPolicy :: Address -> TxOutRef -> NftId -> MintAct -> ScriptContext -> Bool
 mkMintPolicy stateAddr oref (NftId _ token outRef) mAct ctx =
   -- ? maybe author could be checked also, their key should be in signatures.
   case mAct of
-    Check currSymbol ->
-      queryFail "No minting is allowed through querrying." noMint -- never remove this test
-        && queryFail
-          "Minted currency symbol does not match provided currency."
-          (testMatch currSymbol)
+    TxAction from to -> queryFail "Not a valid Redeemer" True
+--      queryFail "No minting is allowed through querrying." noMint -- never remove this test
+--        && queryFail
+--          "Minted currency symbol does not match provided currency."
+--          (testMatch currSymbol)
     Mint ->
       mintFail "UTXO will not be consumed." hasUtxo
         && mintFail "Wrong amount minted" checkMintedAmount
         && mintFail "Does not pay to state" paysToState
         && mintFail "NFTid TxOutRef and minting TxOutRef are different" sameORef
+        && mintFail "Currency Name is not correct." True
   where
     -- Helper functions.
     mintFail :: BuiltinString -> Bool -> Bool
@@ -174,17 +175,25 @@ mkMintPolicy stateAddr oref (NftId _ token outRef) mAct ctx =
     ----------------------------------------------------------------------------
     -- Check Action - Tests
     --
-    -- Extra atention should be given that the minting policy doesn't allow a
+    -- Extra attention should be given that the minting policy doesn't allow a
     -- token to be minted through this branch of logic -  as this would be a
     -- backdoor to incorrect minting.
 
     noMint :: Bool
-    noMint = isZero . txInfoMint $ info
-
+    noMint = True 
+     
+      --case flattenValue (txInfoMint info) of
+      --    [(cur, tn, val)] -> True
+        --    ownCurrencySymbol ctx == cur
+        --      && token == tn
+        --      && val == 1
+      --    _ -> False
+    
     -- Test that the currency symbol that would be minted by these specific
     -- configurations matches the currency symbol provided. If it matches, then
-    -- the NFT is authentic - if not then it is a forgery.
-    testMatch = (ownCurrencySymbol ctx ==)
+    -- the NFT is authentic - if not then it is a forgery. Also check that tx is
+    -- minting a total of 0 tokens.
+  
 
     ----------------------------------------------------------------------------
     -- Minting Action - Tests
@@ -223,15 +232,20 @@ mintPolicy stateAddr oref nid =
 -- | A validator script for the user actions.
 mKTxPolicy :: DatumNft -> UserAct -> ScriptContext -> Bool
 mKTxPolicy datum act ctx =
+ 
   traceIfFalse "Datum does not correspond to NFTId, no datum is present, or more than one suitable datums are present." correctDatum
     && traceIfFalse "Datum is not  present." correctDatum'
     && traceIfFalse "New Price cannot be negative." (setPositivePrice act)
     && traceIfFalse "Previous TX is not consumed." prevTxConsumed
     && traceIfFalse "NFT sent to wrong address." tokenSentToCorrectAddress
-    && traceIfFalse "Transaction cannot mint." noMint
+--    && traceIfFalse "Transaction cannot mint." noMint
     && case act of
       BuyAct {..} ->
+        let 
+          mintZ = mintZeroTokens act'cs (nftId'token . dNft'id $ datum) 
+        in
         traceIfFalse "NFT not for sale." nftForSale
+          && traceIfFalse ("NFT is not genuine.") mintZ
           && traceIfFalse "Bid is too low for the NFT price." (bidHighEnough act'bid)
           && traceIfFalse "New owner is not the payer." correctNewOwner
           && traceIfFalse "Author is not paid their share." (correctPaymentAuthor act'bid)
@@ -320,6 +334,14 @@ mKTxPolicy datum act ctx =
     ------------------------------------------------------------------------------
     -- Check no new token is minted.
     noMint = isZero . txInfoMint . scriptContextTxInfo $ ctx
+
+    ------------------------------------------------------------------------------
+    -- Check no new token is minted.
+    mintZeroTokens :: CurrencySymbol -> TokenName -> Bool
+    mintZeroTokens symbol token =  True
+      -- case flattenValue . txInfoMint . scriptContextTxInfo $ ctx of
+      --   [] -> True
+      --   _ -> False
 
     ------------------------------------------------------------------------------
     -- Check if the NFT is sent to the correct address.

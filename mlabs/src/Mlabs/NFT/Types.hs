@@ -28,9 +28,11 @@ data MintAct
   = -- | Mint Redeemer
     Mint
   | -- | Query the Minting Script for Authenticity.
-    Check
-      { mr'currencySymbol :: CurrencySymbol
+    TxAction 
+      { mTx'fromCurrencySymbol :: TokenName
+      , mTx'toCurrencySymbol :: TokenName
       }
+  | Check ()
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
 
@@ -77,7 +79,7 @@ data NftId = NftId
     nftId'title :: Title
   , -- | token name is identified by content of the NFT (it's hash of it)
     nftId'token :: TokenName
-  , -- | TxOutRef which was used to mint current NFT
+  , -- | TxOutRef which was used to mint NFT.
     nftId'outRef :: TxOutRef
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)

@@ -105,6 +105,7 @@ library
     
   hs-source-dirs:
     src/
+    test/
     
   exposed-modules:
     Mlabs.Control.Check
@@ -158,6 +159,7 @@ library
     Mlabs.NFT.Contract
     Mlabs.NFT.Validation
     Mlabs.NFT.Api
+    Test.NFT.Trace
 
 executable mlabs-plutus-use-cases
   import:  common-imports
