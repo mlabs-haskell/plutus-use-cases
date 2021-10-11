@@ -26,9 +26,9 @@ import Schema (ToSchema)
 -- | Mint Redeemer
 data MintAct
   = -- | Mint Redeemer
-    Mint
+    Mint {getTokenName :: TokenName}
   | -- | Query the Minting Script for Authenticity.
-    TxAction 
+    TxAction
       { mTx'fromCurrencySymbol :: TokenName
       , mTx'toCurrencySymbol :: TokenName
       }
@@ -78,8 +78,8 @@ data NftId = NftId
   { -- | Content Title.
     nftId'title :: Title
   , -- | token name is identified by content of the NFT (it's hash of it)
-    nftId'token :: TokenName
-  , -- | TxOutRef which was used to mint NFT.
+    nftId'contentHash :: BuiltinByteString
+  , -- | TxOutRef which was consumed when NFT was minted.
     nftId'outRef :: TxOutRef
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
@@ -92,6 +92,18 @@ instance Eq NftId where
   {-# INLINEABLE (==) #-}
   (NftId title1 token1 outRef1) == (NftId title2 token2 outRef2) =
     title1 == title2 && token1 == token2 && outRef1 == outRef2
+
+-- newtype ActionId = ActionId
+--   { -- | oRef Consumed when action was issued
+--     action'oRef :: TxOutRef
+--   , -- | NftId of
+--     action'NftId :: NftId
+--   }
+--   deriving stock (Hask.Show, Generic, Hask.Eq)
+--   deriving anyclass (ToJSON, FromJSON)
+
+-- PlutusTx.unstableMakeIsData ''ActionId
+-- PlutusTx.makeLift ''ActionId
 
 {- | Type representing the data that gets hashed when the token is minted. The
  tile and author are included for proof of authenticity in the case the same
