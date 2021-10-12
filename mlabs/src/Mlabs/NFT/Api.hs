@@ -5,83 +5,15 @@ module Mlabs.NFT.Api (
   queryEndpoints,
 ) where
 
-import PlutusTx.Prelude hiding (mconcat, (<>))
-import Prelude (mconcat, (<>))
-import Prelude qualified as Hask
-
-import Control.Lens (at, filtered, to, traversed, (^.), (^..), (^?), _Just, _Right)
-import Control.Monad (join, void)
-import Data.List qualified as L
-import Data.Map qualified as Map
 import Data.Monoid (Last (..))
-import Data.Text (Text, pack)
-
-import Text.Printf (printf)
-
-import Plutus.ChainIndex.Tx (
-  ChainIndexTx,
-  citxData,
- )
-import Plutus.Contract (Contract, Endpoint, endpoint, utxosTxOutTxAt, type (.\/))
-import Plutus.Contract qualified as Contract
-import Plutus.V1.Ledger.Value (symbols)
-import PlutusTx qualified
-
-import Ledger (
-  Address,
-  ChainIndexTxOut,
-  CurrencySymbol,
-  Datum (..),
-  Redeemer (..),
-  TxOutRef,
-  ciTxOutDatum,
-  ciTxOutValue,
-  getDatum,
-  pubKeyAddress,
-  pubKeyHash,
-  scriptCurrencySymbol,
-  txId,
- )
-
-import Ledger.Constraints qualified as Constraints
-import Ledger.Typed.Scripts (validatorScript)
-import Ledger.Value as Value (TokenName (..), singleton, unAssetClass, valueOf)
+import Data.Text (Text)
 
 import Playground.Contract (mkSchemaDefinitions)
-
-import Mlabs.NFT.Contract (
-  QueryContract,
-  UserContract,
- )
-
-import Mlabs.NFT.Types (
-  BuyRequestUser (..),
-  Content (..),
-  MintAct (..),
-  MintParams (..),
-  NftId (..),
-  QueryResponse (..),
-  SetPriceParams (..),
-  UserId (..),
- )
+import Plutus.Contract (Contract, Endpoint, endpoint, type (.\/))
 
 import Mlabs.NFT.Contract qualified as NFTContract
-
-import Mlabs.NFT.Validation (
-  DatumNft (..),
-  NftTrade,
-  UserAct (..),
-  asRedeemer,
-  calculateShares,
-  mintPolicy,
-  nftAsset,
-  nftCurrency,
-  priceNotNegative,
-  txPolicy,
-  txScrAddress,
- )
-
-import Mlabs.Plutus.Contract (readDatum', selectForever)
+import Mlabs.NFT.Types (BuyRequestUser (..), MintParams (..), NftId (..), QueryResponse (..), SetPriceParams (..))
+import Mlabs.Plutus.Contract (selectForever)
 
 -- | A common App schema works for now.
 type NFTAppSchema =

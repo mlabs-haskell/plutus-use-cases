@@ -15,18 +15,16 @@ import PlutusTx.Prelude hiding (mconcat, (<>))
 import Prelude (mconcat, (<>))
 import Prelude qualified as Hask
 
-import Control.Lens (at, filtered, to, traversed, (^.), (^..), (^?), _Just, _Right)
+import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right)
 import Control.Monad (join, void)
 import Data.List qualified as L
 import Data.Map qualified as Map
 import Data.Monoid (Last (..))
 import Data.Text (Text, pack)
-import PlutusTx.Builtins.Class (stringToBuiltinByteString)
-
 import Text.Printf (printf)
 
 import Plutus.ChainIndex.Tx (ChainIndexTx, citxData)
-import Plutus.Contract (Contract, Endpoint, endpoint, utxosAt, utxosTxOutTxAt, type (.\/))
+import Plutus.Contract (Contract, utxosTxOutTxAt)
 import Plutus.Contract qualified as Contract
 import Plutus.V1.Ledger.Value (symbols)
 import PlutusTx qualified
@@ -49,9 +47,7 @@ import Ledger (
 
 import Ledger.Constraints qualified as Constraints
 import Ledger.Typed.Scripts (validatorScript)
-import Ledger.Value as Value (TokenName (..), singleton, unAssetClass, valueOf)
-
-import Playground.Contract (mkSchemaDefinitions)
+import Ledger.Value as Value (singleton, unAssetClass, valueOf)
 
 import Mlabs.NFT.Types (
   BuyRequestUser (..),
@@ -80,8 +76,6 @@ import Mlabs.NFT.Validation (
   txPolicy,
   txScrAddress,
  )
-
-import PlutusTx.Numeric qualified as N
 
 -- | A contract used exclusively for query actions.
 type QueryContract a = forall s. Contract QueryResponse s Text a
@@ -169,8 +163,8 @@ testAuthenticNFT nftid = do
         _ -> Contract.throwError "Validation Failed. Could not establish adequate datum."
 
     queryMint :: CurrencySymbol -> DatumNft -> GenericContract Bool
-    queryMint cSymbol datum = do
-      let mintRedeemer = asRedeemer $ Check () --cSymbol
+    queryMint _ datum = do
+      let mintRedeemer = asRedeemer Check
           datumNftId = dNft'id datum
           datumOref = nftId'outRef datumNftId
           val = mempty
@@ -190,7 +184,7 @@ testAuthenticNFT nftid = do
     unwrapDatum (Datum b) = b
 
     firstJust = \case
-      Just x : xs -> [x]
+      Just x : _ -> [x]
       Nothing : xs -> firstJust xs
       [] -> []
 
@@ -247,7 +241,7 @@ buy (BuyRequestUser nftId bid newPrice) = do
               user <- getUId
               userUtxos <- getUserUtxos
               scriptUtxos <- Map.map fst <$> getScriptAddrUtxos
-              (nftOref, ciTxOut, datum) <- findNft txScrAddress nftId
+              (nftOref, ciTxOut, _) <- findNft txScrAddress nftId
               let -- Unserialised Datum
                   newDatum' =
                     DatumNft

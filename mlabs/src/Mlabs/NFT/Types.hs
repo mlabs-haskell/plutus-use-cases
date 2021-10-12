@@ -23,7 +23,10 @@ import Ledger (CurrencySymbol, PubKeyHash, TokenName, TxOutRef)
 import PlutusTx qualified
 import Schema (ToSchema)
 
--- | Mint Redeemer
+--------------------------------------------------------------------------------
+-- ON-CHAIN TYPES --
+
+-- | Minting Policy Redeemer
 data MintAct
   = -- | Mint Redeemer
     Mint {getTokenName :: TokenName}
@@ -32,14 +35,13 @@ data MintAct
       { mTx'fromCurrencySymbol :: TokenName
       , mTx'toCurrencySymbol :: TokenName
       }
-  | Check ()
+  | Check
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
 
 PlutusTx.unstableMakeIsData ''MintAct
 PlutusTx.makeLift ''MintAct
 
--- ON-CHAIN TYPES --
 newtype Content = Content {getContent :: BuiltinByteString}
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
@@ -93,18 +95,6 @@ instance Eq NftId where
   (NftId title1 token1 outRef1) == (NftId title2 token2 outRef2) =
     title1 == title2 && token1 == token2 && outRef1 == outRef2
 
--- newtype ActionId = ActionId
---   { -- | oRef Consumed when action was issued
---     action'oRef :: TxOutRef
---   , -- | NftId of
---     action'NftId :: NftId
---   }
---   deriving stock (Hask.Show, Generic, Hask.Eq)
---   deriving anyclass (ToJSON, FromJSON)
-
--- PlutusTx.unstableMakeIsData ''ActionId
--- PlutusTx.makeLift ''ActionId
-
 {- | Type representing the data that gets hashed when the token is minted. The
  tile and author are included for proof of authenticity in the case the same
  artwork is hashed more than once.
@@ -128,6 +118,7 @@ instance Eq NftContent where
   (NftContent title1 data1 author1) == (NftContent title2 data2 author2) =
     title1 == title2 && data1 == data2 && author1 == author2
 
+--------------------------------------------------------------------------------
 -- ENDPOINTS PARAMETERS --
 
 -- | Parameters that need to be submitted when minting a new NFT.
