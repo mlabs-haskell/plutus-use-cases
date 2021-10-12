@@ -187,7 +187,7 @@ mkMintPolicy stateAddr oref (NftId _ _ outRef) mAct ctx =
     correctMint :: TokenName -> TokenName -> Bool
     correctMint from to =
       case flattenValue (txInfoMint info) of
-        [(_, tn1, val1) : (_, tn2, val2)] ->
+        [(_, tn1, val1), (_, tn2, val2)] ->
           (tn1 == from && tn2 == to && val1 == negate 1 && val2 == 1)
             || (tn2 == from && tn1 == to && val2 == negate 1 && val1 == 1)
         _ -> False
@@ -199,7 +199,7 @@ mkMintPolicy stateAddr oref (NftId _ _ outRef) mAct ctx =
     authenticNFT :: Bool
     authenticNFT =
       case flattenValue (txInfoMint info) of
-        [(cur1, _, _) : (cur2, _, _)] -> ownCurrencySymbol ctx == cur1 && cur1 == cur2
+        [(cur1, _, _), (cur2, _, _)] -> ownCurrencySymbol ctx == cur1 && cur1 == cur2
         _ -> False
 
     ----------------------------------------------------------------------------

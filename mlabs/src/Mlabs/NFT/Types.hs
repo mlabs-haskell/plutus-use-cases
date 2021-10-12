@@ -28,14 +28,20 @@ import Schema (ToSchema)
 
 -- | Minting Policy Redeemer
 data MintAct
-  = -- | Mint Redeemer
-    Mint {getTokenName :: TokenName}
-  | -- | Query the Minting Script for Authenticity.
-    TxAction
-      { mTx'fromCurrencySymbol :: TokenName
-      , mTx'toCurrencySymbol :: TokenName
+  = -- | Mint Redeemer.
+    Mint
+      { -- | The datum hash.
+        mint'tokenName :: TokenName
       }
-  | Check
+  | -- | Any user action.
+    TxAction
+      { -- | The previous hash datum.
+        mTx'fromCurrencySymbol :: TokenName
+      , -- | The current hash datum.
+        mTx'toCurrencySymbol :: TokenName
+      }
+  | -- | Any other check. Will fail mining.
+    Check
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
 
