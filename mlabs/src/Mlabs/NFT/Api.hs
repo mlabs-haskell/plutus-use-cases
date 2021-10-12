@@ -41,7 +41,7 @@ endpoints =
     [ endpoint @"mint" NFTContract.mint
     , endpoint @"buy" NFTContract.buy
     , endpoint @"set-price" NFTContract.setPrice
-    , endpoint @"query-authentic-nft" NFTContract.queryAuthenticNFT
+    --, endpoint @"query-authentic-nft" NFTContract.queryAuthenticNFT
     ]
 
 -- Query Endpoints are used for Querying, with no on-chain tx generation.

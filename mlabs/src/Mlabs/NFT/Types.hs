@@ -19,7 +19,7 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Monoid (Last)
 import GHC.Generics (Generic)
 
-import Ledger (CurrencySymbol, PubKeyHash, TokenName, TxOutRef)
+import Ledger (PubKeyHash, TokenName, TxOutRef)
 import PlutusTx qualified
 import Schema (ToSchema)
 

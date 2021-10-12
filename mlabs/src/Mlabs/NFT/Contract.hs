@@ -7,8 +7,6 @@ module Mlabs.NFT.Contract (
   setPrice,
   queryCurrentOwner,
   queryCurrentPrice,
-  testAuthenticNFT,
-  queryAuthenticNFT,
 ) where
 
 import PlutusTx.Prelude hiding (mconcat, (<>))
@@ -23,16 +21,14 @@ import Data.Monoid (Last (..))
 import Data.Text (Text, pack)
 import Text.Printf (printf)
 
-import Plutus.ChainIndex.Tx (ChainIndexTx, citxData)
+import Plutus.ChainIndex.Tx (ChainIndexTx)
 import Plutus.Contract (Contract, utxosTxOutTxAt)
 import Plutus.Contract qualified as Contract
-import Plutus.V1.Ledger.Value (symbols)
 import PlutusTx qualified
 
 import Ledger (
   Address,
   ChainIndexTxOut,
-  CurrencySymbol,
   Datum (..),
   Redeemer (..),
   TxOutRef,
@@ -118,76 +114,20 @@ mint nftContent = do
   Contract.tell . Last . Just $ nftId
   Contract.logInfo @Hask.String $ printf "forged %s" (Hask.show val)
 
-queryAuthenticNFT :: NftId -> UserContract ()
-queryAuthenticNFT nftid = response =<< testAuthenticNFT nftid
-  where
-    response = \case
-      True -> pure ()
-      False -> void $ Contract.throwError "Validation Failed."
+-- todo:
+-- queryAuthenticNFT :: NftId -> UserContract ()
+-- queryAuthenticNFT nftid = response =<< testAuthenticNFT nftid
+--   where
+--     response = \case
+--       True -> pure ()
+--       False -> void $ Contract.throwError "Validation Failed."
 
--- | Request tells if a Datum and its coin were produced correctly.
-testAuthenticNFT :: NftId -> GenericContract Bool
-testAuthenticNFT nftid = do
-  (txRef, _, _) <- findNft txScrAddress nftid
-  utxos <- getScriptAddrUtxos
-  let utxo' :: Maybe (ChainIndexTxOut, ChainIndexTx) = utxos Map.!? txRef
-  case utxo' of
-    Nothing -> do
-      Contract.logError @Hask.String "Authenticity test cannot find TxOutRef at Script Address. Failing."
-      pure False
-    Just (x, y) -> do
-      case symbols $ x ^. ciTxOutValue of
-        [] -> do
-          -- No Symbols with transaction
-          Contract.logError @Hask.String
-            "Authenticity test cannot find Token in utxo. Failing."
-          pure False
-        _ : _ : _ -> do
-          -- Too many symbols in transaction
-          Contract.logError @Hask.String
-            "Too many cSymbols. Failing."
-          pure False
-        [cSymbol] -> do
-          -- one symbol
-          datum <- getCxDatum y
-          queryMint cSymbol datum
-  where
-    getCxDatum citx = do
-      let datum =
-            firstJust
-              . fmap (PlutusTx.fromBuiltinData @DatumNft . unwrapDatum)
-              . Map.elems
-              $ citx ^. citxData
-      case datum of
-        [x] -> return x
-        _ -> Contract.throwError "Validation Failed. Could not establish adequate datum."
+-- todo:
 
-    queryMint :: CurrencySymbol -> DatumNft -> GenericContract Bool
-    queryMint _ datum = do
-      let mintRedeemer = asRedeemer Check
-          datumNftId = dNft'id datum
-          datumOref = nftId'outRef datumNftId
-          val = mempty
-          nftPolicy = mintPolicy txScrAddress datumOref datumNftId
-          (lookups, tx) =
-            ( mconcat
-                [ Constraints.mintingPolicy nftPolicy
-                ]
-            , mconcat
-                [ Constraints.mustMintValueWithRedeemer mintRedeemer val
-                ]
-            )
-      void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
-      Contract.logInfo @Hask.String "The NFTid is healthy and in a good state at the address."
-      pure True
-
-    unwrapDatum (Datum b) = b
-
-    firstJust = \case
-      Just x : _ -> [x]
-      Nothing : xs -> firstJust xs
-      [] -> []
-
+{- | Request tells if a Datum and its coin were produced correctly.
+ testAuthenticNFT :: NftId -> GenericContract Bool
+ testAuthenticNFT nftid = error ()
+-}
 getScriptAddrUtxos :: GenericContract (Map.Map TxOutRef (ChainIndexTxOut, ChainIndexTx))
 getScriptAddrUtxos = utxosTxOutTxAt txScrAddress
 
