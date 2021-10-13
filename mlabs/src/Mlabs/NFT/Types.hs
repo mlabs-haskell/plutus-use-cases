@@ -19,34 +19,13 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Monoid (Last)
 import GHC.Generics (Generic)
 
-import Ledger (PubKeyHash, TokenName, TxOutRef)
+import Ledger (PubKeyHash)
 import PlutusTx qualified
 import Schema (ToSchema)
 
 --------------------------------------------------------------------------------
 -- ON-CHAIN TYPES --
 
--- | Minting Policy Redeemer
-data MintAct
-  = -- | Mint Redeemer.
-    Mint
-      { -- | The datum hash.
-        mint'tokenName :: TokenName
-      }
-  | -- | Any user action.
-    TxAction
-      { -- | The previous hash datum.
-        mTx'fromCurrencySymbol :: TokenName
-      , -- | The current hash datum.
-        mTx'toCurrencySymbol :: TokenName
-      }
-  | -- | Any other check. Will fail mining.
-    Check
-  deriving stock (Hask.Show, Generic, Hask.Eq)
-  deriving anyclass (ToJSON, FromJSON)
-
-PlutusTx.unstableMakeIsData ''MintAct
-PlutusTx.makeLift ''MintAct
 
 newtype Content = Content {getContent :: BuiltinByteString}
   deriving stock (Hask.Show, Generic, Hask.Eq)
@@ -83,23 +62,19 @@ instance Eq UserId where
  content and the utxo ref included when minting the token.
 -}
 data NftId = NftId
-  { -- | Content Title.
-    nftId'title :: Title
-  , -- | token name is identified by content of the NFT (it's hash of it)
+  { -- | token name is identified by content of the NFT (it's hash of it).
     nftId'contentHash :: BuiltinByteString
-  , -- | TxOutRef which was consumed when NFT was minted.
-    nftId'outRef :: TxOutRef
+    -- | Content Title.
+    -- nftId'title :: Title
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
-PlutusTx.unstableMakeIsData ''NftId
-PlutusTx.makeLift ''NftId
 
 instance Eq NftId where
   {-# INLINEABLE (==) #-}
-  (NftId title1 token1 outRef1) == (NftId title2 token2 outRef2) =
-    title1 == title2 && token1 == token2 && outRef1 == outRef2
+  (NftId  token1) == (NftId token2) =
+    token1 == token2
 
 {- | Type representing the data that gets hashed when the token is minted. The
  tile and author are included for proof of authenticity in the case the same
@@ -123,6 +98,19 @@ instance Eq NftContent where
   {-# INLINEABLE (==) #-}
   (NftContent title1 data1 author1) == (NftContent title2 data2 author2) =
     title1 == title2 && data1 == data2 && author1 == author2
+
+-- | Minting Policy Redeemer
+data MintAct
+  = -- | Mint Action for the NftId. Creates a proof token that the NFTid is
+    -- unique.
+    Mint
+    { -- | NftId
+      mint'nftId :: NftId
+    }
+    -- | Update Datum.
+    | Initialise
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (ToJSON, FromJSON)
 
 --------------------------------------------------------------------------------
 -- ENDPOINTS PARAMETERS --
@@ -187,3 +175,10 @@ data QueryResponse
   | QueryCurrentPrice (Last Integer)
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON)
+
+
+PlutusTx.unstableMakeIsData ''MintAct
+PlutusTx.unstableMakeIsData ''NftId
+
+PlutusTx.makeLift ''MintAct
+PlutusTx.makeLift ''NftId
