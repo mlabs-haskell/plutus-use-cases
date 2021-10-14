@@ -85,6 +85,8 @@ type GenericContract a = forall w s. Contract w s Text a
 --------------------------------------------------------------------------------
 -- Init --
 
+-- | Initialise the application at the address of the script by creating the
+-- HEAD of the list, and consuming the one time token.
 appInit :: GenericContract ()
 appInit = error ()
 
@@ -138,10 +140,10 @@ getScriptAddrUtxos :: GenericContract (Map.Map TxOutRef (ChainIndexTxOut, ChainI
 getScriptAddrUtxos = utxosTxOutTxAt txScrAddress
 
 -- | Initialise an NFT using the current wallet.
-nftHeadInit :: NFTAppInstance -> Contract w s Text DatumNft
+nftHeadInit :: NftAppInstance -> Contract w s Text DatumNft
 nftHeadInit appInst = do
   pure $
-    HeadDatum $ NFTListHead
+    HeadDatum $ NftListHead
       { head'next  = Nothing
       , head'appInstance = appInst
       }

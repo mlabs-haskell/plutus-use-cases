@@ -14,9 +14,9 @@ module Mlabs.NFT.Validation (
   priceNotNegative,
   nftTokenName,
   InformationNft(..),
-  NFTAppInstance(..),
-  NFTListNode(..),
-  NFTListHead(..),
+  NftAppInstance(..),
+  NftListNode(..),
+  NftListHead(..),
 ) where
 
 import PlutusTx.Prelude
@@ -85,9 +85,9 @@ import Schema (ToSchema)
 
 import Mlabs.NFT.Types
 
--- | NFT Datum is checked communicates the ownership of the NFT.
+-- | NFT Information.
 data InformationNft = InformationNft
-  { -- | NFT ID. Represents the key of the Datum
+  { -- | NFT ID. Represents the key of the Datum. ?could even be taken out of the information?
     info'id :: NftId
   , -- | Author's share of the NFT.
     info'share :: Rational
@@ -107,7 +107,9 @@ instance Eq InformationNft where
   (InformationNft a b c d e) == (InformationNft a' b' c' d' e') = 
     a == a' && b == b' && c == c' && d == d' && e == e'
 
-data NFTAppInstance = NFTAppInstance
+-- | App Instace is parametrised by the one time nft consumed at the creation of
+-- the HEAD and the script address.
+data NftAppInstance = NftAppInstance
   { -- | Script Address where all the NFTs can be found
     appInstance'Address :: Address
   , -- | AssetClass with which all the NFTs are parametrised - guarantees the proof of uniqueness.
@@ -115,13 +117,32 @@ data NFTAppInstance = NFTAppInstance
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
-PlutusTx.unstableMakeIsData ''NFTAppInstance  
-PlutusTx.makeLift ''NFTAppInstance 
-instance Eq NFTAppInstance where
-  (NFTAppInstance a b) == (NFTAppInstance a' b') = a == a' && b == b' 
+PlutusTx.unstableMakeIsData ''NftAppInstance  
+PlutusTx.makeLift ''NftAppInstance 
+instance Eq NftAppInstance where
+  (NftAppInstance a b) == (NftAppInstance a' b') = a == a' && b == b' 
+{-
+Diagram (sort of):
+|   HEAD                                   |               |    NODE artwork1
+|CurrSymbol: n                             |               | CurrSymbol: n
+|TokenName: HEAD                           |               | ...
+|...                                       |               |                        
+|NextNode : Pointer { CurrSymbol: n        |               | InformationNft : { ...
+|                     TokenName : artwork1 | --------------|--> info'id {}                  
+|                   }                      |               |                            
 
+Properties: 
+- artwork1 < artwork2 <=> artwork1:next = artwork2
+- 
+- If artwork1 == artwork2                                 => duplication of artwork (not allowed to mint the same artwork twice)
+- If artwork2 > artwork1 and artwork1:nextNode -> Nothing => artwork2 hasn't been minted 
+
+-}
+
+-- | The AssetClass is the pointer itself. Each NFT has the same CurrencySymbol,
+-- and their TokenName is the Hash of their Content.
 newtype Pointer = Pointer 
-  { -- | The AssetClass is the pointer itself
+  { 
     pointer'assetClass :: AssetClass
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
@@ -131,39 +152,43 @@ PlutusTx.makeLift ''Pointer
 instance Eq Pointer where
   (Pointer a) == (Pointer a') = a == a' 
 
-data NFTListHead = NFTListHead 
+-- | The head datum is unique for each list. Its token is minted when the unique
+-- NFT is consumed.
+data NftListHead = NftListHead 
   { -- | Pointer to the next node. 
     head'next :: Maybe Pointer
   , -- | Node App Instance 
-    head'appInstance :: NFTAppInstance
+    head'appInstance :: NftAppInstance
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
-PlutusTx.unstableMakeIsData ''NFTListHead 
-PlutusTx.makeLift ''NFTListHead
-instance Eq NFTListHead where
-  (NFTListHead a b) == (NFTListHead a' b') = a == a' && b == b' 
+PlutusTx.unstableMakeIsData ''NftListHead 
+PlutusTx.makeLift ''NftListHead
+instance Eq NftListHead where
+  (NftListHead a b) == (NftListHead a' b') = a == a' && b == b' 
 
-data NFTListNode = NFTListNode
+-- | The nft list node is based on the above described properties.
+data NftListNode = NftListNode
   { -- | The value held at the node
     node'information :: InformationNft
   , -- | The next Node.
     node'next :: Maybe Pointer
   , -- | Node App Instance 
-    node'appInstance :: NFTAppInstance
+    node'appInstance :: NftAppInstance
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
-PlutusTx.unstableMakeIsData ''NFTListNode
-PlutusTx.makeLift ''NFTListNode
-instance Eq NFTListNode where
-  (NFTListNode a b c) == (NFTListNode a' b' c') = a == a' && b == b' && c == c'
+PlutusTx.unstableMakeIsData ''NftListNode
+PlutusTx.makeLift ''NftListNode
+instance Eq NftListNode where
+  (NftListNode a b c) == (NftListNode a' b' c') = a == a' && b == b' && c == c'
 
+-- | The datum of an Nft is either head or node.
 data DatumNft
   = -- | Head of a List
-    HeadDatum NFTListHead
+    HeadDatum NftListHead
   | -- | A node of the list.
-    NodeDatum NFTListNode
+    NodeDatum NftListNode
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
 PlutusTx.unstableMakeIsData ''DatumNft
@@ -175,11 +200,14 @@ instance Eq DatumNft where
   (NodeDatum x1) == (NodeDatum x2) = x1 == x2
   _ == _ = False
 
-{- | Token Name is the title of the artwork.
+
+{- | Token Name is represented by the HASH of the artwork. The Head TokenName is
+the empty ByteString, smaller than any other ByteString, and is minted at the
+intialisation of the app.
 -}
 nftTokenName :: DatumNft -> TokenName
 nftTokenName = \case 
-  HeadDatum _ -> TokenName "HEAD" 
+  HeadDatum _ -> TokenName "" 
   NodeDatum n -> TokenName . nftId'contentHash . info'id . node'information $ n
 
 -- | NFT Redeemer
@@ -213,34 +241,36 @@ instance Eq UserAct where
 asRedeemer :: PlutusTx.ToData a => a -> Redeemer
 asRedeemer = Redeemer . PlutusTx.toBuiltinData
 
-{-# INLINEABLE mkHeadMintPolicy #-}
-
--- | Any NFT Policy that makes sure that the HEAD is Unique, and that it can
--- burn the token exactly once - when the HEAD is created. Out of scope at this
--- point, but any will do.
-mkHeadMintPolicy :: Address -> () -> ScriptContext -> Bool
-mkHeadMintPolicy _ _ _ = True
-
-headMintPolicy :: Address -> MintingPolicy
-headMintPolicy stateAddr =
-  mkMintingPolicyScript $
-    $$(PlutusTx.compile [||\x -> wrapMintingPolicy (mkHeadMintPolicy x)||])
-      `PlutusTx.applyCode` PlutusTx.liftCode stateAddr
+--{-# INLINEABLE mkHeadMintPolicy #-}
+--
+---- | Any NFT Policy that makes sure that the HEAD is Unique, and that it can
+---- burn the token exactly once - when the HEAD is created. Out of scope at this
+---- point, but any will do. To be replacede with the Plutus defaul mint action Contract
+--mkHeadMintPolicy :: Address -> () -> ScriptContext -> Bool
+--mkHeadMintPolicy _ _ _ = True
+--
+--headMintPolicy :: Address -> MintingPolicy
+--headMintPolicy stateAddr =
+--  mkMintingPolicyScript $
+--    $$(PlutusTx.compile [||\x -> wrapMintingPolicy (mkHeadMintPolicy x)||])
+--      `PlutusTx.applyCode` PlutusTx.liftCode stateAddr
 
 {-# INLINEABLE mkMintPolicy #-}
 
 -- | Minting policy for NFTs.
-mkMintPolicy :: NFTAppInstance -> MintAct -> ScriptContext -> Bool
+mkMintPolicy :: NftAppInstance -> MintAct -> ScriptContext -> Bool
 mkMintPolicy _ act _ = 
   case act of
     Mint nftid ->
-      traceIfFalse ("NFT Minting failed. ") True
-      && traceIfFalse ("Neighbouring transactions are not present.") True 
+      traceIfFalse "NFT Minting failed." True
+      && traceIfFalse "Neighbouring transactions are not present." True 
+      && traceIfFalse "The token is not sent to the right address" True              
     Initialise ->
-      traceIfFalse ("The token is not present.") True
-      && traceIfFalse ("The token is not being consumed.") True             
+      traceIfFalse "The token is not present." True
+      && traceIfFalse "The initial token is not being consumed." True
+      && traceIfFalse "The token is not sent to the right address" True              
 
-mintPolicy :: NFTAppInstance -> MintingPolicy
+mintPolicy :: NftAppInstance -> MintingPolicy
 mintPolicy appInstance =
   mkMintingPolicyScript $
     $$(PlutusTx.compile [||\x -> wrapMintingPolicy (mkMintPolicy x)||])
@@ -437,7 +467,7 @@ txScrAddress = validatorAddress txPolicy
 
 {-# INLINEABLE curSymbol #-}
 -- | Calculate the currency symbol of the NFT.
-curSymbol :: NFTAppInstance -> CurrencySymbol
+curSymbol :: NftAppInstance -> CurrencySymbol
 curSymbol appInstance = scriptCurrencySymbol $ mintPolicy appInstance 
 
 {-# INLINEABLE nftCurrency #-}

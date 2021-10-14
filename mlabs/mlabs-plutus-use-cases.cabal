@@ -91,7 +91,7 @@ common common-ghc-options
     -fno-strictness
     -fno-warn-orphans
     -fobject-code
---    -fplugin-opt PlutusTx.Plugin:defer-errors -- do not use for build 
+    -fplugin-opt PlutusTx.Plugin:defer-errors 
 
 library
   import:  common-imports
@@ -106,7 +106,6 @@ library
     -Wredundant-constraints
     -Wmissing-export-lists
     -Wmissing-deriving-strategies
-    -Werror
     -fplugin=RecordDotPreprocessor
     
   hs-source-dirs:
