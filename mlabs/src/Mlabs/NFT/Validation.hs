@@ -13,6 +13,10 @@ module Mlabs.NFT.Validation (
   mintPolicy,
   priceNotNegative,
   nftTokenName,
+  InformationNft(..),
+  NFTAppInstance(..),
+  NFTListNode(..),
+  NFTListHead(..),
 ) where
 
 import PlutusTx.Prelude
@@ -40,6 +44,7 @@ import Ledger (
   ValidatorHash,
   Value,
   findDatumHash,
+  findOwnInput,
   mkMintingPolicyScript,
   ownCurrencySymbol,
   scriptContextTxInfo,
@@ -72,8 +77,9 @@ import Ledger.Value (
   assetClass,
   flattenValue,
   singleton,
+  valueOf,
  )
-import Plutus.V1.Ledger.Value (AssetClass (AssetClass), assetClassValueOf)
+import Plutus.V1.Ledger.Value (AssetClass (AssetClass), assetClassValueOf, isZero,)
 import PlutusTx qualified
 import Schema (ToSchema)
 
@@ -211,7 +217,7 @@ asRedeemer = Redeemer . PlutusTx.toBuiltinData
 
 -- | Any NFT Policy that makes sure that the HEAD is Unique, and that it can
 -- burn the token exactly once - when the HEAD is created. Out of scope at this
--- point.
+-- point, but any will do.
 mkHeadMintPolicy :: Address -> () -> ScriptContext -> Bool
 mkHeadMintPolicy _ _ _ = True
 
@@ -225,27 +231,180 @@ headMintPolicy stateAddr =
 
 -- | Minting policy for NFTs.
 mkMintPolicy :: NFTAppInstance -> MintAct -> ScriptContext -> Bool
-mkMintPolicy appInst act ctx = 
+mkMintPolicy _ act _ = 
   case act of
     Mint nftid ->
       traceIfFalse ("NFT Minting failed. ") True
-      traceIfFalse ("Neighbouring transactions are not present.") True 
+      && traceIfFalse ("Neighbouring transactions are not present.") True 
     Initialise ->
       traceIfFalse ("The token is not present.") True
-      traceIfFalse ("The token is not being consumed.") True             
+      && traceIfFalse ("The token is not being consumed.") True             
 
 mintPolicy :: NFTAppInstance -> MintingPolicy
 mintPolicy appInstance =
   mkMintingPolicyScript $
     $$(PlutusTx.compile [||\x -> wrapMintingPolicy (mkMintPolicy x)||])
       `PlutusTx.applyCode` PlutusTx.liftCode appInstance
---      `PlutusTx.applyCode` PlutusTx.liftCode nftId
 
 {-# INLINEABLE mKTxPolicy #-}
 -- | A validator script for the user actions.
 mKTxPolicy :: DatumNft -> UserAct -> ScriptContext -> Bool
-mKTxPolicy datum act ctx = True
-
+mKTxPolicy datum' act ctx =
+  case datum' of
+    HeadDatum _ -> traceError "Head Datum should not be provided"
+    NodeDatum node  ->
+      traceIfFalse "Datum does not correspond to NFTId, no datum is present, or more than one suitable datums are present." correctDatum
+    -- && traceIfFalse "Datum is not present." correctDatum'
+    -- && traceIfFalse "New Price cannot be negative." (setPositivePrice act)
+    -- && traceIfFalse "Previous TX is not consumed." prevTxConsumed
+    -- && traceIfFalse "NFT sent to wrong address." tokenSentToCorrectAddress
+    -- && traceIfFalse "Transaction cannot mint." noMint
+    -- && case act of
+    --   BuyAct {..} ->
+    --     traceIfFalse "NFT not for sale." nftForSale
+    --       && traceIfFalse "Bid is too low for the NFT price." (bidHighEnough act'bid)
+    --       && traceIfFalse "New owner is not the payer." correctNewOwner
+    --       && traceIfFalse "Datum is not consistent, illegaly altered." consistentDatum
+    --       && if ownerIsAuthor
+    --         then traceIfFalse "Amount paid to author/owner does not match bid." (correctPaymentOnlyAuthor act'bid)
+    --         else
+    --           traceIfFalse "Current owner is not paid their share." (correctPaymentOwner act'bid)
+    --             && traceIfFalse "Author is not paid their share." (correctPaymentAuthor act'bid)
+    --   SetPriceAct {} ->
+    --     traceIfFalse "Price can not be negative." priceNotNegative'
+    --       && traceIfFalse "Only owner exclusively can set NFT price." ownerSetsPrice
+      where
+        nInfo = node'information node
+        nNext = node'next node
+        nAppInstance = node'appInstance node
+          
+        ------------------------------------------------------------------------------
+        -- Utility functions.
+        getCtxDatum :: PlutusTx.FromData a => ScriptContext -> [a]
+        getCtxDatum =
+          catMaybes'
+            . fmap PlutusTx.fromBuiltinData
+            . fmap (\(Datum d) -> d)
+            . fmap snd
+            . txInfoData
+            . scriptContextTxInfo
+    
+        ownerIsAuthor :: Bool
+        ownerIsAuthor = info'owner nInfo == info'author nInfo
+    
+        getLovelace = flip assetClassValueOf $ assetClass Ada.adaSymbol Ada.adaToken
+    
+        ------------------------------------------------------------------------------
+        -- Checks
+        ------------------------------------------------------------------------------
+        -- Check if the datum attached is also present in the is also in the transaction.
+        correctDatum :: Bool
+        correctDatum = True
+        --  let datums :: [DatumNft] = getCtxDatum ctx
+        --      suitableDatums = filter (== info'id datum) . fmap info'id $ datums
+        --   in case suitableDatums of
+        --        _ : _ -> True
+        --        _ -> False
+        --    
+        ------------------------------------------------------------------------------
+        -- Check if the datum in the datum is also the same in the transaction, v2.
+        --correctDatum' :: Bool
+        --correctDatum' =
+        --  let info = scriptContextTxInfo ctx
+        --      mDatums = findDatumHash (Datum . PlutusTx.toBuiltinData $ datum) info
+        --   in maybe False (const True) mDatums
+        --
+        --------------------------------------------------------------------------------
+        ---- Check if the NFT is for sale.
+        --nftForSale = maybe False (const True) $ dNft'price datum
+        --
+        --------------------------------------------------------------------------------
+        ---- Check if the bid price is high enough.
+        --bidHighEnough bid =
+        --  let price = dNft'price datum
+        --   in fromMaybe False $ (bid >=) <$> price
+        --
+        --------------------------------------------------------------------------------
+        ---- Check if the new owner is set correctly. todo
+        --correctNewOwner = True
+        --
+        --------------------------------------------------------------------------------
+        ---- Check if the Person is being reimbursed accordingly, with the help of 2
+        ---- getter functions. Helper function.
+        --correctPayment f shareCalcFn bid = personGetsAda >= personWantsAda
+        --  where
+        --    info = scriptContextTxInfo ctx
+        --    personId = getUserId . f $ datum
+        --    share = dNft'share datum
+        --    personGetsAda = getAda $ valuePaidTo info personId
+        --    personWantsAda = getAda $ shareCalcFn bid share
+        --
+        --------------------------------------------------------------------------------
+        ---- Check if the Author is being reimbursed accordingly.
+        --correctPaymentAuthor = correctPayment dNft'author calculateAuthorShare
+        --
+        --------------------------------------------------------------------------------
+        ---- Check if the Current Owner is being reimbursed accordingly.
+        --correctPaymentOwner = correctPayment dNft'owner calculateOwnerShare
+        --
+        --------------------------------------------------------------------------------
+        ---- Check if the Author is being paid the full amount when they are both
+        ---- owner and author.
+        --correctPaymentOnlyAuthor bid = authorGetsAda >= bid
+        --  where
+        --    info = scriptContextTxInfo ctx
+        --    author = getUserId . dNft'author $ datum
+        --    authorGetsAda = getAda $ valuePaidTo info author
+        --
+        --------------------------------------------------------------------------------
+        ---- Check if the new Datum is correctly.
+        --consistentDatum =
+        --  let prevDatum :: DatumNft = head . getCtxDatum $ ctx
+        --   in dNft'id prevDatum == dNft'id datum
+        --        && dNft'share prevDatum == dNft'share datum
+        --        && dNft'author prevDatum == dNft'author datum
+        --
+        --------------------------------------------------------------------------------
+        ---- Check no new token is minted.
+        --noMint = isZero . txInfoMint . scriptContextTxInfo $ ctx
+        --
+        --------------------------------------------------------------------------------
+        ---- Check if the NFT is sent to the correct address.
+        --tokenSentToCorrectAddress =
+        --  containsNft $ foldMap txOutValue (getContinuingOutputs ctx)
+        --
+        --containsNft v = valueOf v (act'cs act) (nftTokenName datum) == 1
+        --
+        --------------------------------------------------------------------------------
+        ---- Check new price is positive or nothing.
+        --setPositivePrice = \case
+        --  action@BuyAct {} ->
+        --    case act'newPrice action of
+        --      Nothing -> True
+        --      Just x -> x > 0
+        --  action@SetPriceAct {} ->
+        --    case act'newPrice action of
+        --      Nothing -> True
+        --      Just x -> x > 0
+        --
+        --------------------------------------------------------------------------------
+        ---- Check if the previous Tx containing the token is consumed.
+        --prevTxConsumed =
+        --  case findOwnInput ctx of
+        --    Just (TxInInfo _ out) -> containsNft $ txOutValue out
+        --    Nothing -> False
+        --
+        --------------------------------------------------------------------------------
+        ---- Check if new price non-negative.
+        --priceNotNegative' = priceNotNegative (act'newPrice act)
+        --
+        --------------------------------------------------------------------------------
+        ---- Check that price set by NFT owner.
+        --ownerSetsPrice =
+        --  case txInfoSignatories $ scriptContextTxInfo ctx of
+        --    [pkh] -> pkh == getUserId (dNft'owner datum)
+        --    _ -> False
+    
 {-# INLINEABLE catMaybes' #-}
 catMaybes' :: [Maybe a] -> [a]
 catMaybes' = mapMaybe id
