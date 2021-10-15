@@ -92,7 +92,6 @@ eTrace2 = do
   callEndpoint @"app-init" authMintH ()
   void $ Trace.waitNSlots 1
 
-
 -- | Test for prototyping.
 test :: Hask.IO ()
 test = runEmulatorTraceIO eTrace1

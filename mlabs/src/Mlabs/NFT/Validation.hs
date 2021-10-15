@@ -250,13 +250,13 @@ asRedeemer :: PlutusTx.ToData a => a -> Redeemer
 asRedeemer = Redeemer . PlutusTx.toBuiltinData
 
 --{-# INLINEABLE mkHeadMintPolicy #-}
---
+
 ---- | Any NFT Policy that makes sure that the HEAD is Unique, and that it can
 ---- burn the token exactly once - when the HEAD is created. Out of scope at this
 ---- point, but any will do. To be replacede with the Plutus defaul mint action Contract
 --mkHeadMintPolicy :: Address -> () -> ScriptContext -> Bool
 --mkHeadMintPolicy _ _ _ = True
---
+
 --headMintPolicy :: Address -> MintingPolicy
 --headMintPolicy stateAddr =
 --  mkMintingPolicyScript $
@@ -268,20 +268,21 @@ asRedeemer = Redeemer . PlutusTx.toBuiltinData
 -- | Minting policy for NFTs.
 mkMintPolicy :: NftAppInstance -> MintAct -> ScriptContext -> Bool
 mkMintPolicy _ act _ =
-  case act of
-    Mint nftid ->
-      traceIfFalse "NFT Minting failed." True
-        && traceIfFalse "Neighbouring transactions are not present." True
-        && traceIfFalse "The token is not sent to the right address" True
-    Initialise ->
-      traceIfFalse "The token is not present." True
-        && traceIfFalse "The initial token is not being consumed." True
-        && traceIfFalse "The token is not sent to the right address" True
+  traceIfFalse "Only One Token Can be Minted" True
+    && case act of
+      Mint nftid ->
+        traceIfFalse "NFT Minting failed." True
+          && traceIfFalse "Neighbouring transactions are not present." True
+          && traceIfFalse "The token is not sent to the right address" True
+      Initialise ->
+        traceIfFalse "The token is not present." True
+          && traceIfFalse "The initial token is not being consumed." True
+          && traceIfFalse "The token is not sent to the right address" True
 
 mintPolicy :: NftAppInstance -> MintingPolicy
 mintPolicy appInstance =
   mkMintingPolicyScript $
-    $$(PlutusTx.compile [|| wrapMintingPolicy . mkMintPolicy ||])
+    $$(PlutusTx.compile [||wrapMintingPolicy . mkMintPolicy||])
       `PlutusTx.applyCode` PlutusTx.liftCode appInstance
 
 {-# INLINEABLE mKTxPolicy #-}

@@ -97,21 +97,27 @@ type GenericContract a = forall w s. Contract w s Text a
 -}
 createListHead :: GenericContract NftAppInstance
 createListHead = do
-  (token, value) <- generateUniqueToken
-  let appInstance = NftAppInstance txScrAddress token
+  (uniqueToken, uniqueTokenValue) <- generateUniqueToken
+  let appInstance = NftAppInstance txScrAddress uniqueToken
   headDatum <- nftHeadInit appInstance
-  head <- mintListHead appInstance value headDatum
+  head <- mintListHead appInstance uniqueTokenValue headDatum
   return appInstance
   where
+    -- Mint the Linked List Head and its associated token.
     mintListHead :: NftAppInstance -> Value -> DatumNft -> GenericContract ()
-    mintListHead appInstance val uDatum = do
+    mintListHead appInstance uniqueTokenValue headDatum = do
       utxos <- getUserUtxos
-      let (lookups, tx) =
+      let headPolicy = mintPolicy appInstance
+          proofTokenValue = Value.singleton (scriptCurrencySymbol headPolicy) "HEAD" 1
+          initRedeemer = asRedeemer Initialise
+          (lookups, tx) =
             ( mconcat
                 [ Constraints.typedValidatorLookups txPolicy
+                , Constraints.mintingPolicy headPolicy
                 ]
             , mconcat
-                [ Constraints.mustPayToTheScript uDatum val
+                [ Constraints.mustPayToTheScript headDatum (uniqueTokenValue <> proofTokenValue)
+                , Constraints.mustMintValueWithRedeemer initRedeemer proofTokenValue
                 ]
             )
       void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
