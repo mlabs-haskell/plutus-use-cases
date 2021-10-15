@@ -84,9 +84,19 @@ setPriceTrace = do
         , mp'price = Just 100
         }
 
+eTrace2 :: EmulatorTrace ()
+eTrace2 = do
+  let wallet1 = walletFromNumber 1 :: Emulator.Wallet
+  authMintH <- activateContractWallet wallet1 $ endpoints (error ()) --FIXME
+  void $ Trace.waitNSlots 1
+
 -- | Test for prototyping.
 test :: Hask.IO ()
 test = runEmulatorTraceIO eTrace1
+
+-- | New Test
+test1 :: Hask.IO ()
+test1 = runEmulatorTraceIO eTrace2
 
 testSetPrice :: Hask.IO ()
 testSetPrice = runEmulatorTraceIO setPriceTrace

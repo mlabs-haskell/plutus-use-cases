@@ -39,7 +39,7 @@ import Ledger.Constraints qualified as Constraints
 import Ledger.Typed.Scripts (validatorScript)
 import Ledger.Value as Value (AssetClass(..), CurrencySymbol, TokenName(..), singleton, unAssetClass, valueOf)
 
-import Mlabs.NFT.Types (
+import Mlabs.NFT.Types {-(
   BuyRequestUser (..),
   Content (..),
   MintAct (..),
@@ -48,7 +48,7 @@ import Mlabs.NFT.Types (
   QueryResponse (..),
   SetPriceParams (..),
   UserId (..),
- )
+ ) -}
 
 import Mlabs.Plutus.Contract (readDatum')
 
@@ -71,7 +71,7 @@ import Mlabs.NFT.Endpoints.Aux
 -- MINT --
 
 ---- | Mints an NFT and sends it to the App Address.
-mint :: NftAppSymbol -> MintParams -> Contract (Last NftId) s Text a
+mint :: NftAppSymbol -> MintParams -> Contract (Last NftId) s Text ()
 mint symbol params = do
   ownOrefTxOut <- getUserAddr >>= fstUtxoAt
   nftId        <- nftIdInit params
@@ -85,6 +85,8 @@ mint symbol params = do
   Contract.tell . Last . Just $ nftId
   Contract.logInfo @Hask.String $ printf "forged %s" (Hask.show mintedVal)
   where
+    nftIdInit = error ()
+
     findNode 
       :: NftAppSymbol 
       -> NftId 
@@ -150,14 +152,3 @@ mint symbol params = do
               ]
        in (lookups, tx, nftVal)
 
--- | Get the current Wallet's publick key.
-getUserAddr :: Contract w s Text Address
-getUserAddr = pubKeyAddress <$> Contract.ownPubKey
-
--- | Get first utxo at address. Will throw an error if no utxo can be found.
-fstUtxoAt :: Address -> Contract w s Text (TxOutRef, ChainIndexTxOut)
-fstUtxoAt address = do
-  utxos <- Contract.utxosAt address
-  case Map.toList utxos of
-    [] -> Contract.throwError @Text "No utxo found at address."
-    x : _ -> pure x

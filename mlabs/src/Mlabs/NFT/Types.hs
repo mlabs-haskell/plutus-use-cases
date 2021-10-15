@@ -10,6 +10,16 @@ module Mlabs.NFT.Types (
   SetPriceParams (..),
   Content (..),
   Title (..),
+  DatumNft(..),
+  NftAppInstance(..),
+  UserAct(..),
+  InformationNft (..),
+  NftListNode (..),
+  NftListHead (..),
+  NftAppSymbol (..),
+  Pointer(..),
+  nftTokenName,
+  getAppInstance,
 ) where
 
 import PlutusTx.Prelude
@@ -19,13 +29,41 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Monoid (Last)
 import GHC.Generics (Generic)
 
+import Ledger (
+  Address,
+  AssetClass,
+  CurrencySymbol,
+  Datum (..),
+  MintingPolicy,
+  Redeemer (..),
+  ScriptContext (..),
+  TxInInfo (..),
+  TxOut (..),
+  TxOutRef,
+  ValidatorHash,
+  Value,
+  findDatumHash,
+  findOwnInput,
+  mkMintingPolicyScript,
+  ownCurrencySymbol,
+  scriptContextTxInfo,
+  scriptCurrencySymbol,
+  txInInfoOutRef,
+  txInfoData,
+  txInfoInputs,
+  txInfoMint,
+  txInfoOutputs,
+  txInfoSignatories,
+  valuePaidTo,
+ )
+
 import Ledger (PubKeyHash)
+import Ledger.Value (TokenName(..))
 import PlutusTx qualified
 import Schema (ToSchema)
 
 --------------------------------------------------------------------------------
 -- ON-CHAIN TYPES --
-
 
 newtype Content = Content {getContent :: BuiltinByteString}
   deriving stock (Hask.Show, Generic, Hask.Eq)
@@ -61,19 +99,16 @@ instance Eq UserId where
  The NftId contains a human readable title, the hashed information of the
  content and the utxo ref included when minting the token.
 -}
-data NftId = NftId
+newtype NftId = NftId
   { -- | token name is identified by content of the NFT (it's hash of it).
     nftId'contentHash :: BuiltinByteString
-    -- | Content Title.
-    -- nftId'title :: Title
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
-
 instance Eq NftId where
   {-# INLINEABLE (==) #-}
-  (NftId  token1) == (NftId token2) =
+  (NftId token1) == (NftId token2) =
     token1 == token2
 
 {- | Type representing the data that gets hashed when the token is minted. The
@@ -104,11 +139,11 @@ data MintAct
   = -- | Mint Action for the NftId. Creates a proof token that the NFTid is
     -- unique.
     Mint
-    { -- | NftId
-      mint'nftId :: NftId
-    }
-    -- | Update Datum.
-    | Initialise
+      { -- | NftId
+        mint'nftId :: NftId
+      }
+  | -- | Create the Datum.
+    Initialise
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
 
@@ -176,9 +211,170 @@ data QueryResponse
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON)
 
-
 PlutusTx.unstableMakeIsData ''MintAct
 PlutusTx.unstableMakeIsData ''NftId
 
 PlutusTx.makeLift ''MintAct
 PlutusTx.makeLift ''NftId
+
+--------------------------------------------------------------------------------
+-- Validation
+
+-- | NFT Information.
+data InformationNft = InformationNft
+  { -- | NFT ID. Represents the key of the Datum. ?could even be taken out of the information?
+    info'id :: NftId
+  , -- | Author's share of the NFT.
+    info'share :: Rational
+  , -- | Author's wallet pubKey.
+    info'author :: UserId
+  , -- | Owner's wallet pubkey.
+    info'owner :: UserId
+  , -- | Price in Lovelace. If Nothing, NFT not for sale.
+    info'price :: Maybe Integer
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (ToJSON, FromJSON)
+
+PlutusTx.unstableMakeIsData ''InformationNft
+PlutusTx.makeLift ''InformationNft
+instance Eq InformationNft where
+  {-# INLINEABLE (==) #-}
+  (InformationNft a b c d e) == (InformationNft a' b' c' d' e') =
+    a == a' && b == b' && c == c' && d == d' && e == e'
+
+{- | App Instace is parametrised by the one time nft consumed at the creation of
+ the HEAD and the script address.
+-}
+data NftAppInstance = NftAppInstance
+  { -- | Script Address where all the NFTs can be found
+    appInstance'Address :: Address
+  , -- | AssetClass with which all the NFTs are parametrised - guarantees the proof of uniqueness.
+    appInstance'AppAssetClass :: AssetClass
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (ToJSON, FromJSON)
+
+PlutusTx.unstableMakeIsData ''NftAppInstance
+PlutusTx.makeLift ''NftAppInstance
+instance Eq NftAppInstance where
+  (NftAppInstance a b) == (NftAppInstance a' b') = a == a' && b == b'
+
+newtype NftAppSymbol = NftAppSymbol { app'symbol :: CurrencySymbol }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (ToJSON, FromJSON)
+
+PlutusTx.unstableMakeIsData ''NftAppSymbol
+PlutusTx.makeLift ''NftAppSymbol
+
+instance Eq NftAppSymbol where
+  (NftAppSymbol a) == (NftAppSymbol a') = a == a'
+
+{- | The AssetClass is the pointer itself. Each NFT has the same CurrencySymbol,
+ and their TokenName is the Hash of their Content.
+-}
+newtype Pointer = Pointer
+  { pointer'assetClass :: AssetClass
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (ToJSON, FromJSON, ToSchema)
+
+PlutusTx.unstableMakeIsData ''Pointer
+PlutusTx.makeLift ''Pointer
+
+instance Eq Pointer where
+  (Pointer a) == (Pointer a') = a == a'
+
+{- | The head datum is unique for each list. Its token is minted when the unique
+ NFT is consumed.
+-}
+data NftListHead = NftListHead
+  { -- | Pointer to the next node.
+    head'next :: Maybe Pointer
+  , -- | Node App Instance
+    head'appInstance :: NftAppInstance
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (ToJSON, FromJSON)
+
+PlutusTx.unstableMakeIsData ''NftListHead
+PlutusTx.makeLift ''NftListHead
+instance Eq NftListHead where
+  (NftListHead a b) == (NftListHead a' b') = a == a' && b == b'
+
+-- | The nft list node is based on the above described properties.
+data NftListNode = NftListNode
+  { -- | The value held at the node
+    node'information :: InformationNft
+  , -- | The next Node.
+    node'next :: Maybe Pointer
+  , -- | Node App Instance
+    node'appInstance :: NftAppInstance
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (ToJSON, FromJSON)
+
+PlutusTx.unstableMakeIsData ''NftListNode
+PlutusTx.makeLift ''NftListNode
+instance Eq NftListNode where
+  (NftListNode a b c) == (NftListNode a' b' c') = a == a' && b == b' && c == c'
+
+-- | The datum of an Nft is either head or node.
+data DatumNft
+  = -- | Head of a List
+    HeadDatum NftListHead
+  | -- | A node of the list.
+    NodeDatum NftListNode
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (ToJSON, FromJSON)
+
+PlutusTx.unstableMakeIsData ''DatumNft
+PlutusTx.makeLift ''DatumNft
+
+instance Eq DatumNft where
+  {-# INLINEABLE (==) #-}
+  (HeadDatum x1) == (HeadDatum x2) = x1 == x2
+  (NodeDatum x1) == (NodeDatum x2) = x1 == x2
+  _ == _ = False
+
+{- | Token Name is represented by the HASH of the artwork. The Head TokenName is
+the empty ByteString, smaller than any other ByteString, and is minted at the
+intialisation of the app.
+-}
+nftTokenName :: DatumNft -> TokenName
+nftTokenName = \case
+  HeadDatum _ -> TokenName PlutusTx.Prelude.emptyByteString
+  NodeDatum n -> TokenName . nftId'contentHash . info'id . node'information $ n
+
+getAppInstance :: DatumNft -> NftAppInstance
+getAppInstance = \case 
+  HeadDatum (NftListHead _ inst)   -> inst
+  NodeDatum (NftListNode _ _ inst) -> inst
+
+-- | NFT Redeemer
+data UserAct
+  = -- | Buy NFT and set new price
+    BuyAct
+      { -- | price to buy. In Lovelace.
+        act'bid :: Integer
+      , -- | new price for NFT. In Lovelace.
+        act'newPrice :: Maybe Integer
+      }
+  | -- | Set new price for NFT
+    SetPriceAct
+      { -- | new price for NFT. In Lovelace.
+        act'newPrice :: Maybe Integer
+      }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (ToJSON, FromJSON)
+
+PlutusTx.makeLift ''UserAct
+PlutusTx.unstableMakeIsData ''UserAct
+
+instance Eq UserAct where
+  {-# INLINEABLE (==) #-}
+  (BuyAct bid1 newPrice1) == (BuyAct bid2 newPrice2) =
+    bid1 == bid2 && newPrice1 == newPrice2
+  (SetPriceAct newPrice1) == (SetPriceAct newPrice2) =
+    newPrice1 == newPrice2
+  _ == _ = False
