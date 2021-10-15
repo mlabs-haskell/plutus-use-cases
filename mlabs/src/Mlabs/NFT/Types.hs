@@ -26,7 +26,6 @@ import Schema (ToSchema)
 --------------------------------------------------------------------------------
 -- ON-CHAIN TYPES --
 
-
 newtype Content = Content {getContent :: BuiltinByteString}
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
@@ -61,19 +60,16 @@ instance Eq UserId where
  The NftId contains a human readable title, the hashed information of the
  content and the utxo ref included when minting the token.
 -}
-data NftId = NftId
+newtype NftId = NftId
   { -- | token name is identified by content of the NFT (it's hash of it).
     nftId'contentHash :: BuiltinByteString
-    -- | Content Title.
-    -- nftId'title :: Title
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
-
 instance Eq NftId where
   {-# INLINEABLE (==) #-}
-  (NftId  token1) == (NftId token2) =
+  (NftId token1) == (NftId token2) =
     token1 == token2
 
 {- | Type representing the data that gets hashed when the token is minted. The
@@ -104,11 +100,11 @@ data MintAct
   = -- | Mint Action for the NftId. Creates a proof token that the NFTid is
     -- unique.
     Mint
-    { -- | NftId
-      mint'nftId :: NftId
-    }
-    -- | Update Datum.
-    | Initialise
+      { -- | NftId
+        mint'nftId :: NftId
+      }
+  | -- | Update Datum.
+    Initialise
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
 
@@ -175,7 +171,6 @@ data QueryResponse
   | QueryCurrentPrice (Last Integer)
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON)
-
 
 PlutusTx.unstableMakeIsData ''MintAct
 PlutusTx.unstableMakeIsData ''NftId

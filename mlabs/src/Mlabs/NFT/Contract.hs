@@ -5,6 +5,7 @@ module Mlabs.NFT.Contract (
   mint,
   buy,
   setPrice,
+  initApp,
   queryCurrentOwner,
   queryCurrentPrice,
 ) where
@@ -22,16 +23,22 @@ import Data.Text (Text, pack)
 import Text.Printf (printf)
 
 import Plutus.ChainIndex.Tx (ChainIndexTx)
-import Plutus.Contract (Contract, utxosTxOutTxAt)
+import Plutus.Contract (Contract, mapError, ownPubKey, utxosTxOutTxAt)
 import Plutus.Contract qualified as Contract
 import PlutusTx qualified
 
+import Plutus.Contracts.Currency (CurrencyError, mintContract, mintedValue)
+import Plutus.Contracts.Currency qualified as MC
+import Plutus.V1.Ledger.Value (TokenName (..), assetClass, currencySymbol, flattenValue)
+
 import Ledger (
   Address,
+  AssetClass,
   ChainIndexTxOut,
   Datum (..),
   Redeemer (..),
   TxOutRef,
+  Value,
   ciTxOutDatum,
   ciTxOutValue,
   getDatum,
@@ -59,19 +66,19 @@ import Mlabs.NFT.Types (
 import Mlabs.Plutus.Contract (readDatum')
 
 import Mlabs.NFT.Validation {-(
-  DatumNft (..),
-  NftTrade,
-  UserAct (..),
-  asRedeemer,
-  calculateShares,
-  mintPolicy,
-  nftAsset,
-  nftCurrency,
-  nftTokenName,
-  priceNotNegative,
-  txPolicy,
-  txScrAddress,
- )-}
+                             DatumNft (..),
+                             NftTrade,
+                             UserAct (..),
+                             asRedeemer,
+                             calculateShares,
+                             mintPolicy,
+                             nftAsset,
+                             nftCurrency,
+                             nftTokenName,
+                             priceNotNegative,
+                             txPolicy,
+                             txScrAddress,
+                            )-}
 
 -- | A contract used exclusively for query actions.
 type QueryContract a = forall s. Contract QueryResponse s Text a
@@ -85,10 +92,46 @@ type GenericContract a = forall w s. Contract w s Text a
 --------------------------------------------------------------------------------
 -- Init --
 
--- | Initialise the application at the address of the script by creating the
--- HEAD of the list, and consuming the one time token.
-appInit :: GenericContract ()
-appInit = error ()
+{- | Initialise the application at the address of the script by creating the
+ HEAD of the list, and coupling the one time token with the Head of the list.
+-}
+createListHead :: GenericContract NftAppInstance
+createListHead = do
+  (token, value) <- generateUniqueToken
+  let appInstance = NftAppInstance txScrAddress token
+  headDatum <- nftHeadInit appInstance
+  head <- mintListHead appInstance value headDatum
+  return appInstance
+  where
+    mintListHead :: NftAppInstance -> Value -> DatumNft -> GenericContract ()
+    mintListHead appInstance val uDatum = do
+      utxos <- getUserUtxos
+      let (lookups, tx) =
+            ( mconcat
+                [ Constraints.typedValidatorLookups txPolicy
+                ]
+            , mconcat
+                [ Constraints.mustPayToTheScript uDatum val
+                ]
+            )
+      void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
+      Contract.logInfo @Hask.String $ printf "forged HEAD for %s" (Hask.show appInstance)
+
+    -- Contract that mints a unique token to be used in the minting of the head
+    generateUniqueToken :: GenericContract (AssetClass, Value)
+    generateUniqueToken = do
+      self <- Ledger.pubKeyHash <$> ownPubKey
+      let nftTokenName = TokenName PlutusTx.Prelude.emptyByteString
+      x <-
+        mapError
+          (pack . Hask.show @CurrencyError)
+          (mintContract self [(nftTokenName, 1)])
+      return (assetClass (MC.currencySymbol x) nftTokenName, MC.mintedValue x)
+
+initApp :: GenericContract ()
+initApp = do
+  createListHead
+  Contract.logInfo @Hask.String $ printf "Finished Initialisation"
 
 --------------------------------------------------------------------------------
 -- MINT --
@@ -96,6 +139,7 @@ appInit = error ()
 ---- | Mints an NFT and sends it to the App Address.
 --mint ::  -> UserContract ()
 mint nftContent = error ()
+
 --  addr <- getUserAddr
 --  datum <- nftInit nftContent
 --  utxos <- Contract.utxosAt addr
@@ -140,13 +184,14 @@ getScriptAddrUtxos :: GenericContract (Map.Map TxOutRef (ChainIndexTxOut, ChainI
 getScriptAddrUtxos = utxosTxOutTxAt txScrAddress
 
 -- | Initialise an NFT using the current wallet.
-nftHeadInit :: NftAppInstance -> Contract w s Text DatumNft
+nftHeadInit :: NftAppInstance -> GenericContract DatumNft
 nftHeadInit appInst = do
   pure $
-    HeadDatum $ NftListHead
-      { head'next  = Nothing
-      , head'appInstance = appInst
-      }
+    HeadDatum $
+      NftListHead
+        { head'next = Nothing
+        , head'appInstance = appInst
+        }
 
 -- -- | Initialise new NftId
 -- nftIdInit :: MintParams -> Contract w s Text NftId
@@ -160,13 +205,14 @@ nftHeadInit appInst = do
 --       , nftId'contentHash = hData
 --       , nftId'outRef = oref
 --       }
--- 
--- {- | BUY.
---  Attempts to buy a new NFT by changing the owner, pays the current owner and
---  the author, and sets a new price for the NFT.
--- -}
+
+{- | BUY.
+ Attempts to buy a new NFT by changing the owner, pays the current owner and
+ the author, and sets a new price for the NFT.
+-}
 buy :: BuyRequestUser -> UserContract ()
 buy (BuyRequestUser nftId bid newPrice) = error ()
+
 --   oldDatum' <- getNftDatum nftId
 --   case oldDatum' of
 --     Nothing -> Contract.logError @Hask.String "NFT Cannot be found."
@@ -202,21 +248,21 @@ buy (BuyRequestUser nftId bid newPrice) = error ()
 --                       , act'newPrice = newPrice
 --                       , act'cs = newCurrency
 --                       }
--- 
+--
 --                   -- Serialised Datum.
 --                   newDatum = Datum . PlutusTx.toBuiltinData $ newDatum'
 --                   (paidToAuthor, paidToOwner) = calculateShares bid $ dNft'share oldDatum
--- 
+--
 --                   -- TEST MINT
 --                   -- nftPolicy = mintPolicy scrAddress nftOref nftId
 --                   mintRedeemer = asRedeemer $ TxAction prevTokenName newTokenName
--- 
+--
 --                   valAAA = Value.singleton (scriptCurrencySymbol nftPolicy) prevTokenName 1
 --                   negAAA = negate valAAA
--- 
+--
 --                   valBBB = Value.singleton (scriptCurrencySymbol nftPolicy) newTokenName 1
 --                   newValue = valBBB
--- 
+--
 --                   (lookups, tx) =
 --                     ( mconcat
 --                         [ Constraints.unspentOutputs userUtxos
@@ -243,12 +289,13 @@ buy (BuyRequestUser nftId bid newPrice) = error ()
 --               void $ Contract.logInfo @Hask.String $ printf "TO OWNER %s" $ Hask.show paidToOwner
 --               void $ Contract.logInfo @Hask.String $ printf "NEG AAA %s" $ Hask.show negAAA
 --               void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
--- 
+--
 -- -- void $ Contract.logInfo @Hask.String $ printf "Bought %s" $ Hask.show val
--- 
+--
 -- -- SET PRICE --
 setPrice :: SetPriceParams -> UserContract ()
 setPrice spParams = error ()
+
 --   result <-
 --     Contract.runError $ do
 --       (oref, ciTxOut, datum) <- findNft txScrAddress $ sp'nftId spParams
@@ -274,7 +321,7 @@ setPrice spParams = error ()
 --               , Constraints.mustPayToTheScript newDatum newValue
 --               ]
 --        in (tx, lookups)
--- 
+--
 --     runOffChainChecks :: DatumNft -> UserContract ()
 --     runOffChainChecks datum = do
 --       ownPkh <- pubKeyHash <$> Contract.ownPubKey
@@ -284,14 +331,15 @@ setPrice spParams = error ()
 --       if priceNotNegative (sp'price spParams)
 --         then pure ()
 --         else Contract.throwError "New price can not be negative"
--- 
+--
 --     isOwner datum pkh = pkh == (getUserId . dNft'owner) datum
--- 
+--
 -- {- | Query the current price of a given NFTid. Writes it to the Writer instance
 --  and also returns it, to be used in other contracts.
 -- -}
 queryCurrentPrice :: NftId -> QueryContract QueryResponse
 queryCurrentPrice nftid = error ()
+
 --   price <- wrap <$> getsNftDatum dNft'price nftid
 --   Contract.tell price >> log price >> return price
 --   where
@@ -299,12 +347,13 @@ queryCurrentPrice nftid = error ()
 --     log price =
 --       Contract.logInfo @Hask.String $
 --         "Current price of: " <> Hask.show nftid <> " is: " <> Hask.show price
--- 
--- {- | Query the current owner of a given NFTid. Writes it to the Writer instance
---  and also returns it, to be used in other contracts.
--- -}
+
+{- | Query the current owner of a given NFTid. Writes it to the Writer instance
+ and also returns it, to be used in other contracts.
+-}
 queryCurrentOwner :: NftId -> QueryContract QueryResponse
 queryCurrentOwner nftid = error ()
+
 --   ownerResp <- wrap <$> getsNftDatum dNft'owner nftid
 --   Contract.tell ownerResp >> log ownerResp >> return ownerResp
 --   where
@@ -312,33 +361,37 @@ queryCurrentOwner nftid = error ()
 --     log owner =
 --       Contract.logInfo @Hask.String $
 --         "Current owner of: " <> Hask.show nftid <> " is: " <> Hask.show owner
--- 
--- -- HELPER FUNCTIONS AND CONTRACTS --
--- 
--- -- | Get the current Wallet's publick key.
--- getUserAddr :: Contract w s Text Address
--- getUserAddr = pubKeyAddress <$> Contract.ownPubKey
--- 
--- -- | Get the current wallet's utxos.
--- getUserUtxos :: Contract w s Text (Map.Map TxOutRef Ledger.ChainIndexTxOut)
--- getUserUtxos = getAddrUtxos =<< getUserAddr
--- 
--- -- | Get the current wallet's userId.
--- getUId :: Contract w s Text UserId
--- getUId = UserId . pubKeyHash <$> Contract.ownPubKey
--- 
--- -- | Get the ChainIndexTxOut at an address.
--- getAddrUtxos :: Address -> Contract w s Text (Map.Map TxOutRef ChainIndexTxOut)
--- getAddrUtxos adr = Map.map fst <$> utxosTxOutTxAt adr
--- 
--- -- | Get first utxo at address. Will throw an error if no utxo can be found.
--- fstUtxo :: Address -> Contract w s Text TxOutRef
--- fstUtxo address = do
---   utxos <- Contract.utxosAt address
---   case Map.keys utxos of
---     [] -> Contract.throwError @Text "No utxo found at address."
---     x : _ -> pure x
--- 
+
+-- HELPER FUNCTIONS AND CONTRACTS --
+
+-- | Get the current Wallet's publick key.
+getUserAddr :: Contract w s Text Address
+getUserAddr = pubKeyAddress <$> Contract.ownPubKey
+
+-- | Get the current wallet's utxos.
+getUserUtxos :: Contract w s Text (Map.Map TxOutRef Ledger.ChainIndexTxOut)
+getUserUtxos = getAddrUtxos =<< getUserAddr
+
+-- | Get the current wallet's userId.
+getUId :: Contract w s Text UserId
+getUId = UserId . pubKeyHash <$> Contract.ownPubKey
+
+-- | Get the ChainIndexTxOut at an address.
+getAddrUtxos :: Address -> Contract w s Text (Map.Map TxOutRef ChainIndexTxOut)
+getAddrUtxos adr = Map.map fst <$> utxosTxOutTxAt adr
+
+-- | Serialise Datum
+serialiseDatum :: PlutusTx.ToData a => a -> Datum
+serialiseDatum = Datum . PlutusTx.toBuiltinData
+
+-- | Get first utxo at address. Will throw an error if no utxo can be found.
+fstUtxo :: Address -> Contract w s Text TxOutRef
+fstUtxo address = do
+  utxos <- Contract.utxosAt address
+  case Map.keys utxos of
+    [] -> Contract.throwError @Text "No utxo found at address."
+    x : _ -> pure x
+
 -- -- | Returns the Datum of a specific nftId from the Script address.
 -- getNftDatum :: NftId -> Contract w s Text (Maybe DatumNft)
 -- getNftDatum nftId = do
@@ -356,17 +409,17 @@ queryCurrentOwner nftid = error ()
 --     [x] -> pure $ Just x
 --     [] -> Contract.throwError "No Datum can be found."
 --     _ : _ -> Contract.throwError "More than one suitable Datums can be found."
--- 
+--
 -- {- | Gets the Datum of a specific nftId from the Script address, and applies an
 --  extraction function to it.
 -- -}
 -- getsNftDatum :: (DatumNft -> b) -> NftId -> Contract a s Text (Maybe b)
 -- getsNftDatum f = fmap (fmap f) . getNftDatum
--- 
+--
 -- -- | A hashing function to minimise the data to be attached to the NTFid.
 -- hashData :: Content -> BuiltinByteString
 -- hashData (Content b) = sha2_256 b
--- 
+--
 -- -- | Find NFTs at a specific Address. Will throw an error if none or many are found.
 -- findNft :: Address -> NftId -> Contract w s Text (TxOutRef, ChainIndexTxOut, DatumNft)
 -- findNft addr nftId = do
@@ -391,4 +444,4 @@ queryCurrentOwner nftid = error ()
 --        in tn == nftTokenName datum -- sanity check
 --             && dNft'id datum == nftId -- check that Datum has correct NftId
 --             && valueOf (ciTxOut ^. ciTxOutValue) cs tn == 1 -- check that UTXO has single NFT in Value
--- 
+--

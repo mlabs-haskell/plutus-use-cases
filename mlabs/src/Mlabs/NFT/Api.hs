@@ -10,6 +10,7 @@ import Data.Text (Text)
 
 import Playground.Contract (mkSchemaDefinitions)
 import Plutus.Contract (Contract, Endpoint, endpoint, type (.\/))
+import Prelude as Hask
 
 import Mlabs.NFT.Contract qualified as NFTContract
 import Mlabs.NFT.Types (BuyRequestUser (..), MintParams (..), NftId (..), QueryResponse (..), SetPriceParams (..))
@@ -26,6 +27,8 @@ type NFTAppSchema =
     .\/ Endpoint "query-current-owner" NftId
     .\/ Endpoint "query-current-price" NftId
     .\/ Endpoint "query-authentic-nft" NftId
+    -- Admin Endpoint
+    .\/ Endpoint "app-init" ()
 
 mkSchemaDefinitions ''NFTAppSchema
 
@@ -41,6 +44,7 @@ endpoints =
     [ endpoint @"mint" NFTContract.mint
     , endpoint @"buy" NFTContract.buy
     , endpoint @"set-price" NFTContract.setPrice
+    , endpoint @"app-init" $ Hask.const NFTContract.initApp
     --, endpoint @"query-authentic-nft" NFTContract.queryAuthenticNFT
     ]
 
