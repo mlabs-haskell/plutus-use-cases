@@ -9,8 +9,7 @@ import Data.Map qualified as Map
 import Data.Monoid (Last (..))
 import Data.String (IsString (..))
 import Data.Text (Text)
-import Ledger.Crypto (pubKeyHash)
-import Plutus.Contract.Test (Wallet (..), walletPubKey)
+import Plutus.Contract.Test (Wallet (..))
 import Plutus.Contract.Test.ContractModel (Action, Actions, ContractInstanceSpec (..), ContractModel (..), contractState, getModelState, propRunActionsWithOptions, transfer, wait, ($=), ($~))
 import Plutus.Trace.Emulator (EmulatorRuntimeError (..), activateContractWallet, callEndpoint, observableState, throwError, waitNSlots)
 import Plutus.Trace.Emulator qualified as Trace

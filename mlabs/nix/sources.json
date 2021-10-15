@@ -69,10 +69,10 @@
         "homepage": "https://cardano.org",
         "owner": "input-output-hk",
         "repo": "cardano-node",
-        "rev": "191b91eec3c7d845a55347781329d50bf36871d7",
-        "sha256": "1y0a80fmrqf7561yqp4p2vx36yrhh83222b01sall2rk791y4yf0",
+        "rev": "ed7fdbf65f40f8e194850b87dd8c631fe26154e6",
+        "sha256": "0ivvqnw6fflfbzywychfsyyjd6jn3pg1r0vv63m1rdwp04v59kh5",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/cardano-node/archive/191b91eec3c7d845a55347781329d50bf36871d7.tar.gz",
+        "url": "https://github.com/input-output-hk/cardano-node/archive/ed7fdbf65f40f8e194850b87dd8c631fe26154e6.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "version": "f3ef4ed72894499160f2330b91572a159005c148"
     },
@@ -152,6 +152,18 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "version": "34abfb7f4f5610cabb45396e0496472446a0b2ca"
     },
+    "marlowe-cardano": {
+        "branch": "main",
+        "description": "Marlowe smart contract language Cardano implementation",
+        "homepage": null,
+        "owner": "input-output-hk",
+        "repo": "marlowe-cardano",
+        "rev": "b1a11fc1d177ff2c0fefe3c3d1684530377eb983",
+        "sha256": "1dxi7qz30z18qla623zfl518cc80lfl5nqch1qqp4jn0p7hhcafl",
+        "type": "tarball",
+        "url": "https://github.com/input-output-hk/marlowe-cardano/archive/b1a11fc1d177ff2c0fefe3c3d1684530377eb983.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "niv": {
         "branch": "master",
         "description": "Easy dependency management for Nix projects",
@@ -220,23 +232,35 @@
         "homepage": "",
         "owner": "input-output-hk",
         "repo": "plutus",
-        "rev": "58c093a49eb7a369865e361179d649264fc817a4",
-        "sha256": "156lprrnz4hivagzsbsw3dfqsdpdrvkf2qijf7n0jh9xx2g21pz4",
+        "rev": "0cb5c00add3809d9f247e9ec3f069d9ac3becd95",
+        "sha256": "065y755an7a66jm0pj5ib87scs1sqqssnpla5ks1103s3mfn13is",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/plutus/archive/58c093a49eb7a369865e361179d649264fc817a4.tar.gz",
+        "url": "https://github.com/input-output-hk/plutus/archive/0cb5c00add3809d9f247e9ec3f069d9ac3becd95.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "version": "926a49d16439b693648b68b7e6eb7877a5e622e4"
     },
+    "plutus-apps": {
+        "branch": "main",
+        "description": "The Plutus application platform",
+        "homepage": null,
+        "owner": "input-output-hk",
+        "repo": "plutus-apps",
+        "rev": "055c214d744a57eb77f263c88f27376aa9efba86",
+        "sha256": "19q9k7h73kxyl47hx9qcq3xid505jhxqzvpjn402say4pjwxw4i6",
+        "type": "tarball",
+        "url": "https://github.com/input-output-hk/plutus-apps/archive/055c214d744a57eb77f263c88f27376aa9efba86.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "plutus-extra": {
         "branch": "master",
-        "description": "Helper library of Plutus functions.",
+        "description": "Helper libraries for Plutus.",
         "homepage": "",
-        "owner": "Liqwid-Labs",
+        "owner": "ngua",
         "repo": "plutus-extra",
-        "rev": "b34f7ac0813aaf982ad8c65bcc3c2a54a601e601",
-        "sha256": "1fs67ilfg2aghnz3ry4k08292dhya0wwwhpyqf9frx7ps11vadwr",
+        "rev": "93e18122d94f11ae8c3e7faa6e774e699d78c2a6",
+        "sha256": "0w45ps5shy1xyig9c08rm4nsih0gyawzqk45c80jyzij4g3wznnp",
         "type": "tarball",
-        "url": "https://github.com/Liqwid-Labs/plutus-extra/archive/b34f7ac0813aaf982ad8c65bcc3c2a54a601e601.tar.gz",
+        "url": "https://github.com/ngua/plutus-extra/archive/93e18122d94f11ae8c3e7faa6e774e699d78c2a6.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "plutus-latest": {
@@ -255,26 +279,24 @@
         "branch": "master",
         "description": "Create PureScript datatypes from Haskell datatypes",
         "homepage": null,
-        "owner": "shmish111",
+        "owner": "input-output-hk",
         "repo": "purescript-bridge",
         "rev": "6a92d7853ea514be8b70bab5e72077bf5a510596",
         "sha256": "13j64vv116in3c204qsl1v0ajphac9fqvsjp7x3zzfr7n7g61drb",
         "type": "tarball",
-        "url": "https://github.com/shmish111/purescript-bridge/archive/6a92d7853ea514be8b70bab5e72077bf5a510596.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "version": "6a92d7853ea514be8b70bab5e72077bf5a510596"
+        "url": "https://github.com/input-output-hk/purescript-bridge/archive/6a92d7853ea514be8b70bab5e72077bf5a510596.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "servant-purescript": {
         "branch": "master",
         "description": "Translate servant API to purescript code, with the help of purescript-bridge.",
         "homepage": null,
-        "owner": "shmish111",
+        "owner": "input-output-hk",
         "repo": "servant-purescript",
-        "rev": "a76104490499aa72d40c2790d10e9383e0dbde63",
-        "sha256": "11nxxmi5bw66va7psvrgrw7b7n85fvqgfp58yva99w3v9q3a50v9",
+        "rev": "a0c7c7e37c95564061247461aef4be505a853538",
+        "sha256": "177na04jf6wf18kandzsah40lw3xswmmccpr3hkb8wb4hypcffnf",
         "type": "tarball",
-        "url": "https://github.com/shmish111/servant-purescript/archive/a76104490499aa72d40c2790d10e9383e0dbde63.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "version": "a76104490499aa72d40c2790d10e9383e0dbde63"
+        "url": "https://github.com/input-output-hk/servant-purescript/archive/a0c7c7e37c95564061247461aef4be505a853538.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }

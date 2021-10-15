@@ -104,7 +104,7 @@ library
     -Wmissing-export-lists
     -Wmissing-deriving-strategies
     -Werror
-    
+
   hs-source-dirs:
     src/
     

@@ -58,13 +58,17 @@ in pkgs.haskell-nix.cabalProject rec {
     # i.e. this will now fail to nix-build if you bump it but don't bump the `cabal.project`.
     "https://github.com/input-output-hk/plutus.git"."${sources.plutus.rev}" =
       sources.plutus.sha256;
+    "https://github.com/input-output-hk/plutus-apps.git"."${sources.plutus-apps.rev}" =
+      sources.plutus-apps.sha256;
+    "https://github.com/input-output-hk/marlowe-cardano.git"."${sources.marlowe-cardano.rev}" =
+      sources.marlowe-cardano.sha256;
     "https://github.com/input-output-hk/hedgehog-extras"."${sources.hedgehog-extras.rev}" =
       sources.hedgehog-extras.sha256;
     "https://github.com/Quid2/flat.git"."${sources.flat.rev}" =
       sources.flat.sha256;
-    "https://github.com/shmish111/purescript-bridge.git"."${sources.purescript-bridge.rev}" =
+    "https://github.com/input-output-hk/purescript-bridge.git"."${sources.purescript-bridge.rev}" =
       sources.purescript-bridge.sha256;
-    "https://github.com/shmish111/servant-purescript.git"."${sources.servant-purescript.rev}" =
+    "https://github.com/input-output-hk/servant-purescript.git"."${sources.servant-purescript.rev}" =
       sources.servant-purescript.sha256;
     "https://github.com/input-output-hk/cardano-base"."${sources.cardano-base.rev}" =
       sources.cardano-base.sha256;
@@ -90,7 +94,7 @@ in pkgs.haskell-nix.cabalProject rec {
       sources.Win32-network.sha256;
     "https://github.com/input-output-hk/optparse-applicative"."${sources.optparse-applicative.rev}" =
       sources.optparse-applicative.sha256;
-    "https://github.com/Liqwid-Labs/plutus-extra.git"."${sources.plutus-extra.rev}" =
+    "https://github.com/ngua/plutus-extra.git"."${sources.plutus-extra.rev}" =
       sources.plutus-extra.sha256;
   };
 }

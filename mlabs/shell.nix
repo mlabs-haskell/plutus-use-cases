@@ -1,13 +1,14 @@
 { sourcesFile ? ./nix/sources.json, system ? builtins.currentSystem
 , sources ? import ./nix/sources.nix { inherit system sourcesFile; }
 , plutus ? import sources.plutus { }
+, plutus-apps ? import sources.plutus-apps { }
 , plutusShell ? import "${sources.plutus}/shell.nix" { }
 , deferPluginErrors ? true, doCoverage ? true }@args:
 
 let
   project = import ./default.nix args;
   inherit (plutus) pkgs;
-  pab = import ./nix/pab.nix { inherit plutus; };
+  pab = import ./nix/pab.nix { inherit plutus-apps; };
 
 in project.shellFor (pab.env_variables // {
   packages = ps: [ ps.mlabs-plutus-use-cases ];
@@ -63,5 +64,5 @@ in project.shellFor (pab.env_variables // {
 
       pkg-config libsodium-vrf
     ] ++ (lib.optionals (!stdenv.isDarwin) [ rPackages.plotly R systemdMinimal ])
-      ++ builtins.attrValues plutus.plutus-pab.pab-exes;
+      ++ builtins.attrValues plutus-apps.plutus-pab.pab-exes;
 })
