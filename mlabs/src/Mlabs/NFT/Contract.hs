@@ -29,7 +29,7 @@ import PlutusTx qualified
 
 import Plutus.Contracts.Currency (CurrencyError, mintContract, mintedValue)
 import Plutus.Contracts.Currency qualified as MC
-import Plutus.V1.Ledger.Value (TokenName (..), assetClass, currencySymbol, flattenValue)
+import Plutus.V1.Ledger.Value (TokenName (..), assetClass, currencySymbol, flattenValue, symbols)
 
 import Ledger (
   Address,
@@ -390,73 +390,78 @@ getAddrUtxos adr = Map.map fst <$> utxosTxOutTxAt adr
 getAddrValidUtxos :: NftAppSymbol -> Contract w s Text (Map.Map TxOutRef (ChainIndexTxOut, ChainIndexTx))
 getAddrValidUtxos appSymbol = Map.filter validTx <$> utxosTxOutTxAt txScrAddress
   where
-    -- | Check if the given
-    validTx (cIxTxOut, cIxTx) = True 
+    -- | Check if the given transactions contain the correct Currency Symbol.
+    validTx (cIxTxOut, _) = elem (app'symbol appSymbol) $ symbols (cIxTxOut ^. ciTxOutValue)
 
 -- | Serialise Datum
 serialiseDatum :: PlutusTx.ToData a => a -> Datum
 serialiseDatum = Datum . PlutusTx.toBuiltinData
 
--- | Get first utxo at address. Will throw an error if no utxo can be found.
-fstUtxo :: Address -> Contract w s Text TxOutRef
-fstUtxo address = do
-  utxos <- Contract.utxosAt address
-  case Map.keys utxos of
-    [] -> Contract.throwError @Text "No utxo found at address."
-    x : _ -> pure x
 
-{-
 -- | Returns the Datum of a specific nftId from the Script address.
-getNftDatum :: NftId -> Contract w s Text (Maybe DatumNft)
-getNftDatum nftId = do
-   utxos :: [Ledger.ChainIndexTxOut] <- Map.elems <$> getAddrUtxos txScrAddress
+getNftDatum ::  NftId -> NftAppSymbol -> Contract w s Text (Maybe DatumNft)
+getNftDatum nftId appSymbol = do
+   utxos :: [Ledger.ChainIndexTxOut] <- fmap fst . Map.elems <$> getAddrValidUtxos appSymbol
    let datums :: [DatumNft] =
          utxos
            ^.. traversed . Ledger.ciTxOutDatum
              . _Right
              . to (PlutusTx.fromBuiltinData @DatumNft . getDatum)
              . _Just
-             . filtered (\d -> dNft'id d == nftId)
+             . filtered (
+                \d -> case d of
+                  HeadDatum _ -> False
+                  NodeDatum node ->
+                    let nftId' = info'id . node'information $ node
+                    in nftId' == nftId
+                )
    Contract.logInfo @Hask.String $ Hask.show $ "Datum Found:" <> Hask.show datums
    Contract.logInfo @Hask.String $ Hask.show $ "Datum length:" <> Hask.show (Hask.length datums)
    case datums of
-     [x] -> pure $ Just x
-     [] -> Contract.throwError "No Datum can be found."
-     _ : _ -> Contract.throwError "More than one suitable Datums can be found."
--}
+     [x] ->
+       pure $ Just x
+     [] -> do
+       Contract.logError @Hask.String "No suitable Datum can be found."
+       pure Nothing
+     _ : _ -> do
+       Contract.logError @Hask.String "More than one suitable Datum can be found. This should never happen."
+       pure Nothing
 
--- {- | Gets the Datum of a specific nftId from the Script address, and applies an
---  extraction function to it.
--- -}
--- getsNftDatum :: (DatumNft -> b) -> NftId -> Contract a s Text (Maybe b)
--- getsNftDatum f = fmap (fmap f) . getNftDatum
---
--- -- | A hashing function to minimise the data to be attached to the NTFid.
--- hashData :: Content -> BuiltinByteString
--- hashData (Content b) = sha2_256 b
---
--- -- | Find NFTs at a specific Address. Will throw an error if none or many are found.
--- findNft :: Address -> NftId -> Contract w s Text (TxOutRef, ChainIndexTxOut, DatumNft)
--- findNft addr nftId = do
---   utxos <- Contract.utxosTxOutTxAt addr
---   case findData utxos of
---     [v] -> do
---       Contract.logInfo @Hask.String $ Hask.show $ "NFT Found:" <> Hask.show v
---       pure v
---     [] -> Contract.throwError $ "DatumNft not found for " <> (pack . Hask.show) nftId
---     _ ->
---       Contract.throwError $
---         "Should not happen! More than one DatumNft found for "
---           <> (pack . Hask.show) nftId
---   where
---     findData =
---       L.filter hasCorrectNft -- filter only datums with desired NftId
---         . mapMaybe readTxData -- map to Maybe (TxOutRef, ChainIndexTxOut, DatumNft)
---         . Map.toList
---     readTxData (oref, (ciTxOut, _)) = (oref,ciTxOut,) <$> readDatum' ciTxOut
---     hasCorrectNft (_, ciTxOut, datum) =
---       let (cs, tn) = unAssetClass $ nftAsset datum
---        in tn == nftTokenName datum -- sanity check
---             && dNft'id datum == nftId -- check that Datum has correct NftId
---             && valueOf (ciTxOut ^. ciTxOutValue) cs tn == 1 -- check that UTXO has single NFT in Value
---
+{- | Gets the Datum of a specific nftId from the Script address, and applies an
+  extraction function to it.
+ -}
+getsNftDatum :: (DatumNft -> b) -> NftId -> NftAppSymbol -> Contract a s Text (Maybe b)
+getsNftDatum f nftId  = fmap (fmap f) . getNftDatum nftId 
+
+-- | A hashing function to minimise the data to be attached to the NTFid.
+hashData :: Content -> BuiltinByteString
+hashData (Content b) = sha2_256 b
+
+{-
+-- | Find NFTs at a specific Address. Will throw an error if none or many are found.
+findNft :: Address -> NftId -> NftAppSymbol -> Contract w s Text (TxOutRef, ChainIndexTxOut, DatumNft)
+findNft addr nftId cSymbol = do
+   utxos <-  getAddrValidUtxos cSymbol
+   case findData utxos of
+     [v] -> do
+       Contract.logInfo @Hask.String $ Hask.show $ "NFT Found:" <> Hask.show v
+       pure v
+     [] -> Contract.throwError $ "DatumNft not found for " <> (pack . Hask.show) nftId
+     _ ->
+       Contract.throwError $
+         "Should not happen! More than one DatumNft found for "
+           <> (pack . Hask.show) nftId
+   where
+     findData =
+       L.filter hasCorrectNft -- filter only datums with desired NftId
+         . mapMaybe readTxData -- map to Maybe (TxOutRef, ChainIndexTxOut, DatumNft)
+         . Map.toList
+
+     readTxData (oref, (ciTxOut, _)) = (oref,ciTxOut,) <$> readDatum' ciTxOut
+
+     hasCorrectNft (_, ciTxOut, datum) =
+       let (cs, tn) = unAssetClass $ nftAsset datum
+        in tn == nftTokenName datum -- sanity check
+             && (info'id . node'information $ datum) == nftId -- check that Datum has correct NftId
+             && valueOf (ciTxOut ^. ciTxOutValue) cs tn == 1 -- check that UTXO has single NFT in Value
+-}
