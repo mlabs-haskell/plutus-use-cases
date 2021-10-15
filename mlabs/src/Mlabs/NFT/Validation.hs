@@ -17,6 +17,9 @@ module Mlabs.NFT.Validation (
   NftAppInstance(..),
   NftListNode(..),
   NftListHead(..),
+  NftAppSymbol(..),
+  Pointer(..),
+  getAppInstance,
 ) where
 
 import PlutusTx.Prelude
@@ -121,6 +124,18 @@ PlutusTx.unstableMakeIsData ''NftAppInstance
 PlutusTx.makeLift ''NftAppInstance 
 instance Eq NftAppInstance where
   (NftAppInstance a b) == (NftAppInstance a' b') = a == a' && b == b' 
+
+newtype NftAppSymbol = NftAppSymbol { app'symbol :: CurrencySymbol }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (ToJSON, FromJSON)
+
+PlutusTx.unstableMakeIsData ''NftAppSymbol
+PlutusTx.makeLift ''NftAppSymbol
+
+instance Eq NftAppSymbol where
+  (NftAppSymbol a) == (NftAppSymbol a') = a == a'
+
+
 {-
 Diagram (sort of):
 |   HEAD                                   |               |    NODE artwork1
@@ -209,6 +224,12 @@ nftTokenName :: DatumNft -> TokenName
 nftTokenName = \case 
   HeadDatum _ -> TokenName "" 
   NodeDatum n -> TokenName . nftId'contentHash . info'id . node'information $ n
+
+getAppInstance :: DatumNft -> NftAppInstance
+getAppInstance = \case 
+  HeadDatum (NftListHead _ inst)   -> inst
+  NodeDatum (NftListNode _ _ inst) -> inst
+
 
 -- | NFT Redeemer
 data UserAct

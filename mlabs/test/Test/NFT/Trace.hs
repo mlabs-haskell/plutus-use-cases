@@ -26,8 +26,8 @@ eTrace1 :: EmulatorTrace ()
 eTrace1 = do
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
       wallet2 = walletFromNumber 2 :: Emulator.Wallet
-  h1 :: AppTraceHandle <- activateContractWallet wallet1 endpoints
-  h2 :: AppTraceHandle <- activateContractWallet wallet2 endpoints
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 (endpoints $ error ())
+  h2 :: AppTraceHandle <- activateContractWallet wallet2 (endpoints $ error ())
   callEndpoint @"mint" h1 artwork
   -- callEndpoint @"mint" h2 artwork2
 
@@ -57,8 +57,7 @@ setPriceTrace :: EmulatorTrace ()
 setPriceTrace = do
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
       wallet2 = walletFromNumber 5 :: Emulator.Wallet
-  authMintH <- activateContractWallet wallet1 endpoints
-  callEndpoint @"mint" authMintH artwork
+  authMintH <- activateContractWallet wallet1 (endpoints $ error ())
   void $ Trace.waitNSlots 2
   oState <- Trace.observableState authMintH
   nftId <- case getLast oState of
@@ -66,12 +65,12 @@ setPriceTrace = do
     Just nid -> return nid
   logInfo $ Hask.show nftId
   void $ Trace.waitNSlots 1
-  authUseH :: AppTraceHandle <- activateContractWallet wallet1 endpoints
+  authUseH :: AppTraceHandle <- activateContractWallet wallet1 (endpoints $ error ())
   callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just 20))
   void $ Trace.waitNSlots 1
   callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just (-20)))
   void $ Trace.waitNSlots 1
-  userUseH :: AppTraceHandle <- activateContractWallet wallet2 endpoints
+  userUseH :: AppTraceHandle <- activateContractWallet wallet2 (endpoints $ error ())
   callEndpoint @"set-price" userUseH (SetPriceParams nftId Nothing)
   void $ Trace.waitNSlots 1
   callEndpoint @"set-price" userUseH (SetPriceParams nftId (Just 30))

@@ -13,6 +13,7 @@ import Plutus.Contract (Contract, Endpoint, endpoint, type (.\/))
 
 import Mlabs.NFT.Contract qualified as NFTContract
 import Mlabs.NFT.Types (BuyRequestUser (..), MintParams (..), NftId (..), QueryResponse (..), SetPriceParams (..))
+import Mlabs.NFT.Validation(NftAppSymbol(..))
 import Mlabs.Plutus.Contract (selectForever)
 
 -- | A common App schema works for now.
@@ -35,10 +36,10 @@ type ApiUserContract a = Contract (Last NftId) NFTAppSchema Text a
 type ApiQueryContract a = Contract QueryResponse NFTAppSchema Text a
 
 -- | User Endpoints .
-endpoints :: ApiUserContract ()
-endpoints =
+endpoints :: NftAppSymbol -> ApiUserContract ()
+endpoints appSymbol =
   selectForever
-    [ endpoint @"mint" NFTContract.mint
+    [ endpoint @"mint" (NFTContract.mint appSymbol)
     , endpoint @"buy" NFTContract.buy
     , endpoint @"set-price" NFTContract.setPrice
     --, endpoint @"query-authentic-nft" NFTContract.queryAuthenticNFT

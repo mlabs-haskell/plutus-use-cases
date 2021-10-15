@@ -163,6 +163,8 @@ library
     Mlabs.NFT.Contract
     Mlabs.NFT.Validation
     Mlabs.NFT.Api
+    Mlabs.NFT.Endpoints.Mint
+     Mlabs.NFT.Endpoints.Aux
 
 executable mlabs-plutus-use-cases
   import:  common-imports
