@@ -386,6 +386,13 @@ getUId = UserId . pubKeyHash <$> Contract.ownPubKey
 getAddrUtxos :: Address -> Contract w s Text (Map.Map TxOutRef ChainIndexTxOut)
 getAddrUtxos adr = Map.map fst <$> utxosTxOutTxAt adr
 
+-- | Get the ChainIndexTxOut at an address.
+getAddrValidUtxos :: NftAppSymbol -> Contract w s Text (Map.Map TxOutRef (ChainIndexTxOut, ChainIndexTx))
+getAddrValidUtxos appSymbol = Map.filter validTx <$> utxosTxOutTxAt txScrAddress
+  where
+    -- | Check if the given
+    validTx (cIxTxOut, cIxTx) = True 
+
 -- | Serialise Datum
 serialiseDatum :: PlutusTx.ToData a => a -> Datum
 serialiseDatum = Datum . PlutusTx.toBuiltinData
@@ -398,24 +405,26 @@ fstUtxo address = do
     [] -> Contract.throwError @Text "No utxo found at address."
     x : _ -> pure x
 
--- -- | Returns the Datum of a specific nftId from the Script address.
--- getNftDatum :: NftId -> Contract w s Text (Maybe DatumNft)
--- getNftDatum nftId = do
---   utxos :: [Ledger.ChainIndexTxOut] <- Map.elems <$> getAddrUtxos txScrAddress
---   let datums :: [DatumNft] =
---         utxos
---           ^.. traversed . Ledger.ciTxOutDatum
---             . _Right
---             . to (PlutusTx.fromBuiltinData @DatumNft . getDatum)
---             . _Just
---             . filtered (\d -> dNft'id d == nftId)
---   Contract.logInfo @Hask.String $ Hask.show $ "Datum Found:" <> Hask.show datums
---   Contract.logInfo @Hask.String $ Hask.show $ "Datum length:" <> Hask.show (Hask.length datums)
---   case datums of
---     [x] -> pure $ Just x
---     [] -> Contract.throwError "No Datum can be found."
---     _ : _ -> Contract.throwError "More than one suitable Datums can be found."
---
+{-
+-- | Returns the Datum of a specific nftId from the Script address.
+getNftDatum :: NftId -> Contract w s Text (Maybe DatumNft)
+getNftDatum nftId = do
+   utxos :: [Ledger.ChainIndexTxOut] <- Map.elems <$> getAddrUtxos txScrAddress
+   let datums :: [DatumNft] =
+         utxos
+           ^.. traversed . Ledger.ciTxOutDatum
+             . _Right
+             . to (PlutusTx.fromBuiltinData @DatumNft . getDatum)
+             . _Just
+             . filtered (\d -> dNft'id d == nftId)
+   Contract.logInfo @Hask.String $ Hask.show $ "Datum Found:" <> Hask.show datums
+   Contract.logInfo @Hask.String $ Hask.show $ "Datum length:" <> Hask.show (Hask.length datums)
+   case datums of
+     [x] -> pure $ Just x
+     [] -> Contract.throwError "No Datum can be found."
+     _ : _ -> Contract.throwError "More than one suitable Datums can be found."
+-}
+
 -- {- | Gets the Datum of a specific nftId from the Script address, and applies an
 --  extraction function to it.
 -- -}
