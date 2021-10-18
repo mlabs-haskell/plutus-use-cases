@@ -1,4 +1,4 @@
-module Mlabs.NFT.Endpoints.Init (
+module Mlabs.NFT.Contract.Init (
   initApp
 ) where
 
@@ -41,7 +41,7 @@ import Mlabs.NFT.Types {- (
 
 import Mlabs.NFT.Validation
 
-import Mlabs.NFT.Endpoints.Aux
+import Mlabs.NFT.Contract.Aux
 
 -- | A Generic Contract used for aux functions and helpers.
 type GenericContract a = forall w s. Contract w s Text a
