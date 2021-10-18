@@ -15,6 +15,7 @@ import Prelude as Hask
 import Mlabs.NFT.Contract qualified as NFTContract
 import Mlabs.NFT.Contract.Mint (mint)
 import Mlabs.NFT.Contract.Init (initApp)
+import Mlabs.NFT.Contract.SetPrice (setPrice)
 import Mlabs.NFT.Types (BuyRequestUser (..), MintParams (..), NftId (..), QueryResponse (..), SetPriceParams (..), NftAppSymbol(..))
 import Mlabs.Plutus.Contract (selectForever)
 
@@ -45,7 +46,7 @@ endpoints appSymbol =
   selectForever
     [ endpoint @"mint" (mint appSymbol)
     , endpoint @"buy" NFTContract.buy
-    , endpoint @"set-price" NFTContract.setPrice
+    , endpoint @"set-price" (setPrice appSymbol)
     , endpoint @"app-init" $ Hask.const initApp
     --, endpoint @"query-authentic-nft" NFTContract.queryAuthenticNFT
     ]

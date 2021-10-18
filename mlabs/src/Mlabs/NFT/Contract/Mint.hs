@@ -1,7 +1,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Mlabs.NFT.Contract.Mint (
-  mint
+  mint, getDatumsTxsOrdered, hashData
 ) where
 
 import PlutusTx.Prelude hiding (mconcat, (<>), mempty)
