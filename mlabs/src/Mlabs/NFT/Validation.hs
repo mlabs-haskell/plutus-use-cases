@@ -10,12 +10,7 @@ module Mlabs.NFT.Validation (
   nftAsset,
   mintPolicy,
   priceNotNegative,
-  nftTokenName,
-  InformationNft (..),
-  NftAppInstance (..),
-  NftListNode (..),
-  NftListHead (..),
-  NftAppSymbol (..),
+
 ) where
 
 import PlutusTx.Prelude
@@ -84,14 +79,7 @@ import Schema (ToSchema)
 
 import Mlabs.NFT.Types
 
-{- | Token Name is represented by the HASH of the artwork. The Head TokenName is
-the empty ByteString, smaller than any other ByteString, and is minted at the
-intialisation of the app.
--}
-nftTokenName :: DatumNft -> TokenName
-nftTokenName = \case
-  HeadDatum _ -> TokenName PlutusTx.Prelude.emptyByteString
-  NodeDatum n -> TokenName . nftId'contentHash . info'id . node'information $ n
+
 
 asRedeemer :: PlutusTx.ToData a => a -> Redeemer
 asRedeemer = Redeemer . PlutusTx.toBuiltinData

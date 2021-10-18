@@ -9,11 +9,13 @@ import Data.Monoid (Last (..))
 import Data.Text (Text)
 
 import Playground.Contract (mkSchemaDefinitions)
-import Plutus.Contract (Contract, Endpoint, endpoint, type (.\/))
+import Plutus.Contract (Contract, Endpoint, endpoint, type (.\/), throwError)
 import Prelude as Hask
 
 import Mlabs.NFT.Contract qualified as NFTContract
-import Mlabs.NFT.Types (BuyRequestUser (..), MintParams (..), NftId (..), QueryResponse (..), SetPriceParams (..))
+import Mlabs.NFT.Endpoints.Mint (mint)
+import Mlabs.NFT.Endpoints.Init (initApp)
+import Mlabs.NFT.Types (BuyRequestUser (..), MintParams (..), NftId (..), QueryResponse (..), SetPriceParams (..), NftAppSymbol(..))
 import Mlabs.Plutus.Contract (selectForever)
 
 -- | A common App schema works for now.
@@ -38,20 +40,20 @@ type ApiUserContract a = Contract (Last NftId) NFTAppSchema Text a
 type ApiQueryContract a = Contract QueryResponse NFTAppSchema Text a
 
 -- | User Endpoints .
-endpoints :: ApiUserContract ()
-endpoints =
+endpoints :: NftAppSymbol -> ApiUserContract ()
+endpoints appSymbol =
   selectForever
-    [ endpoint @"mint" NFTContract.mint
+    [ endpoint @"mint" (mint appSymbol)
     , endpoint @"buy" NFTContract.buy
     , endpoint @"set-price" NFTContract.setPrice
-    , endpoint @"app-init" $ Hask.const NFTContract.initApp
+    , endpoint @"app-init" $ Hask.const initApp
     --, endpoint @"query-authentic-nft" NFTContract.queryAuthenticNFT
     ]
 
 -- Query Endpoints are used for Querying, with no on-chain tx generation.
 queryEndpoints :: ApiQueryContract ()
-queryEndpoints =
-  selectForever
-    [ endpoint @"query-current-price" NFTContract.queryCurrentPrice
-    , endpoint @"query-current-owner" NFTContract.queryCurrentOwner
-    ]
+queryEndpoints = throwError "FIXME"
+  -- selectForever
+  --   [ endpoint @"query-current-price" NFTContract.queryCurrentPrice 
+  --   , endpoint @"query-current-owner" NFTContract.queryCurrentOwner
+  --   ]

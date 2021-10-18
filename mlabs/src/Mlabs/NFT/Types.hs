@@ -10,6 +10,16 @@ module Mlabs.NFT.Types (
   SetPriceParams (..),
   Content (..),
   Title (..),
+  DatumNft(..),
+  NftAppInstance(..),
+  UserAct(..),
+  InformationNft (..),
+  NftListNode (..),
+  NftListHead (..),
+  NftAppSymbol (..),
+  Pointer(..),
+  nftTokenName,
+  getAppInstance,
 ) where
 
 import PlutusTx.Prelude
@@ -23,31 +33,10 @@ import Ledger (
   Address,
   AssetClass,
   CurrencySymbol,
-  Datum (..),
-  MintingPolicy,
-  Redeemer (..),
-  ScriptContext (..),
-  TxInInfo (..),
-  TxOut (..),
-  TxOutRef,
-  ValidatorHash,
-  Value,
-  findDatumHash,
-  findOwnInput,
-  mkMintingPolicyScript,
-  ownCurrencySymbol,
-  scriptContextTxInfo,
-  scriptCurrencySymbol,
-  txInInfoOutRef,
-  txInfoData,
-  txInfoInputs,
-  txInfoMint,
-  txInfoOutputs,
-  txInfoSignatories,
-  valuePaidTo,
+  PubKeyHash
  )
 
-import Ledger (PubKeyHash)
+import Ledger.Value (TokenName(..))
 import PlutusTx qualified
 import Schema (ToSchema)
 
@@ -325,6 +314,20 @@ instance Eq DatumNft where
   (HeadDatum x1) == (HeadDatum x2) = x1 == x2
   (NodeDatum x1) == (NodeDatum x2) = x1 == x2
   _ == _ = False
+
+{- | Token Name is represented by the HASH of the artwork. The Head TokenName is
+the empty ByteString, smaller than any other ByteString, and is minted at the
+intialisation of the app.
+-}
+nftTokenName :: DatumNft -> TokenName
+nftTokenName = \case
+  HeadDatum _ -> TokenName PlutusTx.Prelude.emptyByteString
+  NodeDatum n -> TokenName . nftId'contentHash . info'id . node'information $ n
+
+getAppInstance :: DatumNft -> NftAppInstance
+getAppInstance = \case 
+  HeadDatum (NftListHead _ inst)   -> inst
+  NodeDatum (NftListNode _ _ inst) -> inst
 
 -- | NFT Redeemer
 data UserAct
