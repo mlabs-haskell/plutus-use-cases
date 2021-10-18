@@ -17,7 +17,6 @@ import Mlabs.NFT.Endpoints.Mint (mint)
 import Mlabs.NFT.Endpoints.Init (initApp)
 import Mlabs.NFT.Types (BuyRequestUser (..), MintParams (..), NftId (..), QueryResponse (..), SetPriceParams (..), NftAppSymbol(..))
 import Mlabs.Plutus.Contract (selectForever)
-import Plutus.Contract.Types (throwError)
 
 -- | A common App schema works for now.
 type NFTAppSchema =

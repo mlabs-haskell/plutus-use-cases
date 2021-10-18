@@ -3,41 +3,29 @@ module Mlabs.NFT.Endpoints.Mint (
 ) where
 
 import PlutusTx.Prelude hiding (mconcat, (<>))
-import Prelude (mconcat, (<>))
+import Prelude (mconcat)
 import Prelude qualified as Hask
 
-import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right)
-import Control.Monad (join, void)
-import Data.List qualified as L
+import Control.Monad (void)
 import Data.Map qualified as Map
 import Data.Monoid (Last (..))
-import Data.Text (Text, pack)
+import Data.Text (Text)
 import Text.Printf (printf)
 
-import Plutus.ChainIndex.Tx (ChainIndexTx)
-import Plutus.Contract (Contract, utxosTxOutTxAt)
+import Plutus.Contract (Contract)
 import Plutus.Contract qualified as Contract
-import PlutusTx qualified
 
 import Ledger (
-  Address,
   ChainIndexTxOut,
-  Datum (..),
-  Redeemer (..),
   TxOutRef,
   PubKeyHash(..),
-  ciTxOutDatum,
-  ciTxOutValue,
-  getDatum,
-  pubKeyAddress,
   pubKeyHash,
   scriptCurrencySymbol,
-  txId,
  )
 
 import Ledger.Constraints qualified as Constraints
 import Ledger.Typed.Scripts (validatorScript)
-import Ledger.Value as Value (AssetClass(..), CurrencySymbol, TokenName(..), singleton, unAssetClass, valueOf)
+import Ledger.Value as Value (AssetClass(..), TokenName(..), singleton)
 
 import Mlabs.NFT.Types {-(
   BuyRequestUser (..),
@@ -49,8 +37,6 @@ import Mlabs.NFT.Types {-(
   SetPriceParams (..),
   UserId (..),
  ) -}
-
-import Mlabs.Plutus.Contract (readDatum')
 
 import Mlabs.NFT.Validation {-(
   DatumNft (..),
@@ -152,3 +138,6 @@ mint symbol params = do
               ]
        in (lookups, tx, nftVal)
 
+-- | A hashing function to minimise the data to be attached to the NTFid.
+hashData :: Content -> BuiltinByteString
+hashData (Content b) = sha2_256 b

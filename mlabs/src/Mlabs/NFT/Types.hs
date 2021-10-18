@@ -33,31 +33,9 @@ import Ledger (
   Address,
   AssetClass,
   CurrencySymbol,
-  Datum (..),
-  MintingPolicy,
-  Redeemer (..),
-  ScriptContext (..),
-  TxInInfo (..),
-  TxOut (..),
-  TxOutRef,
-  ValidatorHash,
-  Value,
-  findDatumHash,
-  findOwnInput,
-  mkMintingPolicyScript,
-  ownCurrencySymbol,
-  scriptContextTxInfo,
-  scriptCurrencySymbol,
-  txInInfoOutRef,
-  txInfoData,
-  txInfoInputs,
-  txInfoMint,
-  txInfoOutputs,
-  txInfoSignatories,
-  valuePaidTo,
+  PubKeyHash
  )
 
-import Ledger (PubKeyHash)
 import Ledger.Value (TokenName(..))
 import PlutusTx qualified
 import Schema (ToSchema)

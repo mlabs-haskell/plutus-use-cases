@@ -1,41 +1,44 @@
-module Mlabs.NFT.Endpoints.Aux where
+module Mlabs.NFT.Endpoints.Aux (
+  getScriptAddrUtxos,
+  getUserAddr,
+  getUserUtxos,
+  getUId,
+  getAddrUtxos,
+  getAddrValidUtxos,
+  serialiseDatum,
+  getNftDatum,
+  getsNftDatum,
+  findNft,
+  fstUtxoAt,
+) where
 
 import PlutusTx.Prelude hiding (mconcat, (<>))
 import Prelude (mconcat, (<>))
 import Prelude qualified as Hask
 
 import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right)
-import Control.Monad (join, void)
 import Data.List qualified as L
 import Data.Map qualified as Map
-import Data.Monoid (Last (..))
 import Data.Text (Text, pack)
-import Text.Printf (printf)
 
 import Plutus.ChainIndex.Tx (ChainIndexTx)
-import Plutus.Contract (Contract, mapError, ownPubKey, utxosTxOutTxAt)
+import Plutus.Contract (Contract, utxosTxOutTxAt)
 import Plutus.Contract qualified as Contract
 import PlutusTx qualified
 
-import Plutus.Contracts.Currency (CurrencyError, mintContract, mintedValue)
-import Plutus.Contracts.Currency qualified as MC
-import Plutus.V1.Ledger.Value (TokenName (..), assetClass, currencySymbol, flattenValue, symbols)
+import Plutus.V1.Ledger.Value (symbols)
 
 import Ledger (
   Address,
   AssetClass,
   ChainIndexTxOut,
   Datum (..),
-  Redeemer (..),
   TxOutRef,
-  Value,
   ciTxOutDatum,
   ciTxOutValue,
   getDatum,
   pubKeyAddress,
   pubKeyHash,
-  scriptCurrencySymbol,
-  txId,
  )
 
 import Ledger.Constraints qualified as Constraints
@@ -90,7 +93,7 @@ getNftDatum nftId appSymbol = do
              . to (PlutusTx.fromBuiltinData @DatumNft . getDatum)
              . _Just
              . filtered (
-                \d -> case d of
+                \case
                   HeadDatum _ -> False
                   NodeDatum node ->
                     let nftId' = info'id . node'information $ node
@@ -113,10 +116,6 @@ getNftDatum nftId appSymbol = do
  -}
 getsNftDatum :: (DatumNft -> b) -> NftId -> NftAppSymbol -> Contract a s Text (Maybe b)
 getsNftDatum f nftId  = fmap (fmap f) . getNftDatum nftId 
-
--- | A hashing function to minimise the data to be attached to the NTFid.
-hashData :: Content -> BuiltinByteString
-hashData (Content b) = sha2_256 b
 
 -- | Find NFTs at a specific Address. Will throw an error if none or many are found.
 findNft :: NftId -> NftAppSymbol -> Contract w s Text (TxOutRef, ChainIndexTxOut, DatumNft)

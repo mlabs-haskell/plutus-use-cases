@@ -6,43 +6,26 @@ import PlutusTx.Prelude hiding (mconcat, (<>))
 import Prelude (mconcat, (<>))
 import Prelude qualified as Hask
 
-import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right)
-import Control.Monad (join, void)
-import Data.List qualified as L
-import Data.Map qualified as Map
-import Data.Monoid (Last (..))
+import Control.Monad (void)
 import Data.Text (Text, pack)
 import Text.Printf (printf)
 
-import Plutus.ChainIndex.Tx (ChainIndexTx)
-import Plutus.Contract (Contract, mapError, ownPubKey, utxosTxOutTxAt)
+import Plutus.Contract (Contract, mapError, ownPubKey)
 import Plutus.Contract qualified as Contract
-import PlutusTx qualified
 
-import Plutus.Contracts.Currency (CurrencyError, mintContract, mintedValue)
+import Plutus.Contracts.Currency (CurrencyError, mintContract)
 import Plutus.Contracts.Currency qualified as MC
-import Plutus.V1.Ledger.Value (TokenName (..), assetClass, currencySymbol, flattenValue, symbols)
+import Plutus.V1.Ledger.Value (TokenName (..), assetClass)
 
 import Ledger (
-  Address,
   AssetClass,
-  ChainIndexTxOut,
-  Datum (..),
-  Redeemer (..),
-  TxOutRef,
   Value,
-  ciTxOutDatum,
-  ciTxOutValue,
-  getDatum,
-  pubKeyAddress,
   pubKeyHash,
   scriptCurrencySymbol,
-  txId,
  )
 
 import Ledger.Constraints qualified as Constraints
-import Ledger.Typed.Scripts (validatorScript)
-import Ledger.Value as Value (singleton, unAssetClass, valueOf)
+import Ledger.Value as Value (singleton, unAssetClass)
 
 import Mlabs.NFT.Types {- (
   BuyRequestUser (..),
@@ -55,13 +38,10 @@ import Mlabs.NFT.Types {- (
   UserId (..),
  ) -}
 
-import Mlabs.Plutus.Contract (readDatum')
 
 import Mlabs.NFT.Validation
 
-import Mlabs.NFT.Types
 import Mlabs.NFT.Endpoints.Aux
-import Mlabs.NFT.Validation
 
 -- | A Generic Contract used for aux functions and helpers.
 type GenericContract a = forall w s. Contract w s Text a
