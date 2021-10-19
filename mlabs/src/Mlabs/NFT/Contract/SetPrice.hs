@@ -1,68 +1,71 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Mlabs.NFT.Contract.SetPrice (
-  setPrice
+  setPrice,
 ) where
 
-import PlutusTx.Prelude hiding (mconcat, (<>), mempty)
+import PlutusTx.Prelude hiding (mconcat, mempty, (<>))
 import Prelude (mconcat, mempty)
 import Prelude qualified as Hask
 
+import Control.Lens ((^.))
 import Control.Monad (void)
+import Data.Function (on)
+import Data.List qualified as L
 import Data.Map qualified as Map
 import Data.Monoid (Last (..))
 import Data.Text (Text)
 import Text.Printf (printf)
-import Data.List qualified as L
-import Data.Function (on)
-import Control.Lens ((^.))
 
+import Mlabs.Plutus.Contract (readDatum')
 import Plutus.Contract (Contract)
 import Plutus.Contract qualified as Contract
-import Mlabs.Plutus.Contract (readDatum')
 
 import Ledger (
-  Redeemer,
   ChainIndexTxOut,
+  PubKeyHash (..),
+  Redeemer,
   TxOutRef,
-  PubKeyHash(..),
+  ciTxOutValue,
   pubKeyHash,
   scriptCurrencySymbol,
-  ciTxOutValue,
  )
 
 import Ledger.Constraints qualified as Constraints
 import Ledger.Typed.Scripts (validatorScript)
-import Ledger.Value as Value (AssetClass(..), TokenName(..), singleton)
+import Ledger.Value as Value (AssetClass (..), TokenName (..), singleton)
 import Plutus.ChainIndex.Tx (ChainIndexTx)
 
+import Mlabs.NFT.Contract.Aux
 import Mlabs.NFT.Types
 import Mlabs.NFT.Validation
-import Mlabs.NFT.Contract.Aux
 
 -- TODO: Move shared code to some Utils module
 import Mlabs.NFT.Contract.Mint (getDatumsTxsOrdered)
+
 --------------------------------------------------------------------------------
 -- Set Price
 
 setPrice :: NftAppSymbol -> SetPriceParams -> Contract (Last NftId) s Text ()
 setPrice symbol params = do
   ownOrefTxOut <- getUserAddr >>= fstUtxoAt
-  ownPkh       <- pubKeyHash <$> Contract.ownPubKey
-  point        <- findNode symbol params.sp'nftId
+  ownPkh <- pubKeyHash <$> Contract.ownPubKey
+  point <- findNode symbol params.sp'nftId
   let (oldNode, (oref, toOut)) = point
       nftDatum = NodeDatum . updateDatum . fst $ point
       nftVal = toOut ^. ciTxOutValue
-      lookups = mconcat
-        [ Constraints.unspentOutputs $ Map.fromList [ownOrefTxOut]
-        , Constraints.unspentOutputs $ Map.fromList [(oref, toOut)]
-        , Constraints.typedValidatorLookups txPolicy
-        , Constraints.otherScript (validatorScript txPolicy)
-        ]
-      tx = mconcat
-        [ Constraints.mustPayToTheScript nftDatum nftVal
-        , Constraints.mustSpendPubKeyOutput (fst ownOrefTxOut)
-        ]
+      lookups =
+        mconcat
+          [ Constraints.unspentOutputs $ Map.fromList [ownOrefTxOut]
+          , Constraints.unspentOutputs $ Map.fromList [(oref, toOut)]
+          , Constraints.typedValidatorLookups txPolicy
+          , Constraints.otherScript (validatorScript txPolicy)
+          ]
+      tx =
+        mconcat
+          [ Constraints.mustPayToTheScript nftDatum nftVal
+          , Constraints.mustSpendPubKeyOutput (fst ownOrefTxOut)
+          ]
 
   void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
   Contract.tell . Last . Just $ params.sp'nftId
@@ -74,10 +77,10 @@ setPrice symbol params = do
 
     nftEq nftId (datum, _) = nftId == info'id (node'information datum)
 
-    findNode 
-      :: NftAppSymbol 
-      -> NftId 
-      -> Contract (Last NftId) s Text (NftListNode, (TxOutRef, ChainIndexTxOut))
+    findNode ::
+      NftAppSymbol ->
+      NftId ->
+      Contract (Last NftId) s Text (NftListNode, (TxOutRef, ChainIndexTxOut))
     findNode appCS nftId = do
       lst <- getDatumsTxsOrdered appCS
       let res = find (nftEq nftId) . mapMaybe getNode $ lst
