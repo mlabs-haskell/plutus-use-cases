@@ -20,6 +20,8 @@ module Mlabs.NFT.Types (
   Pointer(..),
   nftTokenName,
   getAppInstance,
+  instanceCurrency,
+  datumPointer
 ) where
 
 import PlutusTx.Prelude
@@ -36,7 +38,7 @@ import Ledger (
   PubKeyHash
  )
 
-import Ledger.Value (TokenName(..))
+import Ledger.Value (TokenName(..), unAssetClass)
 import PlutusTx qualified
 import Schema (ToSchema)
 
@@ -233,6 +235,10 @@ data NftAppInstance = NftAppInstance
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
 
+-- | Get `CurrencySumbol` of `NftAppInstance`
+instanceCurrency :: NftAppInstance -> CurrencySymbol
+instanceCurrency  = fst . unAssetClass . appInstance'AppAssetClass
+
 PlutusTx.unstableMakeIsData ''NftAppInstance
 PlutusTx.makeLift ''NftAppInstance
 instance Eq NftAppInstance where
@@ -262,6 +268,9 @@ PlutusTx.makeLift ''Pointer
 
 instance Eq Pointer where
   (Pointer a) == (Pointer a') = a == a'
+
+instance Ord Pointer where
+  (Pointer a) `compare` (Pointer a') = a `compare` a'
 
 {- | The head datum is unique for each list. Its token is minted when the unique
  NFT is consumed.
@@ -308,6 +317,11 @@ data DatumNft
 
 PlutusTx.unstableMakeIsData ''DatumNft
 PlutusTx.makeLift ''DatumNft
+
+datumPointer :: DatumNft -> Maybe Pointer
+datumPointer = \case
+  HeadDatum listHead -> head'next listHead
+  NodeDatum listNode -> node'next listNode
 
 instance Eq DatumNft where
   {-# INLINEABLE (==) #-}

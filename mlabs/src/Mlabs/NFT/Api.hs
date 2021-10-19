@@ -13,8 +13,8 @@ import Plutus.Contract (Contract, Endpoint, endpoint, type (.\/), throwError)
 import Prelude as Hask
 
 import Mlabs.NFT.Contract qualified as NFTContract
-import Mlabs.NFT.Endpoints.Mint (mint)
-import Mlabs.NFT.Endpoints.Init (initApp)
+import Mlabs.NFT.Contract.Mint (mint)
+import Mlabs.NFT.Contract.Init (initApp)
 import Mlabs.NFT.Types (BuyRequestUser (..), MintParams (..), NftId (..), QueryResponse (..), SetPriceParams (..), NftAppSymbol(..))
 import Mlabs.Plutus.Contract (selectForever)
 
