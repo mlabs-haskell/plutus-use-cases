@@ -1,4 +1,4 @@
-module Mlabs.NFT.Endpoints.Aux (
+module Mlabs.NFT.Contract.Aux (
   getScriptAddrUtxos,
   getUserAddr,
   getUserUtxos,
@@ -20,6 +20,7 @@ import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right)
 import Data.List qualified as L
 import Data.Map qualified as Map
 import Data.Text (Text, pack)
+import Data.Function (on)
 
 import Plutus.ChainIndex.Tx (ChainIndexTx)
 import Plutus.Contract (Contract, utxosTxOutTxAt)
@@ -154,4 +155,5 @@ fstUtxoAt address = do
   case Map.toList utxos of
     [] -> Contract.throwError @Text "No utxo found at address."
     x : _ -> pure x
-    
+
+
