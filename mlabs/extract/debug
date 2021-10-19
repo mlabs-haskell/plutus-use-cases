@@ -1,0 +1,28 @@
+Tx 42ce28eb7637d17941baf0637f963a2486fbf997fb6b932ff117241ee4a9fb7f:
+  {inputs:
+     - 686106f51262efb810d99311d3bbe478ba5abb92b5be2e1f9488d56622caf6f4!2
+
+  collateral inputs:
+    - 686106f51262efb810d99311d3bbe478ba5abb92b5be2e1f9488d56622caf6f4!2
+
+  outputs:
+    - Value (Map [(,Map [(\"\",99995630)])]) addressed to
+      PubKeyCredential: a096d51da85c3eaabe2718be7b59f51291979935ad77b8deb4622fa3 (no staking credential)
+    - Value (Map [(8b7825c6ea0784322202af9f7d30f0f5fd94d85862352bd3998770a5,Map [(0xf8bbaa59790d202a879995c38e53d59883c520ae335b95fca9ee2cd24a874958,1)])]) addressed to
+      ScriptCredential: 4ea976fd940616cba7c01514e9bb4026cff5a087987d5595f3ad0aa5 (no staking credential)
+  mint: Value (Map [(8b7825c6ea0784322202af9f7d30f0f5fd94d85862352bd3998770a5,Map [(0xf8bbaa59790d202a879995c38e53d59883c520ae335b95fca9ee2cd24a874958,1)])])
+  fee: Value (Map [(,Map [(\"\",4370)])])
+  mps:
+    MintingPolicy { <script> }
+  signatures:
+    44becd56fa30041efea5ff2637205181837dffd03545d3db1c11e6dcbbd3415c
+  validity range: Interval {ivFrom = LowerBound NegInf True, ivTo = UpperBound PosInf True}
+  data:
+    <<<\"Fiona Lisa\">,
+    \"\\248\\187\\170Yy\\r *\\135\\153\\149\\195\\142S\\213\\152\\131\\197 \\174\\&3[\\149\\252\\169\\238,\\210J\\135IX\",
+    <<\"ha\\ACK\\245\\DC2b\\239\\184\\DLE\\217\\147\\DC1\\211\\187\\228x\\186Z\\187\\146\\181\\190.\\US\\148\\136\\213f\\\"\\202\\246\\244\">,
+    2>>,
+    <1, 10>,
+    <\"\\160\\150\\213\\GS\\168\\\\>\\170\\190'\\CAN\\190{Y\\245\\DC2\\145\\151\\153\\&5\\173w\\184\\222\\180b/\\163\">,
+    <\"\\160\\150\\213\\GS\\168\\\\>\\170\\190'\\CAN\\190{Y\\245\\DC2\\145\\151\\153\\&5\\173w\\184\\222\\180b/\\163\">,
+    <5>>}

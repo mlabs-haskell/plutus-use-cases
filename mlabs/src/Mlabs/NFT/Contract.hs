@@ -70,6 +70,8 @@ import Mlabs.NFT.Validation (
 
 import Mlabs.Plutus.Contract (readDatum', selectForever)
 
+import Data.Text.Prettyprint.Doc   (Pretty (..))
+
 -- | A contract used exclusively for query actions.
 type QueryContract a = Contract (Last QueryResponse) NFTAppSchema Text a
 
@@ -114,7 +116,8 @@ mint nftContent = do
             , Constraints.mustPayToTheScript nft val
             ]
         )
-  void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
+  tx <- Contract.submitTxConstraintsWith @NftTrade lookups tx
+  Contract.logInfo @Hask.String $ Hask.show $ pretty tx
   Contract.tell . Last . Just $ nftId
   Contract.logInfo @Hask.String $ printf "forged %s" (Hask.show val)
 
