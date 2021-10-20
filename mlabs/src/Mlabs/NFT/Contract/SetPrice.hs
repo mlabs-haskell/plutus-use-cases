@@ -9,7 +9,7 @@ import Prelude (mconcat, mempty)
 import Prelude qualified as Hask
 
 import Control.Lens ((^.))
-import Control.Monad (void)
+import Control.Monad (void, when)
 import Data.Function (on)
 import Data.List qualified as L
 import Data.Map qualified as Map
@@ -48,11 +48,13 @@ import Mlabs.NFT.Contract.Mint (getDatumsTxsOrdered)
 
 setPrice :: NftAppSymbol -> SetPriceParams -> Contract (Last NftId) s Text ()
 setPrice symbol params = do
+  when negativePrice $ Contract.throwError "New price can not be negative"
   ownOrefTxOut <- getUserAddr >>= fstUtxoAt
   ownPkh <- pubKeyHash <$> Contract.ownPubKey
-  point <- findNode symbol params.sp'nftId
-  let (oldNode, (oref, toOut)) = point
-      nftDatum = NodeDatum . updateDatum . fst $ point
+  (oldNode, (oref, toOut)) <- findNode symbol params.sp'nftId
+  when (getUserId oldNode.node'information.info'owner /= ownPkh) $
+    Contract.throwError "Only owner can set price"
+  let nftDatum = NodeDatum $ updateDatum oldNode
       nftVal = toOut ^. ciTxOutValue
       lookups =
         mconcat
@@ -87,3 +89,7 @@ setPrice symbol params = do
       case res of
         Nothing -> Contract.throwError "NFT not found"
         Just res' -> Hask.pure res'
+
+    negativePrice = case params.sp'price of
+      Nothing -> False
+      Just v -> v < 0
