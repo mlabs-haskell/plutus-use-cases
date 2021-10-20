@@ -97,13 +97,13 @@ mint symbol params = do
     findInsertPoint appCS (NftId contentHash) = do
       res <- getDatumsTxsOrdered appCS
       let newNftPointer = Pointer $ AssetClass (app'symbol appCS, TokenName contentHash)
-          spanP (datum,_) = case datumPointer datum of 
+          datumP (datum,_) = case datumPointer datum of 
             Nothing -> True
             Just ac -> ac < newNftPointer 
-      case L.span spanP res of
-        ([], _)    -> Contract.throwError "Head not found"
-        (prvs, []) -> pure $ InsertPoint (L.last prvs) Nothing 
-        (prvs, nxt : _) -> pure $ InsertPoint (L.last prvs) (Just nxt)
+      case L.dropWhile datumP res of
+        []          -> Contract.throwError "Head not found"
+        [prv]       -> pure $ InsertPoint prv Nothing 
+        (prv:nxt:_) -> pure $ InsertPoint prv (Just nxt)
         -- todo is some additional checks needed? E.g:
         -- - both prev and next found, but prev node has None Pointer
 
