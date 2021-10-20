@@ -2,7 +2,6 @@ module Mlabs.NFT.Contract (
   QueryContract,
   UserContract,
   GenericContract,
-  buy,
   queryCurrentOwner,
   queryCurrentPrice,
 ) where
@@ -74,8 +73,8 @@ type UserContract a = forall s. Contract (Last NftId) s Text a
  Attempts to buy a new NFT by changing the owner, pays the current owner and
  the author, and sets a new price for the NFT.
 -}
-buy :: BuyRequestUser -> UserContract ()
-buy (BuyRequestUser nftId bid newPrice) = error ()
+-- buy :: BuyRequestUser -> UserContract ()
+-- buy (BuyRequestUser nftId bid newPrice) = error ()
 --   oldDatum' <- getNftDatum nftId
 --   case oldDatum' of
 --     Nothing -> Contract.logError @Hask.String "NFT Cannot be found."
