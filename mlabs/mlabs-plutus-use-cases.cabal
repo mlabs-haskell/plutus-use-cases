@@ -180,6 +180,8 @@ library
     Mlabs.System.Console.Utils
     Mlabs.Utils.Wallet
     Mlabs.Plutus.Contracts.Currency
+    Mlabs.Extract.NftTrace
+    Mlabs.Extract.TxRead
 
 executable mlabs-plutus-use-cases
   import:  common-imports
