@@ -34,8 +34,8 @@ callUserAct :: NftId -> Wallet -> UserAct -> EmulatorTrace ()
 callUserAct nid wal act = do
   hdl <- activateContractWallet wal endpoints
   void $ case act of
-    BuyAct {..} -> callEndpoint @"buy" hdl (BuyRequestUser nid act'bid act'newPrice)
-    SetPriceAct {..} -> callEndpoint @"set-price" hdl (SetPriceParams nid act'newPrice)
+    BuyAct {..} -> callEndpoint @"buy" hdl (BuyRequestUser nid act'bid act'newPrice act'newPurchaseAfter)
+    SetPriceAct {..} -> callEndpoint @"set-price" hdl (SetPriceParams nid act'newPrice act'newPurchaseAfter)
 
 -- | Calls initialisation of state for Nft pool
 callStartNft :: Wallet -> MintParams -> EmulatorTrace NftId
@@ -110,4 +110,5 @@ mp =
     , mp'title = Title ""
     , mp'share = 1 R.% 10
     , mp'price = Nothing
+    , mp'purchaseAfter = Nothing
     }

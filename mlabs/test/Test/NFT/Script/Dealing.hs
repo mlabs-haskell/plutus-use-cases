@@ -38,6 +38,7 @@ initialAuthorDatum =
     , dNft'author = NFT.UserId TestValues.authorPkh
     , dNft'owner = NFT.UserId TestValues.authorPkh
     , dNft'price = Just (100 * 1_000_000)
+    , dNft'purchaseAfter = Nothing
     }
 
 ownerUserOneDatum :: NFT.DatumNft
@@ -160,6 +161,7 @@ validSetPriceData = SpendingTest dtm redeemer val
       NFT.SetPriceAct
         { act'newPrice = Just (150 * 1_000_000)
         , act'cs = TestValues.nftCurrencySymbol
+        , act'newPurchaseAfter = Nothing
         }
     val = TestValues.oneNft
 
@@ -172,6 +174,7 @@ ownerUserOneSetPriceData = SpendingTest dtm redeemer val
       NFT.SetPriceAct
         { act'newPrice = Nothing
         , act'cs = TestValues.nftCurrencySymbol
+        , act'newPurchaseAfter = Nothing
         }
     val = TestValues.oneNft
 

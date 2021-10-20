@@ -5,6 +5,7 @@ import Prelude qualified as Hask
 
 import Data.Monoid (Last (..))
 import Data.Text (Text)
+import Data.Default (def)
 
 import Control.Monad (void)
 import Control.Monad.Freer.Extras.Log as Extra (logInfo)
@@ -12,6 +13,7 @@ import Control.Monad.Freer.Extras.Log as Extra (logInfo)
 import Plutus.Trace.Emulator (EmulatorTrace, activateContractWallet, callEndpoint, runEmulatorTraceIO)
 import Plutus.Trace.Emulator qualified as Trace
 import Wallet.Emulator qualified as Emulator
+import Ledger.TimeSlot (slotToBeginPOSIXTime)
 
 import Mlabs.Utils.Wallet (walletFromNumber)
 
@@ -42,16 +44,18 @@ eTrace1 = do
   logInfo @Hask.String $ Hask.show oState
   where
     --  callEndpoint @"mint" h1 artwork
+    slotFiveTime = slotToBeginPOSIXTime def 500
     artwork =
       MintParams
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
         , mp'price = Just 5
+        , mp'purchaseAfter = Just slotFiveTime -- 1596059141000
         }
     -- artwork2 = artwork {mp'content = Content "Another Painting"}
 
-    buyParams nftId = BuyRequestUser nftId 6 (Just 200)
+    buyParams nftId = BuyRequestUser nftId 6 (Just 200) Nothing
 
 setPriceTrace :: EmulatorTrace ()
 setPriceTrace = do
@@ -67,14 +71,14 @@ setPriceTrace = do
   logInfo $ Hask.show nftId
   void $ Trace.waitNSlots 1
   authUseH :: AppTraceHandle <- activateContractWallet wallet1 endpoints
-  callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just 20))
+  callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just 20) Nothing)
   void $ Trace.waitNSlots 1
-  callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just (-20)))
+  callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just (-20)) Nothing)
   void $ Trace.waitNSlots 1
   userUseH :: AppTraceHandle <- activateContractWallet wallet2 endpoints
-  callEndpoint @"set-price" userUseH (SetPriceParams nftId Nothing)
+  callEndpoint @"set-price" userUseH (SetPriceParams nftId Nothing Nothing)
   void $ Trace.waitNSlots 1
-  callEndpoint @"set-price" userUseH (SetPriceParams nftId (Just 30))
+  callEndpoint @"set-price" userUseH (SetPriceParams nftId (Just 30) Nothing)
   void $ Trace.waitNSlots 1
   where
     artwork =
@@ -83,6 +87,7 @@ setPriceTrace = do
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
         , mp'price = Just 100
+        , mp'purchaseAfter = Nothing
         }
 
 queryPriceTrace :: EmulatorTrace ()
@@ -100,7 +105,7 @@ queryPriceTrace = do
   void $ Trace.waitNSlots 1
 
   authUseH <- activateContractWallet wallet1 endpoints
-  callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just 20))
+  callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just 20) Nothing)
   void $ Trace.waitNSlots 2
 
   queryHandle <- activateContractWallet wallet2 queryEndpoints
@@ -133,6 +138,7 @@ queryPriceTrace = do
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
         , mp'price = Just 100
+        , mp'purchaseAfter = Nothing
         }
 
 -- | Test for prototyping.
@@ -144,3 +150,5 @@ testSetPrice = runEmulatorTraceIO setPriceTrace
 
 testQueryPrice :: Hask.IO ()
 testQueryPrice = runEmulatorTraceIO queryPriceTrace
+
+-- testBuyPurchaseAfterSuccess

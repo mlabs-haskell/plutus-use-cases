@@ -17,7 +17,7 @@ import Prelude qualified as Hask
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 
-import Ledger (PubKeyHash, TokenName, TxOutRef)
+import Ledger (PubKeyHash, TokenName, TxOutRef, POSIXTime)
 import PlutusTx qualified
 import Schema (ToSchema)
 
@@ -110,6 +110,8 @@ data MintParams = MintParams
     mp'share :: Rational
   , -- | Listing price of the NFT, in Lovelace.
     mp'price :: Maybe Integer
+  , -- | Time after which a purchase can be attempted.
+    mp'purchaseAfter :: Maybe POSIXTime
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
@@ -119,22 +121,24 @@ PlutusTx.unstableMakeIsData ''MintParams
 
 instance Eq MintParams where
   {-# INLINEABLE (==) #-}
-  (MintParams content1 title1 share1 price1) == (MintParams content2 title2 share2 price2) =
-    content1 == content2 && title1 == title2 && share1 == share2 && price1 == price2
+  (MintParams content1 title1 share1 price1 t1) == (MintParams content2 title2 share2 price2 t2) =
+    content1 == content2 && title1 == title2 && share1 == share2 && price1 == price2 && t1 == t2
 
 data SetPriceParams = SetPriceParams
   { -- | NFTid of the token which price is set.
     sp'nftId :: NftId
   , -- | New price, in Lovelace.
     sp'price :: Maybe Integer -- todo maybe Natural? are they available here?
+  , -- | New time after which a purchase can be attempted.
+    sp'purchaseAfter :: Maybe POSIXTime
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 instance Eq SetPriceParams where
   {-# INLINEABLE (==) #-}
-  (SetPriceParams nftId1 price1) == (SetPriceParams nftId2 price2) =
-    nftId1 == nftId2 && price1 == price2
+  (SetPriceParams nftId1 price1 t1) == (SetPriceParams nftId2 price2 t2) =
+    nftId1 == nftId2 && price1 == price2 && t1 == t2
 
 data BuyRequestUser = BuyRequestUser
   { -- | nftId to Buy
@@ -143,6 +147,8 @@ data BuyRequestUser = BuyRequestUser
     ur'price :: Integer
   , -- | new price for NFT (Nothing locks NFT), in Lovelace.
     ur'newPrice :: Maybe Integer
+  , -- | new time after which a purchase can be made.
+    ur'newPurchaseAfter :: Maybe POSIXTime
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
@@ -151,8 +157,8 @@ PlutusTx.unstableMakeIsData ''BuyRequestUser
 
 instance Eq BuyRequestUser where
   {-# INLINEABLE (==) #-}
-  (BuyRequestUser nftId1 price1 newPrice1) == (BuyRequestUser nftId2 price2 newPrice2) =
-    nftId1 == nftId2 && price1 == price2 && newPrice1 == newPrice2
+  (BuyRequestUser nftId1 price1 newPrice1 newT1) == (BuyRequestUser nftId2 price2 newPrice2 newT2) =
+    nftId1 == nftId2 && price1 == price2 && newPrice1 == newPrice2 && newT1 == newT2
 
 -- | A datatype used by the QueryContract to return a response
 data QueryResponse

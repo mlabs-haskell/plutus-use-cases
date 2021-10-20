@@ -92,7 +92,7 @@ instance ContractModel NftModel where
       hdl <- activateContractWallet wal endpoints
       Last nid <- observableState hdl
       case nid of
-        Just nftId -> callEndpoint @"buy" hdl (BuyRequestUser nftId price newPrice)
+        Just nftId -> callEndpoint @"buy" hdl (BuyRequestUser nftId price newPrice Nothing)
         Nothing -> throwError $ GenericError "NFT not minted"
       void $ waitNSlots 10
   perform _ s (SetPrice wal price) = do
@@ -100,7 +100,7 @@ instance ContractModel NftModel where
       hdl <- activateContractWallet wal endpoints
       Last nid <- observableState hdl
       case nid of
-        Just nftId -> callEndpoint @"set-price" hdl (SetPriceParams nftId price)
+        Just nftId -> callEndpoint @"set-price" hdl (SetPriceParams nftId price Nothing)
         Nothing -> throwError $ GenericError "NFT not minted"
       void $ waitNSlots 10
 

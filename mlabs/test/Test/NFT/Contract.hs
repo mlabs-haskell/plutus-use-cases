@@ -36,9 +36,9 @@ testBuyOnce :: TestTree
 testBuyOnce = check "Buy once" (checkScene scene) w1 script
   where
     script = do
-      userAct w1 $ SetPriceAct (Just 100) "NFT"
-      userAct w2 $ BuyAct 100 Nothing "NFT"
-      userAct w2 $ SetPriceAct (Just 500) "NFT"
+      userAct w1 $ SetPriceAct (Just 100) "NFT" Nothing
+      userAct w2 $ BuyAct 100 Nothing "NFT" Nothing
+      userAct w2 $ SetPriceAct (Just 500) "NFT" Nothing
     scene =
       mconcat
         [ w1 `ownsAda` 100
@@ -53,10 +53,10 @@ testBuyTwice :: TestTree
 testBuyTwice = check "Buy twice" (checkScene scene) w1 script
   where
     script = do
-      userAct w1 $ SetPriceAct (Just 100) "NFT"
-      userAct w2 $ BuyAct 100 Nothing "NFT"
-      userAct w2 $ SetPriceAct (Just 200) "NFT"
-      userAct w3 $ BuyAct 200 Nothing "NFT"
+      userAct w1 $ SetPriceAct (Just 100) "NFT" Nothing
+      userAct w2 $ BuyAct 100 Nothing "NFT" Nothing
+      userAct w2 $ SetPriceAct (Just 200) "NFT" Nothing
+      userAct w3 $ BuyAct 200 Nothing "NFT" Nothing
     scene =
       mconcat
         [ w1 `ownsAda` 120
@@ -69,9 +69,9 @@ testChangePriceWithoutOwnership :: TestTree
 testChangePriceWithoutOwnership = check "Sets price without ownership" (checkScene scene) w1 script
   where
     script = do
-      userAct w1 $ SetPriceAct (Just 100) "NFT"
-      userAct w2 $ BuyAct 100 Nothing "NFT"
-      userAct w1 $ SetPriceAct (Just 200) "NFT"
+      userAct w1 $ SetPriceAct (Just 100) "NFT" Nothing
+      userAct w2 $ BuyAct 100 Nothing "NFT" Nothing
+      userAct w1 $ SetPriceAct (Just 200) "NFT" Nothing
     scene =
       mconcat
         [ w1 `ownsAda` 100
@@ -82,15 +82,15 @@ testChangePriceWithoutOwnership = check "Sets price without ownership" (checkSce
 testBuyLockedScript :: TestTree
 testBuyLockedScript = check "Buy locked NFT" (checkScene noChangesScene) w1 script
   where
-    script = userAct w2 $ BuyAct 1000 Nothing "NFT"
+    script = userAct w2 $ BuyAct 1000 Nothing "NFT" Nothing
 
 -- | User 2 tries to buy open NFT with not enough money
 testBuyNotEnoughPriceScript :: TestTree
 testBuyNotEnoughPriceScript = check "Buy not enough price" (checkScene noChangesScene) w1 script
   where
     script = do
-      userAct w1 $ SetPriceAct (Just 100) "NFT"
-      userAct w2 $ BuyAct 10 Nothing "NFT"
+      userAct w1 $ SetPriceAct (Just 100) "NFT" Nothing
+      userAct w2 $ BuyAct 10 Nothing "NFT" Nothing
 
 testQueryPrice :: TestTree
 testQueryPrice =
@@ -108,7 +108,7 @@ testQueryPrice =
       void $ callEndpoint @"mint" hdl1 mp
       void $ waitNSlots 10
 
-      void $ callEndpoint @"set-price" hdl1 (SetPriceParams nftId (Just 100))
+      void $ callEndpoint @"set-price" hdl1 (SetPriceParams nftId (Just 100) Nothing)
       void $ waitNSlots 10
 
       hdl2 <- activateContractWallet w2 queryEndpoints
@@ -134,7 +134,7 @@ testQueryOwner =
       void $ callEndpoint @"mint" hdl1 mp
       void $ waitNSlots 10
 
-      void $ callEndpoint @"set-price" hdl1 (SetPriceParams nftId (Just 100))
+      void $ callEndpoint @"set-price" hdl1 (SetPriceParams nftId (Just 100) Nothing)
       void $ waitNSlots 10
 
       hdl2 <- activateContractWallet w2 queryEndpoints

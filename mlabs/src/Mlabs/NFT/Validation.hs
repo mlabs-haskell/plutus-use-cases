@@ -39,6 +39,7 @@ import Ledger (
   TxInInfo (..),
   TxOut (..),
   TxOutRef,
+  POSIXTime,
   ValidatorHash,
   Value,
   findDatumHash,
@@ -55,6 +56,9 @@ import Ledger (
   txInfoOutputs,
   txInfoSignatories,
   valuePaidTo,
+  txInfoValidRange,
+  contains,
+  from,
  )
 
 import Ledger.Typed.Scripts (
@@ -95,6 +99,8 @@ data DatumNft = DatumNft
     dNft'owner :: UserId
   , -- | Price in Lovelace. If Nothing, NFT not for sale.
     dNft'price :: Maybe Integer
+  , -- | Time after which NFT can be purchased. If Nothing any time is fine.
+    dNft'purchaseAfter :: Maybe POSIXTime
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON, ToSchema)
@@ -107,8 +113,8 @@ nftTokenName = nftId'token . dNft'id
 
 instance Eq DatumNft where
   {-# INLINEABLE (==) #-}
-  (DatumNft id1 share1 author1 owner1 price1) == (DatumNft id2 share2 author2 owner2 price2) =
-    id1 == id2 && share1 == share2 && author1 == author2 && owner1 == owner2 && price1 == price2
+  (DatumNft id1 share1 author1 owner1 price1 t1) == (DatumNft id2 share2 author2 owner2 price2 t2) =
+    id1 == id2 && share1 == share2 && author1 == author2 && owner1 == owner2 && price1 == price2 && t1 == t2
 
 -- | NFT Redeemer
 data UserAct
@@ -120,6 +126,8 @@ data UserAct
         act'newPrice :: Maybe Integer
       , -- | CurencySymbol of the NFT the user is attempting to buy.
         act'cs :: CurrencySymbol
+      , -- | new time after which a purchase can be attempted.
+        act'newPurchaseAfter :: Maybe POSIXTime
       }
   | -- | Set new price for NFT
     SetPriceAct
@@ -127,6 +135,8 @@ data UserAct
         act'newPrice :: Maybe Integer
       , -- | Currency Symbol of the NFT the user is attempting to set the price of.
         act'cs :: CurrencySymbol
+      , -- | New time after which a purchase can be made.
+        act'newPurchaseAfter :: Maybe POSIXTime
       }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
@@ -136,13 +146,15 @@ PlutusTx.unstableMakeIsData ''UserAct
 
 instance Eq UserAct where
   {-# INLINEABLE (==) #-}
-  (BuyAct bid1 newPrice1 cs1) == (BuyAct bid2 newPrice2 cs2) =
+  (BuyAct bid1 newPrice1 cs1 t1) == (BuyAct bid2 newPrice2 cs2 t2) =
     bid1 == bid2
       && newPrice1 == newPrice2
       && cs1 == cs2
-  (SetPriceAct newPrice1 cs1) == (SetPriceAct newPrice2 cs2) =
+      && t1 == t2
+  (SetPriceAct newPrice1 cs1 t1) == (SetPriceAct newPrice2 cs2 t2) =
     newPrice1 == newPrice2
       && cs1 == cs2
+      && t1 == t2
   _ == _ = False
 
 asRedeemer :: UserAct -> Redeemer
@@ -208,6 +220,7 @@ mkTxPolicy datum act ctx =
           && traceIfFalse "Bid is too low for the NFT price." (bidHighEnough act'bid)
           && traceIfFalse "New owner is not the payer." correctNewOwner
           && traceIfFalse "Datum is not consistent, illegaly altered." consistentDatum
+          && traceIfFalse "Can't purchase yet" correctPurchaseInterval
           && if ownerIsAuthor
             then traceIfFalse "Amount paid to author/owner does not match bid." (correctPaymentOnlyAuthor act'bid)
             else
@@ -233,6 +246,8 @@ mkTxPolicy datum act ctx =
 
     getAda = flip assetClassValueOf $ assetClass Ada.adaSymbol Ada.adaToken
 
+    info = scriptContextTxInfo ctx
+
     ------------------------------------------------------------------------------
     -- Checks
     ------------------------------------------------------------------------------
@@ -249,8 +264,7 @@ mkTxPolicy datum act ctx =
     -- Check if the datum in the datum is also the same in the transaction, v2.
     correctDatum' :: Bool
     correctDatum' =
-      let info = scriptContextTxInfo ctx
-          mDatums = findDatumHash (Datum . PlutusTx.toBuiltinData $ datum) info
+      let mDatums = findDatumHash (Datum . PlutusTx.toBuiltinData $ datum) info
        in maybe False (const True) mDatums
 
     ------------------------------------------------------------------------------
@@ -272,7 +286,6 @@ mkTxPolicy datum act ctx =
     -- getter functions. Helper function.
     correctPayment f shareCalcFn bid = personGetsAda >= personWantsAda
       where
-        info = scriptContextTxInfo ctx
         personId = getUserId . f $ datum
         share = dNft'share datum
         personGetsAda = getAda $ valuePaidTo info personId
@@ -291,7 +304,6 @@ mkTxPolicy datum act ctx =
     -- owner and author.
     correctPaymentOnlyAuthor bid = authorGetsAda >= bid
       where
-        info = scriptContextTxInfo ctx
         author = getUserId . dNft'author $ datum
         authorGetsAda = getAda $ valuePaidTo info author
 
@@ -304,8 +316,13 @@ mkTxPolicy datum act ctx =
             && dNft'author prevDatum == dNft'author datum
 
     ------------------------------------------------------------------------------
+    -- Check if the new Datum is correctly.
+    correctPurchaseInterval =
+      maybe True (\t -> contains (from t) $ txInfoValidRange info) (dNft'purchaseAfter datum)
+
+    ------------------------------------------------------------------------------
     -- Check no new token is minted.
-    noMint = isZero . txInfoMint . scriptContextTxInfo $ ctx
+    noMint = isZero . txInfoMint $ info
 
     ------------------------------------------------------------------------------
     -- Check if the NFT is sent to the correct address.
