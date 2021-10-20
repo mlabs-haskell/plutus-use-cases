@@ -161,6 +161,7 @@ library
     Mlabs.NFT.Contract
     Mlabs.NFT.Validation
     Mlabs.Extract.NftTrace
+    Mlabs.Extract.TxRead
 
 executable mlabs-plutus-use-cases
   import:  common-imports
