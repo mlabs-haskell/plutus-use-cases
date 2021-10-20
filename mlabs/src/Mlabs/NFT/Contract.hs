@@ -3,7 +3,6 @@ module Mlabs.NFT.Contract (
   UserContract,
   GenericContract,
   buy,
-  setPrice,
   queryCurrentOwner,
   queryCurrentPrice,
 ) where
@@ -162,8 +161,8 @@ buy (BuyRequestUser nftId bid newPrice) = error ()
 
 
 -- SET PRICE --
-setPrice :: SetPriceParams -> UserContract ()
-setPrice spParams = error ()
+-- setPrice :: SetPriceParams -> UserContract ()
+-- setPrice spParams = error ()
 --   result <-
 --     Contract.runError $ do
 --       (oref, ciTxOut, datum) <- findNft txScrAddress $ sp'nftId spParams
