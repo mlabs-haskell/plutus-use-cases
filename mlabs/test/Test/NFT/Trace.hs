@@ -38,15 +38,14 @@ appInitTrace = do
   return aSymbol
 
 -- | Emulator Trace 1. Mints one NFT.
-eTrace0 :: EmulatorTrace ()
-eTrace0 = do
+mint1Trace :: EmulatorTrace ()
+mint1Trace = do
   aSymb <- appInitTrace
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
   h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
   callEndpoint @"mint" h1 artwork
   void $ Trace.waitNSlots 1
   where
-    --  callEndpoint @"mint" h1 artwork
     artwork =
       MintParams
         { mp'content = Content "A painting."
@@ -128,7 +127,8 @@ eTrace2 = do
 testInit :: Hask.IO ()
 testInit = runEmulatorTraceIO $ void appInitTrace
 
-testMint = runEmulatorTraceIO eTrace0
+-- | Test for Minting one token
+testMint = runEmulatorTraceIO mint1Trace
 
 -- | Test for prototyping.
 test :: Hask.IO ()

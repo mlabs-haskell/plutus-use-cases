@@ -67,9 +67,9 @@ createListHead = do
     -- Mint the Linked List Head and its associated token.
     mintListHead :: NftAppInstance -> Value -> DatumNft -> GenericContract ()
     mintListHead appInstance uniqueTokenValue headDatum = do
---      utxos <- getUserUtxos
       let headPolicy = mintPolicy appInstance
-          proofTokenValue = Value.singleton (scriptCurrencySymbol headPolicy) "HEAD" 1
+          emptyTokenName = TokenName PlutusTx.Prelude.emptyByteString
+          proofTokenValue = Value.singleton (scriptCurrencySymbol headPolicy) emptyTokenName  1
           initRedeemer = asRedeemer Initialise
           (lookups, tx) =
             ( mconcat
@@ -88,7 +88,7 @@ createListHead = do
     generateUniqueToken :: GenericContract (AssetClass, Value)
     generateUniqueToken = do
       self <- Ledger.pubKeyHash <$> ownPubKey
-      let nftTokenName = TokenName PlutusTx.Prelude.emptyByteString
+      let nftTokenName = TokenName "H"--PlutusTx.Prelude.emptyByteString
       x <-
         mapError
           (pack . Hask.show @CurrencyError)
