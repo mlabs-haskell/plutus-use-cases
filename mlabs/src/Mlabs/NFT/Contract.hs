@@ -37,7 +37,6 @@ import Ledger (
   scriptCurrencySymbol,
   txId,
   from,
-  always,
  )
 
 import Ledger.Constraints qualified as Constraints
@@ -159,7 +158,8 @@ buy (BuyRequestUser nftId bid newPrice newPurchaseAfter) = do
       oref = nftId'outRef . dNft'id $ oldDatum
       nftPolicy = mintPolicy scrAddress oref nftId
       val = Value.singleton (scriptCurrencySymbol nftPolicy) (nftId'token nftId) 1
-      purchaseAfter = dNft'purchaseAfter oldDatum
+  now <- Contract.currentTime
+  -- TODO: add time check
   case dNft'price oldDatum of
     Nothing -> Contract.logError @Hask.String "NFT not for sale."
     Just price ->
@@ -192,7 +192,7 @@ buy (BuyRequestUser nftId bid newPrice newPurchaseAfter) = do
               newDatum = Datum . PlutusTx.toBuiltinData $ newDatum' -- Serialised Datum
               (paidToOwner, paidToAuthor) = calculateShares bid $ dNft'share oldDatum
               newValue = ciTxOut ^. ciTxOutValue
-              validTimeInterval = maybe always from purchaseAfter
+              validTimeInterval = from now
               (lookups, tx) =
                 ( mconcat
                     [ Constraints.unspentOutputs userUtxos
@@ -228,7 +228,9 @@ setPrice spParams = do
   either Contract.logError (const $ Contract.logInfo @Hask.String "New price set") result
   where
     mkTxLookups oref ciTxOut datum =
-      let newDatum = datum {dNft'price = sp'price spParams}
+      let newDatum = datum { dNft'price = sp'price spParams
+                           , dNft'purchaseAfter = sp'purchaseAfter spParams
+                           }
           redeemer = asRedeemer $ SetPriceAct (sp'price spParams) (nftCurrency (dNft'id datum)) (sp'purchaseAfter spParams)
           newValue = ciTxOut ^. ciTxOutValue
           lookups =

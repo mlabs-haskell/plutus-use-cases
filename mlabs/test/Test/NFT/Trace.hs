@@ -44,14 +44,13 @@ eTrace1 = do
   logInfo @Hask.String $ Hask.show oState
   where
     --  callEndpoint @"mint" h1 artwork
-    slotFiveTime = slotToBeginPOSIXTime def 500
     artwork =
       MintParams
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
         , mp'price = Just 5
-        , mp'purchaseAfter = Just slotFiveTime -- 1596059141000
+        , mp'purchaseAfter = Nothing
         }
     -- artwork2 = artwork {mp'content = Content "Another Painting"}
 
@@ -141,6 +140,110 @@ queryPriceTrace = do
         , mp'purchaseAfter = Nothing
         }
 
+validPurchaseAfterTrace :: EmulatorTrace ()
+validPurchaseAfterTrace = do
+  let wallet1 = walletFromNumber 1 :: Emulator.Wallet
+      wallet2 = walletFromNumber 2 :: Emulator.Wallet
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 endpoints
+  h2 :: AppTraceHandle <- activateContractWallet wallet2 endpoints
+  callEndpoint @"mint" h1 artwork
+
+  void $ Trace.waitNSlots 1
+  oState <- Trace.observableState h1
+  nftId <- case getLast oState of
+    Nothing -> Trace.throwError (Trace.GenericError "NftId not found")
+    Just nid -> return nid
+  void $ Trace.waitNSlots 5
+
+  callEndpoint @"buy" h2 (buyParams nftId)
+  where
+    slotFiveTime = slotToBeginPOSIXTime def 5
+    artwork =
+      MintParams
+        { mp'content = Content "A painting."
+        , mp'title = Title "Fiona Lisa"
+        , mp'share = 1 % 10
+        , mp'price = Just 5
+        , mp'purchaseAfter = Just slotFiveTime
+        }
+
+    buyParams nftId = BuyRequestUser nftId 6 (Just 200) Nothing
+
+invalidPurchaseAfterTrace :: EmulatorTrace ()
+invalidPurchaseAfterTrace = do
+  let wallet1 = walletFromNumber 1 :: Emulator.Wallet
+      wallet2 = walletFromNumber 2 :: Emulator.Wallet
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 endpoints
+  h2 :: AppTraceHandle <- activateContractWallet wallet2 endpoints
+  callEndpoint @"mint" h1 artwork
+
+  void $ Trace.waitNSlots 1
+  oState <- Trace.observableState h1
+  nftId <- case getLast oState of
+    Nothing -> Trace.throwError (Trace.GenericError "NftId not found")
+    Just nid -> return nid
+  void $ Trace.waitNSlots 1
+
+  callEndpoint @"buy" h2 (buyParams nftId)
+  where
+    slotFiveTime = slotToBeginPOSIXTime def 5
+    artwork =
+      MintParams
+        { mp'content = Content "A painting."
+        , mp'title = Title "Fiona Lisa"
+        , mp'share = 1 % 10
+        , mp'price = Just 5
+        , mp'purchaseAfter = Just slotFiveTime
+        }
+
+    buyParams nftId = BuyRequestUser nftId 6 (Just 200) Nothing
+
+validPurchaseAfterBuyTrace :: EmulatorTrace ()
+validPurchaseAfterBuyTrace = do
+  let wallet1 = walletFromNumber 1 :: Emulator.Wallet
+      wallet2 = walletFromNumber 2 :: Emulator.Wallet
+      wallet3 = walletFromNumber 3 :: Emulator.Wallet
+      wallet4 = walletFromNumber 4 :: Emulator.Wallet
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 endpoints
+  h2 :: AppTraceHandle <- activateContractWallet wallet2 endpoints
+  h3 :: AppTraceHandle <- activateContractWallet wallet3 endpoints
+  h4 :: AppTraceHandle <- activateContractWallet wallet4 endpoints
+  callEndpoint @"mint" h1 artwork
+
+  void $ Trace.waitNSlots 1
+  oState <- Trace.observableState h1
+  nftId <- case getLast oState of
+    Nothing -> Trace.throwError (Trace.GenericError "NftId not found")
+    Just nid -> return nid
+  void $ Trace.waitNSlots 1
+
+  callEndpoint @"buy" h2 (buyParams1 nftId)
+  void $ Trace.waitNSlots 7
+
+  callEndpoint @"buy" h3 (buyParams2 nftId)
+  void $ Trace.waitNSlots 2
+
+  callEndpoint @"set-price" h3 (SetPriceParams nftId (Just 200) (Just slotTwentyTime))
+  void $ Trace.waitNSlots 2
+
+  callEndpoint @"buy" h4 (buyParams3 nftId)
+  void $ Trace.waitNSlots 1
+  where
+    slotTenTime = slotToBeginPOSIXTime def 10
+    slotTwentyTime = slotToBeginPOSIXTime def 20
+    artwork =
+      MintParams
+        { mp'content = Content "A painting."
+        , mp'title = Title "Fiona Lisa"
+        , mp'share = 1 % 10
+        , mp'price = Just 5
+        , mp'purchaseAfter = Nothing
+        }
+
+    buyParams1 nftId = BuyRequestUser nftId 6 (Just 200) (Just slotTenTime)
+    buyParams2 nftId = BuyRequestUser nftId 200 (Just 250) Nothing
+    buyParams3 nftId = BuyRequestUser nftId 200 Nothing Nothing
+
 -- | Test for prototyping.
 test :: Hask.IO ()
 test = runEmulatorTraceIO eTrace1
@@ -151,4 +254,11 @@ testSetPrice = runEmulatorTraceIO setPriceTrace
 testQueryPrice :: Hask.IO ()
 testQueryPrice = runEmulatorTraceIO queryPriceTrace
 
--- testBuyPurchaseAfterSuccess
+testValidPurchaseAfter :: Hask.IO ()
+testValidPurchaseAfter = runEmulatorTraceIO validPurchaseAfterTrace
+
+testInvalidPurchaseAfter :: Hask.IO ()
+testInvalidPurchaseAfter = runEmulatorTraceIO invalidPurchaseAfterTrace
+
+testValidPurchaseAfterBuy :: Hask.IO ()
+testValidPurchaseAfterBuy = runEmulatorTraceIO validPurchaseAfterBuyTrace
