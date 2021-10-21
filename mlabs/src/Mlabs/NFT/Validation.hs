@@ -130,6 +130,14 @@ data UserAct
       , -- | Currency Symbol of the NFT the user is attempting to set the price of.
         act'cs :: CurrencySymbol
       }
+  | -- | Start NFT auction
+    OpenAuctionAct
+  | -- | Make a bid in an auction
+    BidAuctionAct
+      { -- | bid amount
+        act'bid :: Integer
+      }
+  | CloseAuctionAct
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
 

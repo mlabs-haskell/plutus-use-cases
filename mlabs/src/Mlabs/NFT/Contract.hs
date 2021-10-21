@@ -87,9 +87,9 @@ type NFTAppSchema =
     .\/ Endpoint "query-current-owner" NftId
     .\/ Endpoint "query-current-price" NftId
     -- Auction endpoints
-    .\/ Endpoint "auction-start" ()
+    .\/ Endpoint "auction-open" ()
     .\/ Endpoint "auction-bid" ()
-    .\/ Endpoint "auction-end" ()
+    .\/ Endpoint "auction-close" ()
 
 mkSchemaDefinitions ''NFTAppSchema
 

@@ -18,7 +18,7 @@ import Prelude qualified as Hask
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 
-import Ledger (PubKeyHash, TokenName, TxOutRef)
+import Ledger (PubKeyHash, TokenName, TxOutRef, POSIXTime)
 import PlutusTx qualified
 import Schema (ToSchema)
 
