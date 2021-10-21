@@ -191,6 +191,7 @@ library
     Mlabs.WbeTest.WbeClient
     Mlabs.WbeTest.TestStand
     Mlabs.WbeTest.Types
+    Mlabs.WbeTest.TxBuilder
 
 executable mlabs-plutus-use-cases
   import:  common-imports
