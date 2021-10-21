@@ -9,6 +9,7 @@ module Mlabs.NFT.Types (
   SetPriceParams (..),
   Content (..),
   Title (..),
+  AuctionState (..),
 ) where
 
 import PlutusTx.Prelude
@@ -51,6 +52,23 @@ PlutusTx.makeLift ''UserId
 instance Eq UserId where
   {-# INLINEABLE (==) #-}
   (UserId u1) == (UserId u2) = u1 == u2
+
+data AuctionState = AuctionState
+  { -- | Highest bid in Lovelace
+    as'highestBid :: Integer
+  , -- | Highest bidder's wallet pubkey
+    as'highestBidder :: UserId
+  , -- | Deadline
+    as'deadline :: POSIXTime
+  } deriving stock (Hask.Show, Generic, Hask.Eq)
+    deriving anyclass (FromJSON, ToJSON, ToSchema)
+PlutusTx.unstableMakeIsData ''AuctionState
+PlutusTx.makeLift ''AuctionState
+
+instance Eq AuctionState where
+  {-# INLINEABLE (==) #-}
+  (AuctionState bid1 bidder1 deadline1) == (AuctionState bid2 bidder2 deadline2) =
+    bid1 == bid2 && bidder1 == bidder2 && deadline1 == deadline2
 
 {- | Unique identifier of NFT.
  The NftId contains a human readable title, the hashed information of the

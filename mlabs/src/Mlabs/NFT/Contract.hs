@@ -11,7 +11,7 @@ import Prelude (mconcat, (<>))
 import Prelude qualified as Hask
 
 import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right)
-import Control.Monad (void)
+import Control.Monad (void, when)
 import Data.List qualified as L
 import Data.Map qualified as Map
 import Data.Monoid (Last (..))
@@ -86,6 +86,10 @@ type NFTAppSchema =
     -- Query Endpoints
     .\/ Endpoint "query-current-owner" NftId
     .\/ Endpoint "query-current-price" NftId
+    -- Auction endpoints
+    .\/ Endpoint "auction-start" ()
+    .\/ Endpoint "auction-bid" ()
+    .\/ Endpoint "auction-end" ()
 
 mkSchemaDefinitions ''NFTAppSchema
 
@@ -130,6 +134,7 @@ nftInit mintP = do
       , dNft'author = user
       , dNft'owner = user
       , dNft'price = mp'price mintP
+      , dNft'auctionState = Nothing
       }
 
 -- | Initialise new NftId
@@ -156,6 +161,8 @@ buy (BuyRequestUser nftId bid newPrice) = do
       oref = nftId'outRef . dNft'id $ oldDatum
       nftPolicy = mintPolicy scrAddress oref nftId
       val = Value.singleton (scriptCurrencySymbol nftPolicy) (nftId'token nftId) 1
+      auctionState = dNft'auctionState oldDatum
+  when (isJust auctionState) $ Contract.throwError "Can't buy: auction is in progress"
   case dNft'price oldDatum of
     Nothing -> Contract.logError @Hask.String "NFT not for sale."
     Just price ->
@@ -176,6 +183,7 @@ buy (BuyRequestUser nftId bid newPrice) = do
                   , dNft'author = dNft'author oldDatum
                   , dNft'owner = user
                   , dNft'price = newPrice
+                  , dNft'auctionState = Nothing
                   }
               action =
                 BuyAct
@@ -208,6 +216,7 @@ buy (BuyRequestUser nftId bid newPrice) = do
           void $ Contract.logInfo @Hask.String $ printf "Bought %s" $ Hask.show val
 
 -- SET PRICE --
+-- TODO: disallow set price during the auction?
 setPrice :: SetPriceParams -> Contract w NFTAppSchema Text ()
 setPrice spParams = do
   result <-

@@ -95,6 +95,8 @@ data DatumNft = DatumNft
     dNft'owner :: UserId
   , -- | Price in Lovelace. If Nothing, NFT not for sale.
     dNft'price :: Maybe Integer
+  , -- | Auction state
+    dNft'auctionState :: Maybe AuctionState
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON, ToSchema)
@@ -107,8 +109,8 @@ nftTokenName = nftId'token . dNft'id
 
 instance Eq DatumNft where
   {-# INLINEABLE (==) #-}
-  (DatumNft id1 share1 author1 owner1 price1) == (DatumNft id2 share2 author2 owner2 price2) =
-    id1 == id2 && share1 == share2 && author1 == author2 && owner1 == owner2 && price1 == price2
+  (DatumNft id1 share1 author1 owner1 price1 as1) == (DatumNft id2 share2 author2 owner2 price2 as2) =
+    id1 == id2 && share1 == share2 && author1 == author2 && owner1 == owner2 && price1 == price2 && as1 == as2
 
 -- | NFT Redeemer
 data UserAct
