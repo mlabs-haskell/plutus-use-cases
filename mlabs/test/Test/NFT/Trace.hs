@@ -21,16 +21,50 @@ import Mlabs.NFT.Types
 -- | Generic application Trace Handle.
 type AppTraceHandle = Trace.ContractHandle (Last NftId) NFTAppSchema Text
 
--- | Emulator Trace 1. Mints Some NFT.
+type AppInitHandle = Trace.ContractHandle (Last NftAppSymbol) NFTAppSchema Text
+
+-- | Initialise the Application
+appInitTrace :: EmulatorTrace NftAppSymbol
+appInitTrace = do
+  let admin = walletFromNumber 3 :: Emulator.Wallet
+  hAdmin :: AppInitHandle <- activateContractWallet admin adminEndpoints
+  callEndpoint @"app-init" hAdmin ()
+  void $ Trace.waitNSlots 2
+  oState <- Trace.observableState hAdmin
+  aSymbol <- case getLast oState of
+    Nothing -> Trace.throwError $ Trace.GenericError "App Symbol Could not be established."
+    Just aS -> return aS
+  void $ Trace.waitNSlots 1
+  return aSymbol
+
+-- | Emulator Trace 1. Mints one NFT.
+eTrace0 :: EmulatorTrace ()
+eTrace0 = do
+  aSymb <- appInitTrace
+  let wallet1 = walletFromNumber 1 :: Emulator.Wallet
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
+  callEndpoint @"mint" h1 artwork
+  void $ Trace.waitNSlots 1
+  where
+    --  callEndpoint @"mint" h1 artwork
+    artwork =
+      MintParams
+        { mp'content = Content "A painting."
+        , mp'title = Title "Fiona Lisa"
+        , mp'share = 1 % 10
+        , mp'price = Just 5
+        }
+
+-- | Emulator Trace 1. Mints one NFT.
 eTrace1 :: EmulatorTrace ()
 eTrace1 = do
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
       wallet2 = walletFromNumber 2 :: Emulator.Wallet
-  h1 :: AppTraceHandle <- activateContractWallet wallet1 (endpoints $ error ())
-  h2 :: AppTraceHandle <- activateContractWallet wallet2 (endpoints $ error ())
+  aSymb <- appInitTrace 
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
+  h2 :: AppTraceHandle <- activateContractWallet wallet2 $ endpoints aSymb
   callEndpoint @"mint" h1 artwork
   -- callEndpoint @"mint" h2 artwork2
-
   void $ Trace.waitNSlots 1
   oState <- Trace.observableState h1
   nftId <- case getLast oState of
@@ -90,6 +124,12 @@ eTrace2 = do
   authMintH <- activateContractWallet wallet1 $ endpoints (error ()) --FIXME
   void $ Trace.waitNSlots 1
 
+-- | Test for initialising the App
+testInit :: Hask.IO ()
+testInit = runEmulatorTraceIO $ void appInitTrace
+
+testMint = runEmulatorTraceIO eTrace0
+
 -- | Test for prototyping.
 test :: Hask.IO ()
 test = runEmulatorTraceIO eTrace1
@@ -97,6 +137,9 @@ test = runEmulatorTraceIO eTrace1
 -- | New Test
 test1 :: Hask.IO ()
 test1 = runEmulatorTraceIO eTrace2
+
+-- | Mint Test
+test2 = runEmulatorTraceIO eTrace2
 
 testSetPrice :: Hask.IO ()
 testSetPrice = runEmulatorTraceIO setPriceTrace

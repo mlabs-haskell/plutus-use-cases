@@ -3,6 +3,7 @@ module Mlabs.NFT.Api (
   schemas,
   endpoints,
   queryEndpoints,
+  adminEndpoints,
 ) where
 
 import Data.Monoid (Last (..))
@@ -38,6 +39,7 @@ mkSchemaDefinitions ''NFTAppSchema
 -- ENDPOINTS --
 
 type ApiUserContract a = Contract (Last NftId) NFTAppSchema Text a
+type ApiAdminContract a = Contract (Last NftAppSymbol) NFTAppSchema Text a
 type ApiQueryContract a = Contract QueryResponse NFTAppSchema Text a
 
 -- | User Endpoints .
@@ -47,9 +49,14 @@ endpoints appSymbol =
     [ endpoint @"mint" (mint appSymbol)
     , endpoint @"buy" NFTContract.buy
     , endpoint @"set-price" (setPrice appSymbol)
-    , endpoint @"app-init" $ Hask.const initApp
     --, endpoint @"query-authentic-nft" NFTContract.queryAuthenticNFT
     ]
+
+-- | Admin Endpoints
+adminEndpoints :: ApiAdminContract ()
+adminEndpoints = selectForever
+  [ endpoint @"app-init" $ Hask.const initApp
+  ]
 
 -- Query Endpoints are used for Querying, with no on-chain tx generation.
 queryEndpoints :: ApiQueryContract ()

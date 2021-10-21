@@ -21,12 +21,16 @@ module Mlabs.NFT.Types (
   nftTokenName,
   getAppInstance,
   instanceCurrency,
-  datumPointer
+  datumPointer,
+  GenericContract,
 ) where
 
 import PlutusTx.Prelude
 import Prelude qualified as Hask
 
+import Plutus.Contract (Contract)
+
+import Data.Text (Text)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Monoid (Last)
 import GHC.Generics (Generic)
@@ -370,3 +374,6 @@ instance Eq UserAct where
   (SetPriceAct newPrice1) == (SetPriceAct newPrice2) =
     newPrice1 == newPrice2
   _ == _ = False
+
+-- Contract types
+type GenericContract a = forall w s. Contract w s Text a

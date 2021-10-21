@@ -70,10 +70,6 @@ type QueryContract a = forall s. Contract QueryResponse s Text a
 -- | A contract used for all user actions.
 type UserContract a = forall s. Contract (Last NftId) s Text a
 
--- | A Generic Contract used for aux functions and helpers.
-type GenericContract a = forall w s. Contract w s Text a
-
-
 {- | BUY.
  Attempts to buy a new NFT by changing the owner, pays the current owner and
  the author, and sets a new price for the NFT.

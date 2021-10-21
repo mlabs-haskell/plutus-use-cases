@@ -10,6 +10,7 @@ module Mlabs.NFT.Validation (
   nftAsset,
   mintPolicy,
   priceNotNegative,
+  curSymbol,
 ) where
 
 import PlutusTx.Prelude

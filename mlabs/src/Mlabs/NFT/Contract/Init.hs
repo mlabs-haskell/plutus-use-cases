@@ -25,34 +25,33 @@ import Ledger (
  )
 
 import Ledger.Constraints qualified as Constraints
-import Ledger.Value as Value (singleton, unAssetClass)
+import Ledger.Value as Value (singleton)
 
-import Mlabs.NFT.Types {- (
-  BuyRequestUser (..),
-  Content (..),
+import Mlabs.NFT.Types (
   MintAct (..),
-  MintParams (..),
-  NftId (..),
-  QueryResponse (..),
-  SetPriceParams (..),
-  UserId (..),
- ) -}
+  NftListHead (..),
+  NftAppSymbol (..),
+  NftAppInstance(..),
+  GenericContract,
+  )
 
+import Data.Monoid (Last(..))
 
 import Mlabs.NFT.Validation
 
-import Mlabs.NFT.Contract.Aux
-
--- | A Generic Contract used for aux functions and helpers.
-type GenericContract a = forall w s. Contract w s Text a
+-- | The App Symbol is written to the Writter instance of the Contract to be
+-- recovered for future opperations, and ease of use in Trace.
+type InitContract a = forall s. Contract (Last NftAppSymbol) s Text a 
 
 --------------------------------------------------------------------------------
 -- Init --
 
-initApp :: GenericContract ()
+initApp :: InitContract ()
 initApp = do
-  createListHead
-  Contract.logInfo @Hask.String $ printf "Finished Initialisation"
+  appInstance <- createListHead
+  let appSymbol = getAppSymbol appInstance
+  Contract.tell . Last. Just $ appSymbol
+  Contract.logInfo @Hask.String $ printf "Finished Initialisation: App symbol: %s" (Hask.show appSymbol) 
 
 {- | Initialise the application at the address of the script by creating the
  HEAD of the list, and coupling the one time token with the Head of the list.
@@ -62,13 +61,13 @@ createListHead = do
   (uniqueToken, uniqueTokenValue) <- generateUniqueToken
   let appInstance = NftAppInstance txScrAddress uniqueToken
   headDatum <- nftHeadInit appInstance
-  head <- mintListHead appInstance uniqueTokenValue headDatum
+  mintListHead appInstance uniqueTokenValue headDatum
   return appInstance
   where
     -- Mint the Linked List Head and its associated token.
     mintListHead :: NftAppInstance -> Value -> DatumNft -> GenericContract ()
     mintListHead appInstance uniqueTokenValue headDatum = do
-      utxos <- getUserUtxos
+--      utxos <- getUserUtxos
       let headPolicy = mintPolicy appInstance
           proofTokenValue = Value.singleton (scriptCurrencySymbol headPolicy) "HEAD" 1
           initRedeemer = asRedeemer Initialise
@@ -96,14 +95,16 @@ createListHead = do
           (mintContract self [(nftTokenName, 1)])
       return (assetClass (MC.currencySymbol x) nftTokenName, MC.mintedValue x)
 
+    -- | Initialise an NFT using the current wallet.
+    nftHeadInit :: NftAppInstance -> GenericContract DatumNft
+    nftHeadInit appInst = do
+      pure .
+        HeadDatum $
+          NftListHead
+            { head'next = Nothing
+            , head'appInstance = appInst
+            }
 
--- | Initialise an NFT using the current wallet.
-nftHeadInit :: NftAppInstance -> GenericContract DatumNft
-nftHeadInit appInst = do
-  pure .
-    HeadDatum $
-      NftListHead
-        { head'next = Nothing
-        , head'appInstance = appInst
-        }
-        
+-- | Given an App Instance return the NftAppSymbol for that app instance. 
+getAppSymbol :: NftAppInstance -> NftAppSymbol
+getAppSymbol = NftAppSymbol . curSymbol

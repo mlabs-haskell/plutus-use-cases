@@ -53,7 +53,6 @@ import Mlabs.NFT.Validation
 getScriptAddrUtxos :: Contract w s Text (Map.Map TxOutRef (ChainIndexTxOut, ChainIndexTx))
 getScriptAddrUtxos = utxosTxOutTxAt txScrAddress
 
-
 -- HELPER FUNCTIONS AND CONTRACTS --
 
 -- | Get the current Wallet's publick key.
