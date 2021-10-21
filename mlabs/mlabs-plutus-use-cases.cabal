@@ -45,6 +45,10 @@ common common-imports
     , cardano-ledger-alonzo
     , plutus-extra
     , purescript-bridge
+    -- wbe testing stuff
+    , memory
+    , req
+    , lens-aeson
 
 common common-language
     default-extensions:
@@ -182,6 +186,7 @@ library
     Mlabs.Plutus.Contracts.Currency
     Mlabs.Extract.NftTrace
     Mlabs.Extract.TxRead
+    Mlabs.Extract.WbeClient
 
 executable mlabs-plutus-use-cases
   import:  common-imports
