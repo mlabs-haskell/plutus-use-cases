@@ -98,7 +98,7 @@ mint symbol params = do
       res <- getDatumsTxsOrdered appCS
       let newNftPointer = Pointer $ AssetClass (app'symbol appCS, TokenName contentHash)
           datumP (datum,_) = case datumPointer datum of 
-            Nothing -> True
+            Nothing -> False
             Just ac -> ac < newNftPointer 
       case L.dropWhile datumP res of
         []          -> Contract.throwError "Head not found"
@@ -140,7 +140,7 @@ mint symbol params = do
           nftTokName = nftTokenName nftDatum
           nftVal = Value.singleton (scriptCurrencySymbol nftPolicy) nftTokName 1
           mintRedeemer = asRedeemer $ Mint (info'id $ node'information newNode)
-          spendRedeemer = error ()
+          spendRedeemer = error () -- TODO
           lookups =
             mconcat
               [ Constraints.unspentOutputs $ Map.fromList [authorOrefTxOut]
