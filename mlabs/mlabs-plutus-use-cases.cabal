@@ -43,6 +43,10 @@ common common-imports
     , cardano-api
     , cardano-ledger-alonzo
     , plutus-extra
+    -- wbe testing stuff
+    , memory
+    , req
+    , lens-aeson
 
 common common-language
     default-extensions:
@@ -162,6 +166,7 @@ library
     Mlabs.NFT.Validation
     Mlabs.Extract.NftTrace
     Mlabs.Extract.TxRead
+    Mlabs.Extract.WbeClient
 
 executable mlabs-plutus-use-cases
   import:  common-imports
