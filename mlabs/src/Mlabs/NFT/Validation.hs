@@ -275,7 +275,10 @@ mkTxPolicy datum act ctx =
 
     auctionBidHighEnough :: Integer -> Bool
     auctionBidHighEnough amount =
-      withAuctionState $ \auctionState -> amount >= as'minBid auctionState
+      withAuctionState $ \auctionState ->
+        case as'highestBid auctionState of
+          Nothing -> amount >= as'minBid auctionState
+          Just highestBid -> amount >= ab'bid highestBid
 
     correctAuctionBidSlotInterval :: Bool
     correctAuctionBidSlotInterval =
