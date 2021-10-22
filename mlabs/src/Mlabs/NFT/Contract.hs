@@ -50,15 +50,15 @@ import Ledger.Typed.Scripts (validatorScript)
 import Ledger.Value as Value (singleton, unAssetClass, valueOf)
 
 import Mlabs.NFT.Types {- (
-  BuyRequestUser (..),
-  Content (..),
-  MintAct (..),
-  MintParams (..),
-  NftId (..),
-  QueryResponse (..),
-  SetPriceParams (..),
-  UserId (..),
- ) -}
+                        BuyRequestUser (..),
+                        Content (..),
+                        MintAct (..),
+                        MintParams (..),
+                        NftId (..),
+                        QueryResponse (..),
+                        SetPriceParams (..),
+                        UserId (..),
+                       ) -}
 
 import Mlabs.Plutus.Contract (readDatum')
 
@@ -76,6 +76,7 @@ type UserContract a = forall s. Contract (Last NftId) s Text a
 -}
 buy :: BuyRequestUser -> UserContract ()
 buy (BuyRequestUser nftId bid newPrice) = error ()
+
 --   oldDatum' <- getNftDatum nftId
 --   case oldDatum' of
 --     Nothing -> Contract.logError @Hask.String "NFT Cannot be found."
@@ -155,7 +156,6 @@ buy (BuyRequestUser nftId bid newPrice) = error ()
 --
 -- -- void $ Contract.logInfo @Hask.String $ printf "Bought %s" $ Hask.show val
 
-
 -- SET PRICE --
 -- setPrice :: SetPriceParams -> UserContract ()
 -- setPrice spParams = error ()
@@ -203,6 +203,7 @@ buy (BuyRequestUser nftId bid newPrice) = error ()
 -}
 queryCurrentPrice :: NftId -> NftAppSymbol -> QueryContract QueryResponse
 queryCurrentPrice nftid cSymbol = error ()
+
 --  price <- wrap <$> getsNftDatum dNft'price nftid
 --  Contract.tell price >> log price >> return price
 --  where
@@ -216,6 +217,7 @@ queryCurrentPrice nftid cSymbol = error ()
 -}
 queryCurrentOwner :: NftId -> NftAppSymbol -> QueryContract QueryResponse
 queryCurrentOwner nftid cSymbol = error ()
+
 --   ownerResp <- wrap <$> getsNftDatum dNft'owner nftid
 --   Contract.tell ownerResp >> log ownerResp >> return ownerResp
 --   where
@@ -223,5 +225,3 @@ queryCurrentOwner nftid cSymbol = error ()
 --     log owner =
 --       Contract.logInfo @Hask.String $
 --         "Current owner of: " <> Hask.show nftid <> " is: " <> Hask.show owner
-
-

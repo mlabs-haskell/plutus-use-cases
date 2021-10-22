@@ -36,12 +36,16 @@ import Ledger.Typed.Scripts (validatorScript)
 import Ledger.Value as Value (AssetClass (..), TokenName (..), singleton)
 import Plutus.ChainIndex.Tx (ChainIndexTx)
 
-import Mlabs.NFT.Contract.Aux
+import Mlabs.NFT.Contract.Aux (fstUtxoAt, getUserAddr)
 import Mlabs.NFT.Types
 import Mlabs.NFT.Validation
 
 -- TODO: Move shared code to some Utils module
-import Mlabs.NFT.Contract.Mint (getDatumsTxsOrdered)
+import Mlabs.NFT.Contract.Mint ()
+
+getDatumsTxsOrdered = error () -- to fix to the new datatype
+
+type PointInfo = (DatumNft, (TxOutRef, ChainIndexTxOut))
 
 --------------------------------------------------------------------------------
 -- Set Price

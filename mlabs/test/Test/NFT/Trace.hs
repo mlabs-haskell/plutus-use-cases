@@ -59,7 +59,7 @@ eTrace1 :: EmulatorTrace ()
 eTrace1 = do
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
       wallet2 = walletFromNumber 2 :: Emulator.Wallet
-  aSymb <- appInitTrace 
+  aSymb <- appInitTrace
   h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
   h2 :: AppTraceHandle <- activateContractWallet wallet2 $ endpoints aSymb
   callEndpoint @"mint" h1 artwork
@@ -82,8 +82,6 @@ eTrace1 = do
         , mp'share = 1 % 10
         , mp'price = Just 5
         }
-    -- artwork2 = artwork {mp'content = Content "Another Painting"}
-
     buyParams nftId = BuyRequestUser nftId 6 (Just 200)
 
 setPriceTrace :: EmulatorTrace ()

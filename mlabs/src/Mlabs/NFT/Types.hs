@@ -10,19 +10,21 @@ module Mlabs.NFT.Types (
   SetPriceParams (..),
   Content (..),
   Title (..),
-  DatumNft(..),
-  NftAppInstance(..),
-  UserAct(..),
+  DatumNft (..),
+  NftAppInstance (..),
+  UserAct (..),
   InformationNft (..),
   NftListNode (..),
   NftListHead (..),
   NftAppSymbol (..),
-  Pointer(..),
+  Pointer (..),
   nftTokenName,
   getAppInstance,
   instanceCurrency,
-  datumPointer,
+  getDatumPointer,
+  getDatumValue,
   GenericContract,
+  PointInfo (..),
 ) where
 
 import PlutusTx.Prelude
@@ -30,19 +32,22 @@ import Prelude qualified as Hask
 
 import Plutus.Contract (Contract)
 
-import Data.Text (Text)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Monoid (Last)
+import Data.Text (Text)
 import GHC.Generics (Generic)
 
 import Ledger (
   Address,
   AssetClass,
+  ChainIndexTxOut,
   CurrencySymbol,
-  PubKeyHash
+  PubKeyHash,
+  TxOutRef,
  )
 
-import Ledger.Value (TokenName(..), unAssetClass)
+import Ledger.Value (TokenName (..), unAssetClass)
+import Plutus.ChainIndex (ChainIndexTx)
 import PlutusTx qualified
 import Schema (ToSchema)
 
@@ -94,6 +99,10 @@ instance Eq NftId where
   {-# INLINEABLE (==) #-}
   (NftId token1) == (NftId token2) =
     token1 == token2
+instance Ord NftId where
+  {-# INLINEABLE (<=) #-}
+  (NftId token1) <= (NftId token2) =
+    token1 <= token2
 
 {- | Type representing the data that gets hashed when the token is minted. The
  tile and author are included for proof of authenticity in the case the same
@@ -220,6 +229,9 @@ data InformationNft = InformationNft
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
 
+instance Ord InformationNft where
+  x <= y = (info'id x) <= (info'id y)
+
 PlutusTx.unstableMakeIsData ''InformationNft
 PlutusTx.makeLift ''InformationNft
 instance Eq InformationNft where
@@ -241,14 +253,14 @@ data NftAppInstance = NftAppInstance
 
 -- | Get `CurrencySumbol` of `NftAppInstance`
 instanceCurrency :: NftAppInstance -> CurrencySymbol
-instanceCurrency  = fst . unAssetClass . appInstance'AppAssetClass
+instanceCurrency = fst . unAssetClass . appInstance'AppAssetClass
 
 PlutusTx.unstableMakeIsData ''NftAppInstance
 PlutusTx.makeLift ''NftAppInstance
 instance Eq NftAppInstance where
   (NftAppInstance a b) == (NftAppInstance a' b') = a == a' && b == b'
 
-newtype NftAppSymbol = NftAppSymbol { app'symbol :: CurrencySymbol }
+newtype NftAppSymbol = NftAppSymbol {app'symbol :: CurrencySymbol}
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
 
@@ -305,6 +317,9 @@ data NftListNode = NftListNode
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
 
+instance Ord NftListNode where
+  x <= y = (node'information x) <= (node'information y)
+
 PlutusTx.unstableMakeIsData ''NftListNode
 PlutusTx.makeLift ''NftListNode
 instance Eq NftListNode where
@@ -319,13 +334,24 @@ data DatumNft
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
 
+instance Ord DatumNft where
+  (HeadDatum _) <= _ = True
+  (NodeDatum _) <= (HeadDatum _) = False
+  (NodeDatum x) <= (NodeDatum y) = x <= y
+
 PlutusTx.unstableMakeIsData ''DatumNft
 PlutusTx.makeLift ''DatumNft
 
-datumPointer :: DatumNft -> Maybe Pointer
-datumPointer = \case
+-- | Pointer to the next List Item.
+getDatumPointer :: DatumNft -> Maybe Pointer
+getDatumPointer = \case
   HeadDatum listHead -> head'next listHead
   NodeDatum listNode -> node'next listNode
+
+getDatumValue :: DatumNft -> BuiltinByteString
+getDatumValue = \case
+  HeadDatum _ -> ""
+  NodeDatum listNode -> nftId'contentHash . info'id . node'information $ listNode
 
 instance Eq DatumNft where
   {-# INLINEABLE (==) #-}
@@ -343,8 +369,8 @@ nftTokenName = \case
   NodeDatum n -> TokenName . nftId'contentHash . info'id . node'information $ n
 
 getAppInstance :: DatumNft -> NftAppInstance
-getAppInstance = \case 
-  HeadDatum (NftListHead _ inst)   -> inst
+getAppInstance = \case
+  HeadDatum (NftListHead _ inst) -> inst
   NodeDatum (NftListNode _ _ inst) -> inst
 
 -- | NFT Redeemer
@@ -374,6 +400,28 @@ instance Eq UserAct where
   (SetPriceAct newPrice1) == (SetPriceAct newPrice2) =
     newPrice1 == newPrice2
   _ == _ = False
+
+-- OffChain utility types.
+
+-- | Easy type to find and use Nodes by.
+data PointInfo = PointInfo
+  { pi'datum :: DatumNft
+  , pi'TOR   :: TxOutRef
+  , pi'CITxO :: ChainIndexTxOut
+  , pi'CITx  :: ChainIndexTx
+  }
+  deriving stock (Hask.Eq)
+
+instance Eq PointInfo where
+  {-# INLINEABLE (==) #-}
+  (PointInfo x y _ _) == (PointInfo a b _ _) =
+    x == a && y == b -- && z == c && k == d
+
+instance Ord PointInfo where
+  x <= y = pi'datum x <= pi'datum y
+
+instance Hask.Ord PointInfo where
+  x <= y = pi'datum x <= pi'datum y
 
 -- Contract types
 type GenericContract a = forall w s. Contract w s Text a

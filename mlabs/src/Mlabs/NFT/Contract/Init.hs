@@ -1,5 +1,5 @@
 module Mlabs.NFT.Contract.Init (
-  initApp
+  initApp,
 ) where
 
 import PlutusTx.Prelude hiding (mconcat, (<>))
@@ -28,20 +28,21 @@ import Ledger.Constraints qualified as Constraints
 import Ledger.Value as Value (singleton)
 
 import Mlabs.NFT.Types (
-  MintAct (..),
-  NftListHead (..),
-  NftAppSymbol (..),
-  NftAppInstance(..),
   GenericContract,
-  )
+  MintAct (..),
+  NftAppInstance (..),
+  NftAppSymbol (..),
+  NftListHead (..),
+ )
 
-import Data.Monoid (Last(..))
+import Data.Monoid (Last (..))
 
 import Mlabs.NFT.Validation
 
--- | The App Symbol is written to the Writter instance of the Contract to be
--- recovered for future opperations, and ease of use in Trace.
-type InitContract a = forall s. Contract (Last NftAppSymbol) s Text a 
+{- | The App Symbol is written to the Writter instance of the Contract to be
+ recovered for future opperations, and ease of use in Trace.
+-}
+type InitContract a = forall s. Contract (Last NftAppSymbol) s Text a
 
 --------------------------------------------------------------------------------
 -- Init --
@@ -50,8 +51,8 @@ initApp :: InitContract ()
 initApp = do
   appInstance <- createListHead
   let appSymbol = getAppSymbol appInstance
-  Contract.tell . Last. Just $ appSymbol
-  Contract.logInfo @Hask.String $ printf "Finished Initialisation: App symbol: %s" (Hask.show appSymbol) 
+  Contract.tell . Last . Just $ appSymbol
+  Contract.logInfo @Hask.String $ printf "Finished Initialisation: App symbol: %s" (Hask.show appSymbol)
 
 {- | Initialise the application at the address of the script by creating the
  HEAD of the list, and coupling the one time token with the Head of the list.
@@ -69,7 +70,7 @@ createListHead = do
     mintListHead appInstance uniqueTokenValue headDatum = do
       let headPolicy = mintPolicy appInstance
           emptyTokenName = TokenName PlutusTx.Prelude.emptyByteString
-          proofTokenValue = Value.singleton (scriptCurrencySymbol headPolicy) emptyTokenName  1
+          proofTokenValue = Value.singleton (scriptCurrencySymbol headPolicy) emptyTokenName 1
           initRedeemer = asRedeemer Initialise
           (lookups, tx) =
             ( mconcat
@@ -88,23 +89,22 @@ createListHead = do
     generateUniqueToken :: GenericContract (AssetClass, Value)
     generateUniqueToken = do
       self <- Ledger.pubKeyHash <$> ownPubKey
-      let nftTokenName = TokenName "H"--PlutusTx.Prelude.emptyByteString
+      let nftTokenName = TokenName "H" --PlutusTx.Prelude.emptyByteString
       x <-
         mapError
           (pack . Hask.show @CurrencyError)
           (mintContract self [(nftTokenName, 1)])
       return (assetClass (MC.currencySymbol x) nftTokenName, MC.mintedValue x)
 
-    -- | Initialise an NFT using the current wallet.
     nftHeadInit :: NftAppInstance -> GenericContract DatumNft
     nftHeadInit appInst = do
-      pure .
-        HeadDatum $
-          NftListHead
-            { head'next = Nothing
-            , head'appInstance = appInst
-            }
+      pure
+        . HeadDatum
+        $ NftListHead
+          { head'next = Nothing
+          , head'appInstance = appInst
+          }
 
--- | Given an App Instance return the NftAppSymbol for that app instance. 
+-- | Given an App Instance return the NftAppSymbol for that app instance.
 getAppSymbol :: NftAppInstance -> NftAppSymbol
 getAppSymbol = NftAppSymbol . curSymbol
