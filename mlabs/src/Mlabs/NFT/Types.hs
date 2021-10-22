@@ -53,11 +53,24 @@ instance Eq UserId where
   {-# INLINEABLE (==) #-}
   (UserId u1) == (UserId u2) = u1 == u2
 
+data AuctionBid = AuctionBid
+  { -- | Bid in Lovelace
+    ab'bid :: Integer
+  , -- | Bidder's wallet pubkey
+    ab'bidder :: UserId
+  } deriving stock (Hask.Show, Generic, Hask.Eq)
+    deriving anyclass (FromJSON, ToJSON, ToSchema)
+PlutusTx.unstableMakeIsData ''AuctionBid
+PlutusTx.makeLift ''AuctionBid
+
+instance Eq AuctionBid where
+  {-# INLINEABLE (==) #-}
+  (AuctionBid bid1 bidder1) = (AuctionBid bid2 bidder2) =
+    bid1 == bid2 && bidder1 == bidder2
+
 data AuctionState = AuctionState
-  { -- | Highest bid in Lovelace
-    as'highestBid :: Integer
-  , -- | Highest bidder's wallet pubkey
-    as'highestBidder :: UserId
+  { -- | Highest bid
+    as'highestBid :: Maybe AuctionBid
   , -- | Deadline
     as'deadline :: POSIXTime
   } deriving stock (Hask.Show, Generic, Hask.Eq)
@@ -67,8 +80,8 @@ PlutusTx.makeLift ''AuctionState
 
 instance Eq AuctionState where
   {-# INLINEABLE (==) #-}
-  (AuctionState bid1 bidder1 deadline1) == (AuctionState bid2 bidder2 deadline2) =
-    bid1 == bid2 && bidder1 == bidder2 && deadline1 == deadline2
+  (AuctionState bid1 deadline1) == (AuctionState bid2 deadline2) =
+    bid1 == bid2 && deadline1 == deadline2
 
 {- | Unique identifier of NFT.
  The NftId contains a human readable title, the hashed information of the

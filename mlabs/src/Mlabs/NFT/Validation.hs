@@ -153,6 +153,9 @@ instance Eq UserAct where
   (SetPriceAct newPrice1 cs1) == (SetPriceAct newPrice2 cs2) =
     newPrice1 == newPrice2
       && cs1 == cs2
+  OpenAuctionAct == OpenAuctionAct = True
+  (BidAuctionAct bid1) == (BidAuctionAct bid2) = bid1 == bid2
+  CloseAuctionAct == CloseAuctionAct = True
   _ == _ = False
 
 asRedeemer :: UserAct -> Redeemer
@@ -214,7 +217,8 @@ mkTxPolicy datum act ctx =
     && traceIfFalse "Transaction cannot mint." noMint
     && case act of
       BuyAct {..} ->
-        traceIfFalse "NFT not for sale." nftForSale
+        traceIfFalse "Auction is in progress" noAuctionInProgress
+          && traceIfFalse "NFT not for sale." nftForSale
           && traceIfFalse "Bid is too low for the NFT price." (bidHighEnough act'bid)
           && traceIfFalse "New owner is not the payer." correctNewOwner
           && traceIfFalse "Datum is not consistent, illegaly altered." consistentDatum
@@ -224,8 +228,11 @@ mkTxPolicy datum act ctx =
               traceIfFalse "Current owner is not paid their share." (correctPaymentOwner act'bid)
                 && traceIfFalse "Author is not paid their share." (correctPaymentAuthor act'bid)
       SetPriceAct {} ->
-        traceIfFalse "Price can not be negative." priceNotNegative'
+        traceIfFalse "Auction is in progress" noAuctionInProgress
+          && traceIfFalse "Price can not be negative." priceNotNegative'
           && traceIfFalse "Only owner exclusively can set NFT price." ownerSetsPrice
+      OpenAuctionAct ->
+
   where
     ------------------------------------------------------------------------------
     -- Utility functions.
@@ -246,6 +253,10 @@ mkTxPolicy datum act ctx =
     ------------------------------------------------------------------------------
     -- Checks
     ------------------------------------------------------------------------------
+    -- Check whether there's auction in progress and disallow buy/setprice actions.
+    noAuctionInProgress :: Bool
+    noAuctionInProgress = isNothing $ dNft'auctionState datum
+
     -- Check if the datum attached is also present in the is also in the transaction.
     correctDatum :: Bool
     correctDatum =
