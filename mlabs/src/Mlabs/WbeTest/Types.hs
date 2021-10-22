@@ -2,18 +2,26 @@
 
 module Mlabs.WbeTest.Types
 ( WbeExportTx(..),
-  WalletId,
-  Balanced,
-  Signed, 
+  WalletId(..),
+  WbeStage(..),
   WbeTx(..),
+  WbeTxSubmitted(..),
   MintBuilder(..),
 ) where
 
 import Prelude qualified as Hask
 
-
 import GHC.Generics (Generic)
-import Data.Aeson ( FromJSON, ToJSON (toJSON), object, KeyValue ((.=)))
+import Data.Aeson (
+  FromJSON (..),
+  ToJSON (..),
+  KeyValue ((.=)),
+  Options (fieldLabelModifier),
+  object,
+  genericParseJSON,
+  defaultOptions,
+  genericToJSON
+  )
 import Data.Text (Text)
 import Plutus.Contract.Wallet (ExportTx (..), ExportTxInput (..))
 import qualified Cardano.Api as C
@@ -24,7 +32,7 @@ import Data.Map (Map)
 import Ledger (TxOutRef, ChainIndexTxOut)
 import qualified Data.Text.Encoding as Text
 import qualified Data.ByteString.Base16 as Base16
-
+import Data.String (IsString)
 
 {- | Wrapper around 'ExportTx', whose 'ToJSON' instance does not match the format
  expected by the WBE (this should be unecessary after upgrading Plutus to the next
@@ -85,18 +93,43 @@ instance ToJSON WbeExportTx where
 --   deriving anyclass (ToJSON, FromJSON)
 -- -- WbeExportTx types - END
 
+newtype WalletId = WalletId
+  { unWalletId :: Text
+  }
+  deriving stock (Hask.Show, Generic)
+  deriving newtype (Hask.Eq, FromJSON, ToJSON, IsString)
 
-type WalletId = Text
+data WbeStage = Balanced | Signed
 
-
-data Balanced
-data Signed
-
-newtype WbeTx a = WbeTx
-  { transaction :: Text -- Base64 represenatation returned by WBE
+newtype WbeTx (a :: WbeStage) = WbeTx
+  { -- | Base64 representation returned by WBE
+    transaction :: Text
   }
   deriving stock (Hask.Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
+
+newtype WbeTxSubmitted = WbeTxSubmitted
+  { -- | ID of the completed transaction
+    txId :: Text
+  }
+  deriving stock (Hask.Show, Hask.Eq, Generic)
+
+instance FromJSON WbeTxSubmitted where
+  parseJSON = genericParseJSON
+    defaultOptions
+    { fieldLabelModifier = wbeTxSubmittedModifier
+    }
+
+instance ToJSON WbeTxSubmitted where
+  toJSON = genericToJSON
+    defaultOptions
+    { fieldLabelModifier = wbeTxSubmittedModifier
+    }
+
+wbeTxSubmittedModifier :: Hask.String -> Hask.String
+wbeTxSubmittedModifier = \case
+  "txId" -> "id"
+  s -> s
 
 -- | Components to manually build an NFT-minting tx
 data MintBuilder = MintBuilder
