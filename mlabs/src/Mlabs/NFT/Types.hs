@@ -9,7 +9,11 @@ module Mlabs.NFT.Types (
   SetPriceParams (..),
   Content (..),
   Title (..),
+  AuctionBid (..),
   AuctionState (..),
+  AuctionOpenParams (..),
+  AuctionBidParams (..),
+  AuctionCloseParams (..)
 ) where
 
 import PlutusTx.Prelude
@@ -170,6 +174,46 @@ instance Eq SetPriceParams where
   {-# INLINEABLE (==) #-}
   (SetPriceParams nftId1 price1) == (SetPriceParams nftId2 price2) =
     nftId1 == nftId2 && price1 == price2
+
+data AuctionOpenParams = AuctionOpenParams
+  { -- | TODO
+    op'deadline :: POSIXTime
+  , -- | TODO
+    op'minBid :: Integer
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
+PlutusTx.unstableMakeIsData ''AuctionOpenParams
+PlutusTx.makeLift ''AuctionOpenParams
+
+instance Eq AuctionOpenParams where
+  {-# INLINEABLE (==) #-}
+  (AuctionOpenParams deadline1 minBid1) == (AuctionOpenParams deadline2 minBid2) =
+    deadline1 == deadline2 && minBid1 == minBid2
+
+data AuctionBidParams = AuctionBidParams
+  { -- | TODO
+    op'bidAmount :: Integer
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
+PlutusTx.unstableMakeIsData ''AuctionBidParams
+PlutusTx.makeLift ''AuctionBidParams
+
+instance Eq AuctionBidParams where
+  {-# INLINEABLE (==) #-}
+  (AuctionBidParams bid1) == (AuctionBidParams bid2) =
+    bid1 == bid2
+
+data AuctionCloseParams = AuctionCloseParams
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON) --, ToSchema)
+PlutusTx.unstableMakeIsData ''AuctionCloseParams
+PlutusTx.makeLift ''AuctionCloseParams
+
+instance Eq AuctionCloseParams where
+  {-# INLINEABLE (==) #-}
+  AuctionCloseParams == AuctionCloseParams = True
 
 data BuyRequestUser = BuyRequestUser
   { -- | nftId to Buy

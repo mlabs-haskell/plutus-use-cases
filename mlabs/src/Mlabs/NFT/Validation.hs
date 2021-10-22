@@ -50,6 +50,7 @@ import Ledger (
   scriptContextTxInfo,
   scriptCurrencySymbol,
   to,
+  from,
   txInInfoOutRef,
   txInfoData,
   txInfoInputs,
@@ -243,6 +244,7 @@ mkTxPolicy datum act ctx =
           && traceIfFalse "Auction deadline reached" correctAuctionBidSlotInterval
       CloseAuctionAct ->
         traceIfFalse "No auction is in progress" (not noAuctionInProgress)
+          && traceIfFalse "Auction deadline not yet reached" auctionDeadlineReached
   where
     ------------------------------------------------------------------------------
     -- Utility functions.
@@ -284,6 +286,11 @@ mkTxPolicy datum act ctx =
     correctAuctionBidSlotInterval =
       withAuctionState $ \auctionState ->
         (to $ as'deadline auctionState) `contains` txInfoValidRange info
+
+    auctionDeadlineReached :: Bool
+    auctionDeadlineReached =
+      withAuctionState $ \auctionState ->
+        (from $ as'deadline auctionState) `contains` txInfoValidRange info
 
     -- Check if the datum attached is also present in the is also in the transaction.
     correctDatum :: Bool

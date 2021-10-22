@@ -52,6 +52,8 @@ import Mlabs.NFT.Types (
   QueryResponse (..),
   SetPriceParams (..),
   UserId (..),
+  AuctionOpenParams (..),
+  AuctionBidParams (..),
  )
 
 import Mlabs.NFT.Validation (
@@ -87,8 +89,8 @@ type NFTAppSchema =
     .\/ Endpoint "query-current-owner" NftId
     .\/ Endpoint "query-current-price" NftId
     -- Auction endpoints
-    .\/ Endpoint "auction-open" ()
-    .\/ Endpoint "auction-bid" ()
+    .\/ Endpoint "auction-open" AuctionOpenParams
+    .\/ Endpoint "auction-bid" AuctionBidParams
     .\/ Endpoint "auction-close" ()
 
 mkSchemaDefinitions ''NFTAppSchema
