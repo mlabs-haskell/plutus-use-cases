@@ -16,6 +16,7 @@ data WbeClientCfg = WbeClientCfg
 
 balance :: WbeClientCfg -> WbeExportTx -> IO (Either String (WbeTx Balanced))
 balance = _balance
+
 _balance :: WbeClientCfg -> WbeExportTx -> IO (Either String (WbeTx Balanced))  
 _balance WbeClientCfg{..} reqBody = runReq defaultHttpConfig $ do
   r <-

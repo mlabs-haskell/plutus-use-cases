@@ -47,6 +47,7 @@ common common-imports
     , memory
     , req
     , lens-aeson
+    , base16-bytestring
 
 common common-language
     default-extensions:
@@ -170,6 +171,7 @@ library
     Mlabs.WbeTest.TestStand
     Mlabs.WbeTest.Types
     Mlabs.WbeTest.TxBuilder
+    Mlabs.WbeTest.TxCheck
 
 executable mlabs-plutus-use-cases
   import:  common-imports

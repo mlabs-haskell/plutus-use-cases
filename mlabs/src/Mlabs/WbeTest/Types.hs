@@ -39,6 +39,7 @@ instance ToJSON WbeExportTx where
       [ "transaction" .= Text.decodeUtf8 (Base16.encode teRawCBOR)
       , "inputs" .= (inputsForWbe <$> lookups)
       , "signatories" .= signatories
+      , "redeemers" .= signatories
       ]
     where
       C.TextEnvelope {teRawCBOR} = C.serialiseToTextEnvelope Nothing partialTx
