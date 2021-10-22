@@ -18,7 +18,7 @@ import Prelude qualified as Hask
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 
-import Ledger (PubKeyHash, TokenName, TxOutRef, POSIXTime)
+import Ledger (POSIXTime, PubKeyHash, TokenName, TxOutRef)
 import PlutusTx qualified
 import Schema (ToSchema)
 
@@ -58,8 +58,9 @@ data AuctionBid = AuctionBid
     ab'bid :: Integer
   , -- | Bidder's wallet pubkey
     ab'bidder :: UserId
-  } deriving stock (Hask.Show, Generic, Hask.Eq)
-    deriving anyclass (FromJSON, ToJSON, ToSchema)
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
 PlutusTx.unstableMakeIsData ''AuctionBid
 PlutusTx.makeLift ''AuctionBid
 
@@ -75,8 +76,9 @@ data AuctionState = AuctionState
     as'deadline :: POSIXTime
   , -- | Minimum bid amount
     as'minBid :: Integer
-  } deriving stock (Hask.Show, Generic, Hask.Eq)
-    deriving anyclass (FromJSON, ToJSON, ToSchema)
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
 PlutusTx.unstableMakeIsData ''AuctionState
 PlutusTx.makeLift ''AuctionState
 

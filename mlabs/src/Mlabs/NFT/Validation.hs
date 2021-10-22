@@ -41,6 +41,7 @@ import Ledger (
   TxOutRef,
   ValidatorHash,
   Value,
+  contains,
   findDatumHash,
   findOwnInput,
   getContinuingOutputs,
@@ -48,16 +49,15 @@ import Ledger (
   ownCurrencySymbol,
   scriptContextTxInfo,
   scriptCurrencySymbol,
+  to,
   txInInfoOutRef,
   txInfoData,
   txInfoInputs,
   txInfoMint,
   txInfoOutputs,
   txInfoSignatories,
-  valuePaidTo,
-  to,
-  contains,
   txInfoValidRange,
+  valuePaidTo,
  )
 
 import Ledger.Typed.Scripts (
@@ -243,7 +243,6 @@ mkTxPolicy datum act ctx =
           && traceIfFalse "Auction deadline reached" correctAuctionBidSlotInterval
       CloseAuctionAct ->
         traceIfFalse "No auction is in progress" (not noAuctionInProgress)
-
   where
     ------------------------------------------------------------------------------
     -- Utility functions.
@@ -276,13 +275,12 @@ mkTxPolicy datum act ctx =
 
     auctionBidHighEnough :: Integer -> Bool
     auctionBidHighEnough amount =
-        withAuctionState $ \auctionState -> amount >= as'minBid auctionState
+      withAuctionState $ \auctionState -> amount >= as'minBid auctionState
 
     correctAuctionBidSlotInterval :: Bool
     correctAuctionBidSlotInterval =
-        withAuctionState $ \auctionState ->
-                             (to $ as'deadline auctionState) `contains` txInfoValidRange info
-
+      withAuctionState $ \auctionState ->
+        (to $ as'deadline auctionState) `contains` txInfoValidRange info
 
     -- Check if the datum attached is also present in the is also in the transaction.
     correctDatum :: Bool
