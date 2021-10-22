@@ -45,6 +45,8 @@ import Ledger.Value as Value (TokenName (..), singleton, unAssetClass, valueOf)
 import Playground.Contract (mkSchemaDefinitions)
 
 import Mlabs.NFT.Types (
+  AuctionBidParams (..),
+  AuctionOpenParams (..),
   BuyRequestUser (..),
   Content (..),
   MintParams (..),
@@ -52,8 +54,6 @@ import Mlabs.NFT.Types (
   QueryResponse (..),
   SetPriceParams (..),
   UserId (..),
-  AuctionOpenParams (..),
-  AuctionBidParams (..),
  )
 
 import Mlabs.NFT.Validation (

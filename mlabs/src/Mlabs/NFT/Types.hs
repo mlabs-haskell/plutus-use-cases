@@ -13,7 +13,7 @@ module Mlabs.NFT.Types (
   AuctionState (..),
   AuctionOpenParams (..),
   AuctionBidParams (..),
-  AuctionCloseParams (..)
+  AuctionCloseParams (..),
 ) where
 
 import PlutusTx.Prelude
