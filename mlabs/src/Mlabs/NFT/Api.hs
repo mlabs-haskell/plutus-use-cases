@@ -17,7 +17,8 @@ import Mlabs.NFT.Contract qualified as NFTContract
 import Mlabs.NFT.Contract.Init (initApp)
 import Mlabs.NFT.Contract.Mint (mint)
 import Mlabs.NFT.Contract.SetPrice (setPrice)
-import Mlabs.NFT.Types (BuyRequestUser (..), MintParams (..), NftAppSymbol (..), NftId (..), QueryResponse (..), SetPriceParams (..))
+import Mlabs.NFT.Contract.Buy (buy)
+import Mlabs.NFT.Types (BuyRequestUser (..), MintParams (..), NftId (..), QueryResponse (..), SetPriceParams (..), NftAppSymbol(..))
 import Mlabs.Plutus.Contract (selectForever)
 
 -- | A common App schema works for now.
@@ -47,7 +48,7 @@ endpoints :: NftAppSymbol -> ApiUserContract ()
 endpoints appSymbol =
   selectForever
     [ endpoint @"mint" (mint appSymbol)
-    , endpoint @"buy" NFTContract.buy
+    , endpoint @"buy" (buy appSymbol)
     , endpoint @"set-price" (setPrice appSymbol)
     --, endpoint @"query-authentic-nft" NFTContract.queryAuthenticNFT
     ]

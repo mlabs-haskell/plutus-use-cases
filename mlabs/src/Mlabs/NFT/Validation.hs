@@ -75,6 +75,7 @@ import Ledger.Value (
   singleton,
   valueOf,
  )
+import Data.Function (on)
 import Plutus.V1.Ledger.Value (AssetClass (AssetClass), assetClassValueOf, isZero)
 import PlutusTx qualified
 import Schema (ToSchema)
@@ -119,7 +120,15 @@ mKTxPolicy datum' act ctx =
         && traceIfFalse "NFT sent to wrong address." tokenSentToCorrectAddress
         && traceIfFalse "Transaction cannot mint." noMint
         && case act of
-          BuyAct {..} -> True -- TODO implement it
+          BuyAct {..} ->
+            traceIfFalse "NFT not for sale." nftForSale
+            && traceIfFalse "Bid is too low for the NFT price." (bidHighEnough act'bid)
+            && traceIfFalse "Datum is not consistent, illegaly altered." consistentDatumBuy
+            && if ownerIsAuthor
+               then traceIfFalse "Amount paid to author/owner does not match bid." (correctPaymentOnlyAuthor act'bid)
+               else
+                 traceIfFalse "Current owner is not paid their share." (correctPaymentOwner act'bid)
+                 && traceIfFalse "Author is not paid their share." (correctPaymentAuthor act'bid)
           SetPriceAct {} ->
             traceIfFalse "Datum does not correspond to NFTId, no datum is present, or more than one suitable datums are present." correctDatumSetPrice
               && traceIfFalse "Only owner exclusively can set NFT price." ownerSetsPrice
@@ -128,6 +137,10 @@ mKTxPolicy datum' act ctx =
         nInfo = node'information node
         nNext = node'next node
         nAppInstance = node'appInstance node
+        prevDatum :: DatumNft = head . getCtxDatum $ ctx
+        prevNode' :: Maybe NftListNode = case prevDatum of
+          NodeDatum prevNode -> Just prevNode
+          _ -> Nothing
         ------------------------------------------------------------------------------
         -- Utility functions.
 
@@ -143,8 +156,53 @@ mKTxPolicy datum' act ctx =
 
         containsNft v = valueOf v (instanceCurrency $ node'appInstance node) (nftTokenName datum') == 1
 
+        getAda = flip assetClassValueOf $ assetClass Ada.adaSymbol Ada.adaToken
+
+        -- Check if the Person is being reimbursed accordingly, with the help of 2
+        -- getter functions. Helper function.
+        correctPayment userIdGetter shareCalcFn bid = personGetsAda >= personWantsAda
+          where
+            info = scriptContextTxInfo ctx
+            personId = getUserId . userIdGetter $ node
+            share = info'share . node'information  $ node
+            personGetsAda = getAda $ valuePaidTo info personId
+            personWantsAda = getAda $ shareCalcFn bid share
+
+
         ------------------------------------------------------------------------------
         -- Checks
+
+        consistentDatumBuy = case prevDatum of
+          NodeDatum prevNode ->
+            on (==) node'next prevNode node
+            && on (==) node'appInstance prevNode node
+            && on (==) (info'author . node'information) prevNode node
+            && on (==) (info'share . node'information) prevNode node
+            && on (==) (info'id . node'information) prevNode node
+          _ -> False
+
+        -- Check if nft is for sale (price is not Nothing)
+        nftForSale = maybe False (isJust . info'price . node'information) prevNode'
+
+        ownerIsAuthor = case prevDatum of
+          NodeDatum oldNode -> (info'owner . node'information $ oldNode) == (info'author . node'information $ oldNode)
+          _ -> False
+
+        -- Check if author of NFT receives share
+        correctPaymentAuthor = correctPayment (info'author . node'information) calculateAuthorShare
+
+        -- Check if owner of NFT receives share
+        correctPaymentOwner = correctPayment (info'owner . node'information) calculateOwnerShare
+
+        -- Check if author of NFT receives share when is also owner
+        correctPaymentOnlyAuthor bid = authorGetsAda >= bid
+          where
+            info = scriptContextTxInfo ctx
+            author = getUserId . info'author . node'information $ node
+            authorGetsAda = getAda $ valuePaidTo info author
+
+        -- Check if buy bid is higher or equal than price
+        bidHighEnough bid = maybe False (maybe False (>= bid) . info'price . node'information) prevNode'
 
         -- Check if the datum attached is also present in the set price transaction.
         correctDatumSetPrice :: Bool
@@ -156,13 +214,15 @@ mKTxPolicy datum' act ctx =
                 [_] -> True
                 _ -> False
 
-        consistentDatumSetPrice =
-          let prevDatum :: DatumNft = head . getCtxDatum $ ctx
-           in case prevDatum of
-                NodeDatum prevNode ->
-                  node'next prevNode == node'next node
-                    && node'appInstance prevNode == node'appInstance node
-                _ -> False
+        consistentDatumSetPrice = case prevDatum of
+          NodeDatum prevNode ->
+            on (==) node'next prevNode node
+            && on (==) node'appInstance prevNode node
+            && on (==) (info'author . node'information) prevNode node
+            && on (==) (info'owner . node'information) prevNode node
+            && on (==) (info'share . node'information) prevNode node
+            && on (==) (info'id . node'information) prevNode node
+          _ -> False
 
         -- Check if the price of NFT is changed by the owner of NFT
         ownerSetsPrice =

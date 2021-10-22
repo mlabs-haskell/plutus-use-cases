@@ -167,6 +167,7 @@ library
     Mlabs.NFT.Contract.Mint
     Mlabs.NFT.Contract.Aux
     Mlabs.NFT.Contract.SetPrice
+    Mlabs.NFT.Contract.Buy
 
 executable mlabs-plutus-use-cases
   import:  common-imports
