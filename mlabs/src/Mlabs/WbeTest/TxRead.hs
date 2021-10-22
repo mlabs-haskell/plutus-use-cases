@@ -1,9 +1,11 @@
-module Mlabs.WbeTest.TxRead (parseTx) where
+module Mlabs.WbeTest.TxRead (parseTx, toChainIndexTx) where
 
 import Prelude qualified as Hask
 import PlutusTx.Prelude
+import Plutus.ChainIndex (ChainIndexTx)
+import Plutus.Contract.CardanoAPI ( fromCardanoTx, FromCardanoError ) 
 
-import Control.Arrow
+import Control.Arrow ( ArrowChoice(left) )
 
 import Data.ByteArray.Encoding (Base (Base64), convertFromBase)
 import Data.ByteString (ByteString)
@@ -31,4 +33,8 @@ parseTx WbeTx{..} =
     parse = left Hask.show . C.deserialiseFromCBOR (C.proxyToAsType Proxy)
     base64ToBinary = 
       convertFromBase @ByteString @ByteString Base64 
-      . TE.encodeUtf8 
+      . TE.encodeUtf8
+
+
+toChainIndexTx :: C.Tx C.AlonzoEra -> Either Hask.String ChainIndexTx
+toChainIndexTx apiTx = left Hask.show $ fromCardanoTx C.AlonzoEraInCardanoMode apiTx
