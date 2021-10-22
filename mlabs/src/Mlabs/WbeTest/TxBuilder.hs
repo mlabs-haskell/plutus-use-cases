@@ -1,8 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Mlabs.Extract.TxBuilder (
-  WbeExportTx (..),
-  MintBuilder (..),
+module Mlabs.WbeTest.TxBuilder (
   buildTx,
   buildWbeTx,
   buildMintTx,
@@ -11,13 +9,8 @@ module Mlabs.Extract.TxBuilder (
 import qualified Cardano.Api as C
 import qualified Cardano.Api.Shelley as C
 
-import Data.Aeson (KeyValue ((.=)), ToJSON (toJSON), object)
 import Data.Bifunctor (first)
-import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Text (Text)
-
-import GHC.Generics (Generic)
 
 import Mlabs.NFT.Types (Content (..), MintParams (..), NftId (..), UserId (..))
 import Mlabs.NFT.Validation (
@@ -27,14 +20,15 @@ import Mlabs.NFT.Validation (
   txPolicy,
   txScrAddress,
  )
+import Mlabs.WbeTest.Types (MintBuilder (..), WbeExportTx (..))
 
-import Ledger (ChainIndexTxOut, TxOutRef, scriptCurrencySymbol)
+import Ledger (TxOutRef, scriptCurrencySymbol)
 import qualified Ledger.Constraints as Constraints
 import Ledger.Constraints.OffChain (MkTxError (..), UnbalancedTx, mkTx)
 import Ledger.Typed.Scripts.Validators (ValidatorTypes (..), validatorScript)
 import qualified Ledger.Value as Value
 
-import Plutus.Contract.Wallet (ExportTx (..), ExportTxInput (..), export)
+import Plutus.Contract.Wallet (ExportTx (..), export)
 
 import PlutusTx (FromData, ToData)
 import PlutusTx.Prelude
@@ -42,56 +36,6 @@ import PlutusTx.Prelude
 import qualified Prelude as Hask
 
 import Prettyprinter (pretty)
-
--- | Components to manually build an NFT-minting tx
-data MintBuilder = MintBuilder
-  { params :: MintParams
-  , user :: UserId
-  , utxos :: Map TxOutRef ChainIndexTxOut
-  }
-  deriving stock (Hask.Show, Hask.Eq)
-
-{- | Wrapper around 'ExportTx', whose 'ToJSON' instance does not match the format
- expected by the WBE (this should be unecessary after upgrading Plutus to the next
-version, where the serialization mismatch is fixed)
--}
-newtype WbeExportTx = WbeExportTx ExportTx
-  deriving stock (Generic)
-
-instance ToJSON WbeExportTx where
-  toJSON (WbeExportTx ExportTx {..}) =
-    object
-      [ "transactions" .= C.serialiseToTextEnvelope Nothing partialTx
-      , "inputs" .= (inputsForWbe <$> lookups)
-      , "signatories" .= signatories
-      ]
-    where
-      inputsForWbe (ExportTxInput (C.TxIn txId txIx) (C.TxOut addr val dat)) =
-        object $
-          Hask.mconcat
-            [
-              [ "id" .= txId
-              , "index" .= txIx
-              , "address" .= addr
-              , "assets" .= mempty @[Value.Value] -- Hard-coded for UTxO with only Ada
-              ]
-            , case val of
-                C.TxOutAdaOnly _ ll -> mkAmt ll
-                C.TxOutValue _ v -> case C.valueToList v of
-                  [(C.AdaAssetId, qt)] -> mkAmt qt
-                  _ -> mempty
-            , case dat of
-                C.TxOutDatumHash _ h -> ["datum" .= h]
-                C.TxOutDatumHashNone -> mempty
-            ]
-        where
-          mkAmt v =
-            [ "amount"
-                .= object
-                  [ "unit" .= ("lovelace" :: Text)
-                  , "quantity" .= v
-                  ]
-            ]
 
 -- | Build an 'WbeExportTx' from arbitrary lookups and transactions constraints
 buildWbeTx ::
