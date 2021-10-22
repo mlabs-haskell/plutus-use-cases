@@ -184,9 +184,13 @@ library
     Mlabs.System.Console.Utils
     Mlabs.Utils.Wallet
     Mlabs.Plutus.Contracts.Currency
-    Mlabs.Extract.NftTrace
-    Mlabs.Extract.TxRead
-    Mlabs.Extract.WbeClient
+    Mlabs.NFT.Contract
+    Mlabs.NFT.Validation
+    Mlabs.WbeTest.NftTrace
+    Mlabs.WbeTest.TxRead
+    Mlabs.WbeTest.WbeClient
+    Mlabs.WbeTest.TestStand
+    Mlabs.WbeTest.Types
 
 executable mlabs-plutus-use-cases
   import:  common-imports
