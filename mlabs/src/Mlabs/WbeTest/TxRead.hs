@@ -1,9 +1,9 @@
-module Mlabs.WbeTest.TxRead (parseTx, toChainIndexTx) where
+module Mlabs.WbeTest.TxRead (parseTx, parseApiTx, toChainIndexTx) where
 
 import Prelude qualified as Hask
 import PlutusTx.Prelude
 import Plutus.ChainIndex (ChainIndexTx)
-import Plutus.Contract.CardanoAPI ( fromCardanoTx, FromCardanoError ) 
+import Plutus.Contract.CardanoAPI ( fromCardanoTx) 
 
 import Control.Arrow ( ArrowChoice(left) )
 
@@ -25,9 +25,11 @@ import Mlabs.WbeTest.Types
 -- readExported exportFile =
 --   LB.readFile exportFile >>= return . decode
 
+parseTx  :: WbeTx a -> Either Hask.String ChainIndexTx
+parseTx wbeTx = parseApiTx wbeTx >>= toChainIndexTx
 
-parseTx :: WbeTx a -> Either Hask.String  (C.Tx C.AlonzoEra)
-parseTx WbeTx{..} =
+parseApiTx :: WbeTx a -> Either Hask.String  (C.Tx C.AlonzoEra)
+parseApiTx WbeTx{..} =
   base64ToBinary transaction >>= parse
   where
     parse = left Hask.show . C.deserialiseFromCBOR (C.proxyToAsType Proxy)

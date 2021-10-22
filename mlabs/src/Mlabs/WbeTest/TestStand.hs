@@ -33,11 +33,9 @@ runBalanceTest call cfg exportTx = do
     -- todo something to proof that balncing really happened =)
     examine wbeTx = do
       putStrLn "Decerialized APi Tx:"
-      print $ parseTx wbeTx
-      putStrLn ""
+      print $ parseApiTx wbeTx
       putStrLn "Corresponging ChainIndexTx:"
-      print $ parseTx wbeTx >>= toChainIndexTx
-
+      print $ parseTx wbeTx 
 
 doFakeBalance :: BalanceCall
 doFakeBalance _ _ = return . Right 
