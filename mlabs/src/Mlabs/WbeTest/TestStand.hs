@@ -1,9 +1,23 @@
-module Mlabs.WbeTest.TestStand (run) where
+module Mlabs.WbeTest.TestStand (run, runSimple) where
 
 import Prelude
 import Mlabs.WbeTest.TxRead
+import Mlabs.WbeTest.TxBuilder
 import Mlabs.WbeTest.WbeClient as WbeClient
 import Mlabs.WbeTest.Types
+import Mlabs.WbeTest.TxCheck
+
+-- simple test imports
+import Ledger.Constraints qualified as Constraints
+import Ledger.Crypto (PubKeyHash (..), pubKeyHash)
+import qualified Cardano.Api as C
+import qualified Cardano.Api.Shelley as C
+import Data.Aeson
+import Plutus.V1.Ledger.Ada (adaValueOf)
+import Data.Void
+import Data.Maybe (fromJust)
+import Plutus.Contract.Wallet (ExportTx (..))
+-- simple test imports -- END
 
 testnetWalletId :: WalletId
 testnetWalletId = "01f9f1dda617eb8bff71468c702afceee5b1ccbf"
@@ -18,7 +32,7 @@ clientCfg = WbeClientCfg
 run ::IO ()
 run = do
   -- runBalanceTest WbeClient.balance clientCfg WbeExportTx
-  runBalanceTest doFakeBalance clientCfg WbeExportTx
+  -- runBalanceTest doFakeBalance clientCfg WbeExportTx
   runSignTest
 
 type BalanceCall = WbeClientCfg -> WbeExportTx -> IO (Either String (WbeTx Balanced))
@@ -32,10 +46,12 @@ runBalanceTest call cfg exportTx = do
   where
     -- todo something to proof that balncing really happened =)
     examine wbeTx = do
-      putStrLn "Decerialized APi Tx:"
+      putStrLn "Balanced API Tx:"
       print $ parseApiTx wbeTx
-      putStrLn "Corresponging ChainIndexTx:"
+      putStrLn "\nCorresponging balanced ChainIndexTx:"
       print $ parseTx wbeTx 
+      putStrLn "\nCheck:"
+      print $ checkBalanced exportTx wbeTx 
 
 doFakeBalance :: BalanceCall
 doFakeBalance _ _ = return . Right 
@@ -44,3 +60,23 @@ doFakeBalance _ _ = return . Right
 
 runSignTest :: IO ()
 runSignTest = putStrLn "TODO: WBE sign test"
+
+
+runSimple :: IO ()
+runSimple = do
+  Just (params :: C.ProtocolParameters)
+    <- decodeFileStrict "./src/Mlabs/WbeTest/network_params.json"
+  let netId = C.Testnet $ C.NetworkMagic 8
+      pkh :: PubKeyHash = 
+        fromJust $ decode $
+          "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d2\"}" 
+      value = adaValueOf 5
+      txC = Constraints.mustPayToPubKey pkh value
+
+      ethTx = WbeExportTx <$> buildTx @Void netId params mempty txC
+  Right  tx <- return ethTx
+  putStrLn "Submitted for balancing:"
+  print $ let (WbeExportTx (ExportTx apiTx _ _)) = tx in toChainIndexTx apiTx
+  putStrLn ""
+  runBalanceTest WbeClient.balance clientCfg tx
+  return ()
