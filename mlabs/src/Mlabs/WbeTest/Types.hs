@@ -1,3 +1,5 @@
+{-# LANGUAGE NamedFieldPuns #-}
+
 module Mlabs.WbeTest.Types
 ( WbeExportTx(..),
   WalletId,
@@ -20,6 +22,8 @@ import PlutusTx.Prelude
 import Mlabs.NFT.Types (MintParams(..), UserId (..))
 import Data.Map (Map)
 import Ledger (TxOutRef, ChainIndexTxOut)
+import qualified Data.Text.Encoding as Text
+import qualified Data.ByteString.Base16 as Base16
 
 
 {- | Wrapper around 'ExportTx', whose 'ToJSON' instance does not match the format
@@ -32,11 +36,13 @@ newtype WbeExportTx = WbeExportTx ExportTx
 instance ToJSON WbeExportTx where
   toJSON (WbeExportTx ExportTx {..}) =
     object
-      [ "transactions" .= C.serialiseToTextEnvelope Nothing partialTx
+      [ "transaction" .= Text.decodeUtf8 (Base16.encode teRawCBOR)
       , "inputs" .= (inputsForWbe <$> lookups)
       , "signatories" .= signatories
       ]
     where
+      C.TextEnvelope {teRawCBOR} = C.serialiseToTextEnvelope Nothing partialTx
+
       inputsForWbe (ExportTxInput (C.TxIn txId txIx) (C.TxOut addr val dat)) =
         object $
           Hask.mconcat
