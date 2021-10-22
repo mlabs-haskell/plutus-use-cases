@@ -155,7 +155,8 @@ mint symbol params = do
         token = Value.singleton (app'symbol appSymbol) (TokenName . getDatumValue . pi'datum $ insertPoint) 1
         newToken = assetClass (app'symbol appSymbol) (TokenName .getDatumValue . NodeDatum $ newNode)
         newDatum = updatePointer (pi'datum insertPoint) (Pointer newToken)
-        oref     = pi'TOR insertPoint 
+        oref     = pi'TOR insertPoint
+        redeemer = asRedeemer $ MintAct
         updatePointer :: DatumNft -> Pointer -> DatumNft
         updatePointer oldDatum newPointer =
           case oldDatum of
@@ -171,6 +172,7 @@ mint symbol params = do
         tx =
           mconcat
             [ Constraints.mustPayToTheScript newDatum token
+            , Constraints.mustSpendScriptOutput oref redeemer
             ]
 
     mintParamsToInfo :: MintParams -> UserId -> InformationNft

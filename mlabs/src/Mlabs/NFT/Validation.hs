@@ -112,8 +112,10 @@ mintPolicy appInstance =
 -- | A validator script for the user actions.
 mKTxPolicy :: DatumNft -> UserAct -> ScriptContext -> Bool
 mKTxPolicy datum' act ctx =
+  -- I think the tests should be rethough on the basis of the Redeemer - let's
+  -- discuss on Monday. todo: potential fix 
   case datum' of
-    HeadDatum _ -> traceError "Head Datum should not be provided"
+    HeadDatum _ -> True -- this sometimes does happen.
     NodeDatum node ->
       traceIfFalse "New Price cannot be negative." priceNotNegative'
         && traceIfFalse "Previous TX is not consumed." prevTxConsumed
