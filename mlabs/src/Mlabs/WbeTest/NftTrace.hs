@@ -1,4 +1,4 @@
-module Mlabs.Extract.NftTrace (run, runTrace) where
+module Mlabs.WbeTest.NftTrace (run, runTrace) where
 
 import PlutusTx.Prelude
 import Prelude qualified as Hask
