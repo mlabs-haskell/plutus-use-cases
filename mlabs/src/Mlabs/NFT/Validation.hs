@@ -55,6 +55,9 @@ import Ledger (
   txInfoOutputs,
   txInfoSignatories,
   valuePaidTo,
+  to,
+  contains,
+  txInfoValidRange,
  )
 
 import Ledger.Typed.Scripts (
@@ -232,6 +235,14 @@ mkTxPolicy datum act ctx =
           && traceIfFalse "Price can not be negative." priceNotNegative'
           && traceIfFalse "Only owner exclusively can set NFT price." ownerSetsPrice
       OpenAuctionAct ->
+        traceIfFalse "Auction is in progress" noAuctionInProgress
+      BidAuctionAct {..} ->
+        traceIfFalse "No auction is in progress" (not noAuctionInProgress)
+          -- Treats dNft'price as a minimum bid in an auction
+          && traceIfFalse "Auction bid is too low" (auctionBidHighEnough act'bid)
+          && traceIfFalse "Auction deadline reached" correctAuctionBidSlotInterval
+      CloseAuctionAct ->
+        traceIfFalse "No auction is in progress" (not noAuctionInProgress)
 
   where
     ------------------------------------------------------------------------------
@@ -250,12 +261,28 @@ mkTxPolicy datum act ctx =
 
     getAda = flip assetClassValueOf $ assetClass Ada.adaSymbol Ada.adaToken
 
+    info = scriptContextTxInfo ctx
+
     ------------------------------------------------------------------------------
     -- Checks
     ------------------------------------------------------------------------------
     -- Check whether there's auction in progress and disallow buy/setprice actions.
     noAuctionInProgress :: Bool
-    noAuctionInProgress = isNothing $ dNft'auctionState datum
+    noAuctionInProgress = isNothing mauctionState
+
+    mauctionState = dNft'auctionState datum
+
+    withAuctionState f = maybe False f mauctionState
+
+    auctionBidHighEnough :: Integer -> Bool
+    auctionBidHighEnough amount =
+        withAuctionState $ \auctionState -> amount >= as'minBid auctionState
+
+    correctAuctionBidSlotInterval :: Bool
+    correctAuctionBidSlotInterval =
+        withAuctionState $ \auctionState ->
+                             (to $ as'deadline auctionState) `contains` txInfoValidRange info
+
 
     -- Check if the datum attached is also present in the is also in the transaction.
     correctDatum :: Bool
@@ -270,8 +297,7 @@ mkTxPolicy datum act ctx =
     -- Check if the datum in the datum is also the same in the transaction, v2.
     correctDatum' :: Bool
     correctDatum' =
-      let info = scriptContextTxInfo ctx
-          mDatums = findDatumHash (Datum . PlutusTx.toBuiltinData $ datum) info
+      let mDatums = findDatumHash (Datum . PlutusTx.toBuiltinData $ datum) info
        in maybe False (const True) mDatums
 
     ------------------------------------------------------------------------------
@@ -293,7 +319,6 @@ mkTxPolicy datum act ctx =
     -- getter functions. Helper function.
     correctPayment f shareCalcFn bid = personGetsAda >= personWantsAda
       where
-        info = scriptContextTxInfo ctx
         personId = getUserId . f $ datum
         share = dNft'share datum
         personGetsAda = getAda $ valuePaidTo info personId
@@ -312,7 +337,6 @@ mkTxPolicy datum act ctx =
     -- owner and author.
     correctPaymentOnlyAuthor bid = authorGetsAda >= bid
       where
-        info = scriptContextTxInfo ctx
         author = getUserId . dNft'author $ datum
         authorGetsAda = getAda $ valuePaidTo info author
 
@@ -346,6 +370,7 @@ mkTxPolicy datum act ctx =
         case act'newPrice action of
           Nothing -> True
           Just x -> x > 0
+      _ -> False
 
     ------------------------------------------------------------------------------
     -- Check if the previous Tx containing the token is consumed.

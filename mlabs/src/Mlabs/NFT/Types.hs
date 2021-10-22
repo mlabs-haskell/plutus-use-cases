@@ -65,7 +65,7 @@ PlutusTx.makeLift ''AuctionBid
 
 instance Eq AuctionBid where
   {-# INLINEABLE (==) #-}
-  (AuctionBid bid1 bidder1) = (AuctionBid bid2 bidder2) =
+  (AuctionBid bid1 bidder1) == (AuctionBid bid2 bidder2) =
     bid1 == bid2 && bidder1 == bidder2
 
 data AuctionState = AuctionState
@@ -73,6 +73,8 @@ data AuctionState = AuctionState
     as'highestBid :: Maybe AuctionBid
   , -- | Deadline
     as'deadline :: POSIXTime
+  , -- | Minimum bid amount
+    as'minBid :: Integer
   } deriving stock (Hask.Show, Generic, Hask.Eq)
     deriving anyclass (FromJSON, ToJSON, ToSchema)
 PlutusTx.unstableMakeIsData ''AuctionState
@@ -80,8 +82,8 @@ PlutusTx.makeLift ''AuctionState
 
 instance Eq AuctionState where
   {-# INLINEABLE (==) #-}
-  (AuctionState bid1 deadline1) == (AuctionState bid2 deadline2) =
-    bid1 == bid2 && deadline1 == deadline2
+  (AuctionState bid1 deadline1 minBid1) == (AuctionState bid2 deadline2 minBid2) =
+    bid1 == bid2 && deadline1 == deadline2 && minBid1 == minBid2
 
 {- | Unique identifier of NFT.
  The NftId contains a human readable title, the hashed information of the
