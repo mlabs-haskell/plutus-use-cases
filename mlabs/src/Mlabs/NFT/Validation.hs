@@ -77,7 +77,6 @@ import Ledger.Value (
   singleton,
   valueOf,
  )
-import Data.Function (on)
 import Plutus.V1.Ledger.Value (AssetClass (..), assetClassValueOf, isZero)
 import PlutusTx qualified
 import Schema (ToSchema)
@@ -95,30 +94,21 @@ mkMintPolicy appInstance act ctx =
   traceIfFalse "Only One Token Can be Minted" checkMintedAmount
     && case act of
       Mint nftid ->
-        traceIfFalse "Second node changed." (second == newSecond)
-          && traceIfFalse "Inserted node changed." (inserted == newInserted)
-          && traceIfFalse "Only pointer of first node can change." checkFirstNodeAltered
-          && traceIfFalse "Old first node must point to second node." (first `pointsTo` second)
-          && traceIfFalse "New first node must point to new node." (newFirst `pointsTo` inserted)
-          && traceIfFalse "New node must point to second node." (inserted `pointsTo` second)
+        traceIfFalse "Only pointer of first node can change." checkFirstNodeAltered
+          && traceIfFalse "Old first node must point to second node." (first `pointsTo'` second)
+          && traceIfFalse "New first node must point to new node." (newFirst `pointsTo` newInserted)
+          && traceIfFalse "New node must point to second node." (newInserted `pointsTo'` second)
           && traceIfFalse "New price cannot be negative." priceNotNegative'
           && traceIfFalse "Currency symbol must match app instance" checkCurrencySymbol
           && traceIfFalse "Minted tokens are sent to script address" checkSentAddress
       Initialise ->
-        traceIfFalse "The token is not present." True
-          && traceIfFalse "The initial token is not being consumed." True
-          && traceIfFalse "The token is not sent to the right address" True
+        traceIfFalse "The token is not present." True -- todo
+          && traceIfFalse "The token is not sent to the right address" True -- todo
   where
     info = scriptContextTxInfo ctx
     scriptAddress = appInstance'Address appInstance
 
-    -- Tuple bouble sort
-    sort3 =
-      (\(a, b, c) -> if a > b then (b, a, c) else (a, b, c)) .
-      (\(a, b, c) -> if b > c then (a, c, b) else (a, b, c)) .
-      (\(a, b, c) -> if a > b then (b, a, c) else (a, b, c))
-
-    priceNotNegative' = case inserted of
+    priceNotNegative' = case newInserted of
       NodeDatum node -> priceNotNegative (info'price . node'information $ node)
       _ -> False
 
@@ -129,32 +119,38 @@ mkMintPolicy appInstance act ctx =
 
     checkCurrencySymbol =
       getAppInstance first == appInstance
-      && getAppInstance inserted == appInstance
-      && getAppInstance second == appInstance
+        && getAppInstance newInserted == appInstance
 
-    (newFirst, newInserted, newSecond) = case getContinuingOutputs ctx of
-      outs@[_,_,_] ->
-        let datums :: [DatumNft] = mapMaybe (PlutusTx.fromBuiltinData . getDatum) . mapMaybe (\hash -> findDatum hash info) . mapMaybe txOutDatumHash $ outs
-        in case datums of
-          [x, y, z] -> sort3 (x, y, z)
-          _ -> traceError "Expected exactly three continuing outputs with datums"
-      _ -> traceError "Expected exactly three continuing outputs"
+    (newFirst, newInserted) =
+      let outs = getContinuingOutputs ctx
+          datums :: [DatumNft] =
+            mapMaybe (PlutusTx.fromBuiltinData . getDatum)
+              . mapMaybe (\hash -> findDatum hash info)
+              . mapMaybe txOutDatumHash
+              $ outs
+       in case datums of
+            [x, y] -> (x, y)
+            _ -> traceError "Expected exactly two continuing outputs with datums."
 
-    (first, inserted, second) = case getCtxDatum ctx of
-      [x, y, z] -> sort3 (x, y, z)
-      _ -> traceError "Expected exactly three inputs with datums"
-    
+    first = case getCtxDatum ctx of
+      [x] -> x
+      _ -> traceError "Expected exactly one input with datums"
+
+    second = getDatumPointer first
+
     checkMintedAmount = case flattenValue (txInfoMint info) of
       [(cur, tn, val)] ->
         ownCurrencySymbol ctx == cur
-          && nftTokenName inserted == tn
+          && nftTokenName newInserted == tn
           && val == 1
       _ -> False
 
     checkFirstNodeAltered = case (first, newFirst) of
       (NodeDatum node1, NodeDatum node2) ->
         node'appInstance node1 == node'appInstance node2
-        && node'information node1 == node'information node2
+          && node'information node1 == node'information node2
+      (HeadDatum node1, HeadDatum node2) ->
+        head'appInstance node1 == head'appInstance node2
       _ -> False
 
     pointsTo d1 d2 = case (d1, d2) of
@@ -162,6 +158,9 @@ mkMintPolicy appInstance act ctx =
         Just ptr -> (== nftTokenName d2) . snd . unAssetClass . pointer'assetClass $ ptr
         Nothing -> False
       _ -> False
+
+    pointsTo' :: DatumNft -> Maybe Pointer -> Bool
+    pointsTo' datum pointer = getDatumPointer datum == pointer
 
 mintPolicy :: NftAppInstance -> MintingPolicy
 mintPolicy appInstance =
@@ -174,26 +173,30 @@ mintPolicy appInstance =
 -- | A validator script for the user actions.
 mKTxPolicy :: DatumNft -> UserAct -> ScriptContext -> Bool
 mKTxPolicy datum' act ctx =
-  -- I think the tests should be rethough on the basis of the Redeemer - let's
-  -- discuss on Monday. todo: potential fix
   case datum' of
-    -- must pay back the Proof Token Always! todo: test
-    HeadDatum _ -> True -- this sometimes does happen.
+    HeadDatum _ ->
+      traceIfFalse "Proof Token must be paid back" True -- todo
+      -- must always pay back the proof Token. This happens when the Head datum is
+      -- updated as the utxo needs to be consumed
     NodeDatum node ->
       traceIfFalse "New Price cannot be negative." priceNotNegative'
         && traceIfFalse "Previous TX is not consumed." prevTxConsumed
         && traceIfFalse "NFT sent to wrong address." tokenSentToCorrectAddress
         && traceIfFalse "Transaction cannot mint." noMint
         && case act of
-          BuyAct {..} ->
-            traceIfFalse "NFT not for sale." nftForSale
-              && traceIfFalse "Bid is too low for the NFT price." (bidHighEnough act'bid)
-              && traceIfFalse "Datum is not consistent, illegaly altered." consistentDatumBuy
-              && if ownerIsAuthor
-                then traceIfFalse "Amount paid to author/owner does not match bid." (correctPaymentOnlyAuthor act'bid)
-                else
-                  traceIfFalse "Current owner is not paid their share." (correctPaymentOwner act'bid)
-                    && traceIfFalse "Author is not paid their share." (correctPaymentAuthor act'bid)
+          MintAct {} ->
+            traceIfFalse "Only one token can be minted" True -- todo
+              && traceIfFalse "Proof token must be paid back when using Head" True -- todo
+          BuyAct {} ->
+            let bid = act'bid act
+             in traceIfFalse "NFT not for sale." nftForSale
+                  && traceIfFalse "Bid is too low for the NFT price." (bidHighEnough bid)
+                  && traceIfFalse "Datum is not consistent, illegaly altered." consistentDatumBuy
+                  && if ownerIsAuthor
+                    then traceIfFalse "Amount paid to author/owner does not match bid." (correctPaymentOnlyAuthor bid)
+                    else
+                      traceIfFalse "Current owner is not paid their share." (correctPaymentOwner bid)
+                        && traceIfFalse "Author is not paid their share." (correctPaymentAuthor bid)
           SetPriceAct {} ->
             traceIfFalse "Datum does not correspond to NFTId, no datum is present, or more than one suitable datums are present." correctDatumSetPrice
               && traceIfFalse "Only owner exclusively can set NFT price." ownerSetsPrice

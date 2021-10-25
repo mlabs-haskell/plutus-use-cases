@@ -387,7 +387,11 @@ data UserAct
       { -- | new price for NFT. In Lovelace.
         act'newPrice :: Maybe Integer
       }
-  | MintAct
+  | -- | Mint a new Unique NFT.
+    MintAct
+      { -- | NFT.
+        act'nftId :: NftId
+      }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
 

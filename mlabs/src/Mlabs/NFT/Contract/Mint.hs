@@ -167,9 +167,10 @@ mint symbol params = do
         newToken = assetClass (app'symbol appSymbol) (TokenName .getDatumValue . NodeDatum $ newNode)
         newDatum = updatePointer (Pointer newToken)
         oref = pi'TOR insertPoint
-        redeemer = asRedeemer MintAct
+        redeemer = asRedeemer $ MintAct . NftId . getDatumValue . NodeDatum $ newNode
         oldDatum = pi'datum insertPoint
         uniqueToken = assetClassValue (appInstance'AppAssetClass appInstance) 1
+
         updatePointer :: Pointer -> DatumNft
         updatePointer newPointer =
           case oldDatum of
