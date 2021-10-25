@@ -136,12 +136,20 @@ data UserAct
       }
   | -- | Start NFT auction
     OpenAuctionAct
+      { -- | TODO
+        act'cs :: CurrencySymbol
+      }
   | -- | Make a bid in an auction
     BidAuctionAct
       { -- | bid amount
         act'bid :: Integer
+      , -- | TODO
+        act'cs :: CurrencySymbol
       }
   | CloseAuctionAct
+      { -- | TODO
+        act'cs :: CurrencySymbol
+      }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
 
@@ -157,9 +165,12 @@ instance Eq UserAct where
   (SetPriceAct newPrice1 cs1) == (SetPriceAct newPrice2 cs2) =
     newPrice1 == newPrice2
       && cs1 == cs2
-  OpenAuctionAct == OpenAuctionAct = True
-  (BidAuctionAct bid1) == (BidAuctionAct bid2) = bid1 == bid2
-  CloseAuctionAct == CloseAuctionAct = True
+  (OpenAuctionAct cs1) == (OpenAuctionAct cs2) =
+    cs1 == cs2
+  (BidAuctionAct bid1 cs1) == (BidAuctionAct bid2 cs2) =
+    bid1 == bid2 && cs1 == cs2
+  (CloseAuctionAct cs1) == (CloseAuctionAct cs2) =
+    cs1 == cs2
   _ == _ = False
 
 asRedeemer :: UserAct -> Redeemer
@@ -217,11 +228,11 @@ mkTxPolicy datum act ctx =
     && traceIfFalse "Datum is not present." correctDatum'
     && traceIfFalse "New Price cannot be negative." (setPositivePrice act)
     && traceIfFalse "Previous TX is not consumed." prevTxConsumed
-    -- && traceIfFalse "NFT sent to wrong address." tokenSentToCorrectAddress
-    -- && traceIfFalse "Transaction cannot mint." noMint
+    && traceIfFalse "NFT sent to wrong address." tokenSentToCorrectAddress
+    && traceIfFalse "Transaction cannot mint." noMint
     && case act of
       BuyAct {..} ->
-        traceIfFalse "Auction is in progress" noAuctionInProgress
+        traceIfFalse "Can't buy: Auction is in progress" noAuctionInProgress
           && traceIfFalse "NFT not for sale." nftForSale
           && traceIfFalse "Bid is too low for the NFT price." (bidHighEnough act'bid)
           && traceIfFalse "New owner is not the payer." correctNewOwner
@@ -232,19 +243,17 @@ mkTxPolicy datum act ctx =
               traceIfFalse "Current owner is not paid their share." (correctPaymentOwner act'bid)
                 && traceIfFalse "Author is not paid their share." (correctPaymentAuthor act'bid)
       SetPriceAct {} ->
-        traceIfFalse "Auction is in progress" noAuctionInProgress
+        traceIfFalse "Can't set price: Auction is in progress" noAuctionInProgress
           && traceIfFalse "Price can not be negative." priceNotNegative'
           && traceIfFalse "Only owner exclusively can set NFT price." ownerSetsPrice
-      OpenAuctionAct ->
-        traceIfFalse "Auction is in progress" noAuctionInProgress
-        && traceIfFalse "FOOBAR" False
+      OpenAuctionAct {} ->
+        traceIfFalse "Can't open auction: already in progress" noAuctionInProgress
       BidAuctionAct {..} ->
-        traceIfFalse "No auction is in progress" (not noAuctionInProgress)
-          -- Treats dNft'price as a minimum bid in an auction
+        traceIfFalse "Can't bid: No auction is in progress" (not noAuctionInProgress)
           && traceIfFalse "Auction bid is too low" (auctionBidHighEnough act'bid)
           && traceIfFalse "Auction deadline reached" correctAuctionBidSlotInterval
-      CloseAuctionAct ->
-        traceIfFalse "No auction is in progress" (not noAuctionInProgress)
+      CloseAuctionAct {} ->
+        traceIfFalse "Can't close auction: none in progress" (not noAuctionInProgress)
           && traceIfFalse "Auction deadline not yet reached" auctionDeadlineReached
   where
     ------------------------------------------------------------------------------
@@ -379,9 +388,7 @@ mkTxPolicy datum act ctx =
         case act'newPrice action of
           Nothing -> True
           Just x -> x > 0
-      OpenAuctionAct -> True
-      BidAuctionAct {} -> True
-      CloseAuctionAct -> True
+      _ -> True
 
     ------------------------------------------------------------------------------
     -- Check if the previous Tx containing the token is consumed.

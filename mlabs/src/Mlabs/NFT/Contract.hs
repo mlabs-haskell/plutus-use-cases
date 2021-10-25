@@ -155,8 +155,11 @@ nftIdInit mP = do
 
 openAuction :: AuctionOpenParams -> Contract w NFTAppSchema Text ()
 openAuction (AuctionOpenParams nftId deadline minBid) = do
+  (oref, ciTxOut, oldDatum) <- findNft txScrAddress $ nftId
+
   -- TODO: remove, keep only `findNft`?
-  oldDatum <- getNftDatum nftId
+  -- oldDatum <- getNftDatum nftId
+
   let scrAddress = txScrAddress
       _oref = nftId'outRef . dNft'id $ oldDatum
       nftPolicy = mintPolicy scrAddress _oref nftId
@@ -165,8 +168,6 @@ openAuction (AuctionOpenParams nftId deadline minBid) = do
       isOwner datum pkh = pkh == (getUserId . dNft'owner) datum
 
   when (isJust auctionState) $ Contract.throwError "Can't open: auction is already in progress"
-
-  (oref, ciTxOut, _oldDatum) <- findNft txScrAddress $ nftId
 
   ownPkh <- pubKeyHash <$> Contract.ownPubKey
   unless (isOwner oldDatum ownPkh) $ Contract.throwError "Only owner can start auction"
@@ -187,7 +188,7 @@ openAuction (AuctionOpenParams nftId deadline minBid) = do
           , dNft'price = dNft'price oldDatum
           , dNft'auctionState = Just newAuctionState
           }
-      action = OpenAuctionAct
+      action = OpenAuctionAct (nftCurrency nftId)
       redeemer = asRedeemer action
       newValue = ciTxOut ^. ciTxOutValue -- TODO: why needed?
       newDatum = Datum . PlutusTx.toBuiltinData $ newDatum' -- Serialised Datum
