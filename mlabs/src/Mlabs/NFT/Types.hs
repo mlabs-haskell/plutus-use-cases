@@ -230,7 +230,7 @@ data InformationNft = InformationNft
   deriving anyclass (ToJSON, FromJSON)
 
 instance Ord InformationNft where
-  x <= y = (info'id x) <= (info'id y)
+  x <= y = info'id x <= info'id y
 
 PlutusTx.unstableMakeIsData ''InformationNft
 PlutusTx.makeLift ''InformationNft
@@ -318,7 +318,7 @@ data NftListNode = NftListNode
   deriving anyclass (ToJSON, FromJSON)
 
 instance Ord NftListNode where
-  x <= y = (node'information x) <= (node'information y)
+  x <= y = node'information x <= node'information y
 
 PlutusTx.unstableMakeIsData ''NftListNode
 PlutusTx.makeLift ''NftListNode

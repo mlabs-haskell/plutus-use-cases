@@ -210,7 +210,13 @@ mKTxPolicy datum' act ctx =
         correctDatumSetPrice :: Bool
         correctDatumSetPrice =
           let datums :: [DatumNft] = getCtxDatum ctx
-              nodes :: [NftListNode] = mapMaybe (\d -> case d of NodeDatum n -> Just n; _ -> Nothing) datums
+              nodes :: [NftListNode] =
+                mapMaybe
+                  ( \case
+                      NodeDatum n -> Just n
+                      _ -> Nothing
+                  )
+                  datums
               suitableDatums = filter (== info'id nInfo) . fmap (info'id . node'information) $ nodes
            in case suitableDatums of
                 [_] -> True
