@@ -50,6 +50,9 @@ common common-imports
     , req
     , lens-aeson
     , base16-bytestring
+    , shelley-spec-ledger
+    , ouroboros-consensus-shelley
+    , cardano-ledger-core
 
 common common-language
     default-extensions:
@@ -194,6 +197,7 @@ library
     Mlabs.WbeTest.Types
     Mlabs.WbeTest.TxBuilder
     Mlabs.WbeTest.TxCheck
+    Mlabs.WbeTest.CardanoAPI
 
 executable mlabs-plutus-use-cases
   import:  common-imports
