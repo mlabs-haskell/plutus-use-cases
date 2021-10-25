@@ -73,6 +73,7 @@ type UserContract a = forall s. Contract (Last NftId) s Text a
  Attempts to buy a new NFT by changing the owner, pays the current owner and
  the author, and sets a new price for the NFT.
 -}
+
 -- buy :: BuyRequestUser -> UserContract ()
 -- buy (BuyRequestUser nftId bid newPrice) = error ()
 --   oldDatum' <- getNftDatum nftId

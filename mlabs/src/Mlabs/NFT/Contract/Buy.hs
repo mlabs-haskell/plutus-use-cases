@@ -24,10 +24,10 @@ import PlutusTx qualified
 
 import Ledger (
   ChainIndexTxOut,
+  Datum (..),
   PubKeyHash (..),
-  Redeemer(..),
+  Redeemer (..),
   TxOutRef,
-  Datum(..),
   ciTxOutValue,
   pubKeyHash,
   scriptCurrencySymbol,
@@ -58,45 +58,47 @@ buy symbol params = do
     Nothing -> Contract.logError @Hask.String "NFT not for sale."
     Just price ->
       if params.ur'price < price
-      then Contract.logError @Hask.String "Bid price is too low."
-      else do
-        userUtxos <- getUserUtxos
-        let (paidToOwner, paidToAuthor) = calculateShares params.ur'price node.node'information.info'share
-            nftDatum = NodeDatum $ updateDatum ownPkh node
-            nftVal = toOut ^. ciTxOutValue
-            action =
-              BuyAct
-                { act'bid = params.ur'price
-                , act'newPrice = params.ur'newPrice
-                }
-            lookups =
-              mconcat
-              [ Constraints.unspentOutputs userUtxos
-              , Constraints.unspentOutputs $ Map.fromList [ownOrefTxOut]
-              , Constraints.unspentOutputs $ Map.fromList [(oref, toOut)]
-              , Constraints.typedValidatorLookups txPolicy
-              , Constraints.otherScript (validatorScript txPolicy)
-              ]
-            tx =
-              mconcat
-              [ Constraints.mustPayToTheScript nftDatum nftVal
-              , Constraints.mustIncludeDatum (Datum . PlutusTx.toBuiltinData $ nftDatum)
-              , Constraints.mustPayToPubKey (getUserId node.node'information.info'author) paidToAuthor
-              , Constraints.mustPayToPubKey (getUserId node.node'information.info'owner) paidToAuthor
-              , Constraints.mustSpendPubKeyOutput (fst ownOrefTxOut)
-              , Constraints.mustSpendScriptOutput
-                  oref
-                  (Redeemer . PlutusTx.toBuiltinData $ action)
-              ]
-        void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
+        then Contract.logError @Hask.String "Bid price is too low."
+        else do
+          userUtxos <- getUserUtxos
+          let (paidToOwner, paidToAuthor) = calculateShares params.ur'price node.node'information.info'share
+              nftDatum = NodeDatum $ updateDatum ownPkh node
+              nftVal = toOut ^. ciTxOutValue
+              action =
+                BuyAct
+                  { act'bid = params.ur'price
+                  , act'newPrice = params.ur'newPrice
+                  }
+              lookups =
+                mconcat
+                  [ Constraints.unspentOutputs userUtxos
+                  , Constraints.unspentOutputs $ Map.fromList [ownOrefTxOut]
+                  , Constraints.unspentOutputs $ Map.fromList [(oref, toOut)]
+                  , Constraints.typedValidatorLookups txPolicy
+                  , Constraints.otherScript (validatorScript txPolicy)
+                  ]
+              tx =
+                mconcat
+                  [ Constraints.mustPayToTheScript nftDatum nftVal
+                  , Constraints.mustIncludeDatum (Datum . PlutusTx.toBuiltinData $ nftDatum)
+                  , Constraints.mustPayToPubKey (getUserId node.node'information.info'author) paidToAuthor
+                  , Constraints.mustPayToPubKey (getUserId node.node'information.info'owner) paidToAuthor
+                  , Constraints.mustSpendPubKeyOutput (fst ownOrefTxOut)
+                  , Constraints.mustSpendScriptOutput
+                      oref
+                      (Redeemer . PlutusTx.toBuiltinData $ action)
+                  ]
+          void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
   Contract.tell . Last . Just $ params.ur'nftId
   where
     updateDatum newOwner node =
-      node { node'information = node.node'information
-             { info'price = params.ur'newPrice
-             , info'owner = UserId newOwner
-             }
-           }
+      node
+        { node'information =
+            node.node'information
+              { info'price = params.ur'newPrice
+              , info'owner = UserId newOwner
+              }
+        }
 
     getNode (NodeDatum datum, x) = Just (datum, x)
     getNode _ = Nothing
@@ -108,6 +110,7 @@ buy symbol params = do
       NftId ->
       Contract w s Text (NftListNode, (TxOutRef, ChainIndexTxOut)) -- to change to new PointInfo
     findNode appCS nftId = error ()
+
 --      lst <- getDatumsTxsOrdered appCS
 --      let res = find (nftEq nftId) . mapMaybe getNode $ lst
 --      case res of

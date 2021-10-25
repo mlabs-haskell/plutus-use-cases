@@ -161,21 +161,21 @@ fstUtxoAt address = do
 -- | Get the Head of the List
 getHead :: NftAppSymbol -> GenericContract (Maybe PointInfo)
 getHead aSym = do
-  utxos <- getAddrValidUtxos aSym
-  let a = flip Map.filter utxos (\(_, x) -> any isHead . concatMaybe . fmap (fromDatum @DatumNft) . Map.elems $ x ^. citxData)
-  case Map.toList a of
+  head <- filter (isHead . pi'datum) <$> getDatumsTxsOrdered aSym
+  case head of
     [] -> pure Nothing
-    [x] -> Just <$> entryToPointInfo x
-    _ -> Contract.throwError "This should have not happened! More than one Head Datums."
+    [x] -> pure $ Just x
+    y -> do
+      utxos <- getDatumsTxsOrdered aSym
+      Contract.throwError $
+        mconcat
+          [ "This should have not happened! More than one Head Datums. Datums are: "
+          , pack . Hask.show . fmap pi'datum $ utxos
+          ]
   where
-    concatMaybe :: [Maybe a] -> [a]
-    concatMaybe = \case
-      x : xs -> maybe (concatMaybe xs) (\x' -> x' : concatMaybe xs) x
-      [] -> []
-
     isHead = \case
       HeadDatum _ -> True
-      _ -> False
+      NodeDatum _ -> False
 
 entryToPointInfo :: (TxOutRef, (ChainIndexTxOut, ChainIndexTx)) -> GenericContract PointInfo
 entryToPointInfo (oref, (out, tx)) = case readDatum' @DatumNft out of

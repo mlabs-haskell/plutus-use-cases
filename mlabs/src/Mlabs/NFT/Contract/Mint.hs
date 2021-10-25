@@ -82,7 +82,7 @@ mint :: NftAppSymbol -> MintParams -> Contract (Last NftId) s Text ()
 mint symbol params = do
   user <- getUId
   head' <- getHead symbol
-  scrUtxos <- Map.map fst <$> getScriptAddrUtxos
+  scrUtxos <- Map.map fst <$> getAddrValidUtxos symbol
   case head' of
     Nothing -> Contract.throwError @Text "Couldn't find head"
     Just head -> do
@@ -127,11 +127,11 @@ mint symbol params = do
     mintNode appSymbol mintingP newNode nextNode = pure (lookups, tx)
       where
         newTokenValue = Value.singleton (app'symbol appSymbol) (TokenName . getDatumValue . NodeDatum $ newNode) 1
-
+        symbol = app'symbol appSymbol
         newTokenDatum =
           NodeDatum $
             newNode
-              { node'next = Pointer . assetClass (app'symbol appSymbol) . TokenName . getDatumValue . pi'datum <$> nextNode
+              { node'next = Pointer . assetClass symbol . TokenName . getDatumValue . pi'datum <$> nextNode
               }
 
         mintRedeemer = asRedeemer . Mint . NftId . getDatumValue . NodeDatum $ newNode
@@ -155,7 +155,7 @@ mint symbol params = do
         token = Value.singleton (app'symbol appSymbol) (TokenName . getDatumValue . pi'datum $ insertPoint) 1
         newToken = assetClass (app'symbol appSymbol) (TokenName .getDatumValue . NodeDatum $ newNode)
         newDatum = updatePointer (pi'datum insertPoint) (Pointer newToken)
-        oref     = pi'TOR insertPoint
+        oref = pi'TOR insertPoint
         redeemer = asRedeemer $ MintAct
         updatePointer :: DatumNft -> Pointer -> DatumNft
         updatePointer oldDatum newPointer =

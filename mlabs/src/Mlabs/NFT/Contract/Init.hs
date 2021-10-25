@@ -72,13 +72,15 @@ createListHead = do
           emptyTokenName = TokenName PlutusTx.Prelude.emptyByteString
           proofTokenValue = Value.singleton (scriptCurrencySymbol headPolicy) emptyTokenName 1
           initRedeemer = asRedeemer Initialise
+          proofDatum = ProofDatum
           (lookups, tx) =
             ( mconcat
                 [ Constraints.typedValidatorLookups txPolicy
                 , Constraints.mintingPolicy headPolicy
                 ]
             , mconcat
-                [ Constraints.mustPayToTheScript headDatum (uniqueTokenValue <> proofTokenValue)
+                [ Constraints.mustPayToTheScript proofDatum uniqueTokenValue
+                , Constraints.mustPayToTheScript headDatum proofTokenValue
                 , Constraints.mustMintValueWithRedeemer initRedeemer proofTokenValue
                 ]
             )
@@ -89,7 +91,7 @@ createListHead = do
     generateUniqueToken :: GenericContract (AssetClass, Value)
     generateUniqueToken = do
       self <- Ledger.pubKeyHash <$> ownPubKey
-      let nftTokenName = TokenName "H" --PlutusTx.Prelude.emptyByteString
+      let nftTokenName = TokenName "Unique App Token" --PlutusTx.Prelude.emptyByteString
       x <-
         mapError
           (pack . Hask.show @CurrencyError)
