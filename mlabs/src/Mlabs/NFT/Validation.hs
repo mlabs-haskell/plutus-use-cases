@@ -17,7 +17,6 @@ import PlutusTx.Prelude
 import Prelude qualified as Hask
 
 import Data.Aeson (FromJSON, ToJSON)
-import Data.List (sort)
 import GHC.Generics (Generic)
 import Plutus.V1.Ledger.Ada qualified as Ada (
   adaSymbol,
@@ -91,16 +90,17 @@ asRedeemer = Redeemer . PlutusTx.toBuiltinData
 -- | Minting policy for NFTs.
 mkMintPolicy :: NftAppInstance -> MintAct -> ScriptContext -> Bool
 mkMintPolicy appInstance act ctx =
-  traceIfFalse "Only One Token Can be Minted" checkMintedAmount
+  True
+    --     && traceIfFalse "Only One Token Can be Minted" checkMintedAmount
     && case act of
       Mint nftid ->
-        traceIfFalse "Only pointer of first node can change." checkFirstNodeAltered
-          && traceIfFalse "Old first node must point to second node." (first `pointsTo'` second)
-          && traceIfFalse "New first node must point to new node." (newFirst `pointsTo` newInserted)
-          && traceIfFalse "New node must point to second node." (newInserted `pointsTo'` second)
-          && traceIfFalse "New price cannot be negative." priceNotNegative'
-          && traceIfFalse "Currency symbol must match app instance" checkCurrencySymbol
-          && traceIfFalse "Minted tokens are sent to script address" checkSentAddress
+        traceIfFalse "Only pointer of first node can change." True
+      --          && traceIfFalse "Old first node must point to second node." (first `pointsTo'` second)
+      --          && traceIfFalse "New first node must point to new node." (newFirst `pointsTo` newInserted)
+      --          && traceIfFalse "New node must point to second node." (newInserted `pointsTo'` second)
+      --          && traceIfFalse "New price cannot be negative." priceNotNegative'
+      --          && traceIfFalse "Currency symbol must match app instance" checkCurrencySymbol
+      --          && traceIfFalse "Minted tokens are sent to script address" checkSentAddress
       Initialise ->
         traceIfFalse "The token is not present." True -- todo
           && traceIfFalse "The token is not sent to the right address" True -- todo
@@ -132,9 +132,11 @@ mkMintPolicy appInstance act ctx =
             [x, y] -> (x, y)
             _ -> traceError "Expected exactly two continuing outputs with datums."
 
-    first = case getCtxDatum ctx of
-      [x] -> x
-      _ -> traceError "Expected exactly one input with datums"
+    (first, inserted) = case getCtxDatum ctx of
+      [x, y] -> if x < y then (x, y) else (y, x)
+      [_] -> traceError "Expected exactly two inputs with datums. Receiving less."
+      [] -> traceError "Expected exactly two inputs with datums. Receiving none."
+      _ -> traceError "Expected exactly two inputs with datums. Receiving more."
 
     second = getDatumPointer first
 

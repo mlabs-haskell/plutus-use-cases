@@ -90,7 +90,7 @@ mint symbol params = do
           newNode = createNewNode appInstance params user
           nftPolicy = mintPolicy appInstance
       (InsertPoint lNode rNode) <- findInsertPoint symbol newNode
-      (lLk, lCx) <- updateNodePointer appInstance scrUtxos symbol lNode newNode
+      (lLk, lCx) <- updateNodePointer appInstance symbol lNode newNode
       (nLk, nCx) <- mintNode symbol nftPolicy newNode rNode
       let lookups = mconcat [lLk, nLk]
           tx = mconcat [lCx, nCx]
@@ -155,19 +155,18 @@ mint symbol params = do
 
     updateNodePointer ::
       NftAppInstance ->
-      Map.Map TxOutRef ChainIndexTxOut ->
       NftAppSymbol ->
       PointInfo ->
       NftListNode ->
       GenericContract (Constraints.ScriptLookups NftTrade, Constraints.TxConstraints i0 DatumNft)
-    updateNodePointer appInstance scrAddrUtxos appSymbol insertPoint newNode = do
+    updateNodePointer appInstance appSymbol insertPoint newNode = do
       pure (lookups, tx)
       where
         token = Value.singleton (app'symbol appSymbol) (TokenName . getDatumValue . pi'datum $ insertPoint) 1
         newToken = assetClass (app'symbol appSymbol) (TokenName .getDatumValue . NodeDatum $ newNode)
         newDatum = updatePointer (Pointer newToken)
         oref = pi'TOR insertPoint
-        redeemer = asRedeemer $ MintAct . NftId . getDatumValue . NodeDatum $ newNode
+        redeemer = asRedeemer . MintAct . NftId . getDatumValue . NodeDatum $ newNode
         oldDatum = pi'datum insertPoint
         uniqueToken = assetClassValue (appInstance'AppAssetClass appInstance) 1
 
@@ -181,7 +180,7 @@ mint symbol params = do
           mconcat
             [ Constraints.typedValidatorLookups txPolicy
             , Constraints.otherScript (validatorScript txPolicy)
-            , Constraints.unspentOutputs scrAddrUtxos
+            , Constraints.unspentOutputs $ Map.singleton (pi'TOR insertPoint) (pi'CITxO insertPoint)
             ]
         tx =
           mconcat

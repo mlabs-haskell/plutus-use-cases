@@ -133,7 +133,7 @@ data MintAct
     -- unique.
     Mint
       { -- | NftId
-        mint'nftId :: NftId
+        mint'nftId :: !NftId
       }
   | -- | Create the Datum.
     Initialise

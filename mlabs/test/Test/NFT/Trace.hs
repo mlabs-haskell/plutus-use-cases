@@ -54,15 +54,13 @@ mint1Trace = do
         , mp'price = Just 5
         }
 
--- | Tries to Mint the same NFT twice. Should fail
-mint2Trace :: EmulatorTrace ()
-mint2Trace = do
+-- | Two users mint two different artworks.
+mintTrace2 :: EmulatorTrace ()
+mintTrace2 = do
   aSymb <- appInitTrace
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
   h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
   callEndpoint @"mint" h1 artwork
-  void $ Trace.waitNSlots 1
-  callEndpoint @"mint" h1 artwork2
   void $ Trace.waitNSlots 1
   callEndpoint @"mint" h1 artwork2
   where
@@ -76,6 +74,24 @@ mint2Trace = do
     artwork2 =
       MintParams
         { mp'content = Content "Another painting."
+        , mp'title = Title "Fiona Lisa"
+        , mp'share = 1 % 10
+        , mp'price = Just 5
+        }
+
+-- | Two users mint the same artwork.  Should Fail
+mintFail1 :: EmulatorTrace ()
+mintFail1 = do
+  aSymb <- appInitTrace
+  let wallet1 = walletFromNumber 1 :: Emulator.Wallet
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
+  callEndpoint @"mint" h1 artwork
+  void $ Trace.waitNSlots 1
+  callEndpoint @"mint" h1 artwork
+  where
+    artwork =
+      MintParams
+        { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
         , mp'price = Just 5
@@ -155,7 +171,9 @@ testInit = runEmulatorTraceIO $ void appInitTrace
 -- | Test for Minting one token
 testMint = runEmulatorTraceIO mint1Trace
 
-testMint2 = runEmulatorTraceIO mint2Trace
+testMint2 = runEmulatorTraceIO mintTrace2
+
+testAny = runEmulatorTraceIO
 
 -- | Test for prototyping.
 test :: Hask.IO ()
