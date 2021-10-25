@@ -331,8 +331,6 @@ data DatumNft
     HeadDatum NftListHead
   | -- | A node of the list.
     NodeDatum NftListNode
-  | -- | Proof Datum
-    ProofDatum
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
 

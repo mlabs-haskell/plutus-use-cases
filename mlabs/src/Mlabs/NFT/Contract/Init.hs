@@ -72,15 +72,13 @@ createListHead = do
           emptyTokenName = TokenName PlutusTx.Prelude.emptyByteString
           proofTokenValue = Value.singleton (scriptCurrencySymbol headPolicy) emptyTokenName 1
           initRedeemer = asRedeemer Initialise
-          proofDatum = ProofDatum
           (lookups, tx) =
             ( mconcat
                 [ Constraints.typedValidatorLookups txPolicy
                 , Constraints.mintingPolicy headPolicy
                 ]
             , mconcat
-                [ Constraints.mustPayToTheScript proofDatum uniqueTokenValue
-                , Constraints.mustPayToTheScript headDatum proofTokenValue
+                [ Constraints.mustPayToTheScript headDatum (proofTokenValue <> uniqueTokenValue)
                 , Constraints.mustMintValueWithRedeemer initRedeemer proofTokenValue
                 ]
             )

@@ -15,7 +15,7 @@ import Control.Monad (void)
 import Data.Function (on)
 import Data.List qualified as L
 import Data.Map qualified as Map
-import Data.Monoid (Last (..))
+import Data.Monoid (Last (..), (<>))
 import Data.Text (Text, pack)
 import Text.Printf (printf)
 
@@ -36,7 +36,7 @@ import Ledger (
 
 import Ledger.Constraints qualified as Constraints
 import Ledger.Typed.Scripts (validatorScript)
-import Ledger.Value as Value (AssetClass (..), TokenName (..), assetClass, singleton)
+import Ledger.Value as Value (AssetClass (..), TokenName (..), assetClass, assetClassValue, singleton)
 import Plutus.ChainIndex.Tx (ChainIndexTx)
 
 import Mlabs.NFT.Types {-(
@@ -90,7 +90,7 @@ mint symbol params = do
           newNode = createNewNode appInstance params user
           nftPolicy = mintPolicy appInstance
       (InsertPoint lNode rNode) <- findInsertPoint symbol newNode
-      (lLk, lCx) <- updateNodePointer scrUtxos symbol lNode newNode
+      (lLk, lCx) <- updateNodePointer appInstance scrUtxos symbol lNode newNode
       (nLk, nCx) <- mintNode symbol nftPolicy newNode rNode
       let lookups = mconcat [lLk, nLk]
           tx = mconcat [lCx, nCx]
@@ -123,7 +123,12 @@ mint symbol params = do
               EQ -> Contract.throwError @Text "NFT already minted."
               GT -> pure $ InsertPoint x (Just y)
 
-    mintNode :: NftAppSymbol -> MintingPolicy -> NftListNode -> Maybe PointInfo -> GenericContract (Constraints.ScriptLookups NftTrade, Constraints.TxConstraints i0 DatumNft)
+    mintNode ::
+      NftAppSymbol ->
+      MintingPolicy ->
+      NftListNode ->
+      Maybe PointInfo ->
+      GenericContract (Constraints.ScriptLookups NftTrade, Constraints.TxConstraints i0 DatumNft)
     mintNode appSymbol mintingP newNode nextNode = pure (lookups, tx)
       where
         newTokenValue = Value.singleton (app'symbol appSymbol) (TokenName . getDatumValue . NodeDatum $ newNode) 1
@@ -148,17 +153,25 @@ mint symbol params = do
             , Constraints.mustMintValueWithRedeemer mintRedeemer newTokenValue
             ]
 
-    updateNodePointer :: Map.Map TxOutRef ChainIndexTxOut -> NftAppSymbol -> PointInfo -> NftListNode -> GenericContract (Constraints.ScriptLookups NftTrade, Constraints.TxConstraints i0 DatumNft)
-    updateNodePointer scrAddrUtxos appSymbol insertPoint newNode = do
+    updateNodePointer ::
+      NftAppInstance ->
+      Map.Map TxOutRef ChainIndexTxOut ->
+      NftAppSymbol ->
+      PointInfo ->
+      NftListNode ->
+      GenericContract (Constraints.ScriptLookups NftTrade, Constraints.TxConstraints i0 DatumNft)
+    updateNodePointer appInstance scrAddrUtxos appSymbol insertPoint newNode = do
       pure (lookups, tx)
       where
         token = Value.singleton (app'symbol appSymbol) (TokenName . getDatumValue . pi'datum $ insertPoint) 1
         newToken = assetClass (app'symbol appSymbol) (TokenName .getDatumValue . NodeDatum $ newNode)
-        newDatum = updatePointer (pi'datum insertPoint) (Pointer newToken)
+        newDatum = updatePointer (Pointer newToken)
         oref = pi'TOR insertPoint
         redeemer = asRedeemer MintAct
-        updatePointer :: DatumNft -> Pointer -> DatumNft
-        updatePointer oldDatum newPointer =
+        oldDatum = pi'datum insertPoint
+        uniqueToken = assetClassValue (appInstance'AppAssetClass appInstance) 1
+        updatePointer :: Pointer -> DatumNft
+        updatePointer newPointer =
           case oldDatum of
             HeadDatum (NftListHead _ a) -> HeadDatum $ NftListHead (Just newPointer) a
             NodeDatum (NftListNode i _ a) -> NodeDatum $ NftListNode i (Just newPointer) a
@@ -171,7 +184,9 @@ mint symbol params = do
             ]
         tx =
           mconcat
-            [ Constraints.mustPayToTheScript newDatum token
+            [ case oldDatum of
+                NodeDatum _ -> Constraints.mustPayToTheScript newDatum token
+                HeadDatum _ -> Constraints.mustPayToTheScript newDatum (token <> uniqueToken)
             , Constraints.mustSpendScriptOutput oref redeemer
             ]
 
