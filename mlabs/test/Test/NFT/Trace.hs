@@ -5,6 +5,7 @@ import Prelude qualified as Hask
 
 import Data.Monoid (Last (..))
 import Data.Text (Text)
+import Data.Default (def)
 
 import Control.Monad (void)
 import Control.Monad.Freer.Extras.Log as Extra (logInfo)
@@ -12,6 +13,7 @@ import Control.Monad.Freer.Extras.Log as Extra (logInfo)
 import Plutus.Trace.Emulator (EmulatorTrace, activateContractWallet, callEndpoint, runEmulatorTraceIO)
 import Plutus.Trace.Emulator qualified as Trace
 import Wallet.Emulator qualified as Emulator
+import Ledger.TimeSlot (slotToBeginPOSIXTime)
 
 import Mlabs.Utils.Wallet (walletFromNumber)
 
@@ -135,6 +137,40 @@ queryPriceTrace = do
         , mp'price = Just 100
         }
 
+
+auctionTrace1 :: EmulatorTrace ()
+auctionTrace1 = do
+  let wallet1 = walletFromNumber 1 :: Emulator.Wallet
+      wallet2 = walletFromNumber 2 :: Emulator.Wallet
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 endpoints
+  h2 :: AppTraceHandle <- activateContractWallet wallet2 endpoints
+  callEndpoint @"mint" h1 artwork
+
+  void $ Trace.waitNSlots 1
+  oState <- Trace.observableState h1
+  nftId <- case getLast oState of
+    Nothing -> Trace.throwError (Trace.GenericError "NftId not found")
+    Just nid -> return nid
+  void $ Trace.waitNSlots 1
+  callEndpoint @"auction-open" h1 (openParams nftId)
+
+  logInfo @Hask.String $ Hask.show oState
+  where
+    artwork =
+      MintParams
+        { mp'content = Content "A painting."
+        , mp'title = Title "Fiona Lisa"
+        , mp'share = 1 % 10
+        , mp'price = Just 5
+        }
+
+    slotTenTime = slotToBeginPOSIXTime def 10
+    slotTwentyTime = slotToBeginPOSIXTime def 20
+
+    buyParams nftId = BuyRequestUser nftId 6 (Just 200)
+
+    openParams nftId = AuctionOpenParams nftId slotTenTime 100
+
 -- | Test for prototyping.
 test :: Hask.IO ()
 test = runEmulatorTraceIO eTrace1
@@ -144,3 +180,6 @@ testSetPrice = runEmulatorTraceIO setPriceTrace
 
 testQueryPrice :: Hask.IO ()
 testQueryPrice = runEmulatorTraceIO queryPriceTrace
+
+testAuction1 :: Hask.IO ()
+testAuction1 = runEmulatorTraceIO auctionTrace1

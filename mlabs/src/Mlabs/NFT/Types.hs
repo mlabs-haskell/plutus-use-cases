@@ -177,6 +177,8 @@ instance Eq SetPriceParams where
 
 data AuctionOpenParams = AuctionOpenParams
   { -- | TODO
+    op'nftId :: NftId
+  , -- | TODO
     op'deadline :: POSIXTime
   , -- | TODO
     op'minBid :: Integer
@@ -188,8 +190,8 @@ PlutusTx.makeLift ''AuctionOpenParams
 
 instance Eq AuctionOpenParams where
   {-# INLINEABLE (==) #-}
-  (AuctionOpenParams deadline1 minBid1) == (AuctionOpenParams deadline2 minBid2) =
-    deadline1 == deadline2 && minBid1 == minBid2
+  (AuctionOpenParams nftId1 deadline1 minBid1) == (AuctionOpenParams nftId2 deadline2 minBid2) =
+    nftId1 == nftId2 && deadline1 == deadline2 && minBid1 == minBid2
 
 data AuctionBidParams = AuctionBidParams
   { -- | TODO

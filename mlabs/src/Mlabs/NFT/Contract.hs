@@ -45,6 +45,7 @@ import Ledger.Value as Value (TokenName (..), singleton, unAssetClass, valueOf)
 import Playground.Contract (mkSchemaDefinitions)
 
 import Mlabs.NFT.Types (
+  AuctionState (..),
   AuctionBidParams (..),
   AuctionOpenParams (..),
   BuyRequestUser (..),
@@ -152,6 +153,59 @@ nftIdInit mP = do
       , nftId'outRef = oref
       }
 
+openAuction :: AuctionOpenParams -> Contract w NFTAppSchema Text ()
+openAuction (AuctionOpenParams nftId deadline minBid) = do
+  -- TODO: remove, keep only `findNft`?
+  oldDatum <- getNftDatum nftId
+  let scrAddress = txScrAddress
+      oref = nftId'outRef . dNft'id $ oldDatum
+      nftPolicy = mintPolicy scrAddress oref nftId
+      val = Value.singleton (scriptCurrencySymbol nftPolicy) (nftId'token nftId) 1
+      auctionState = dNft'auctionState oldDatum
+      isOwner datum pkh = pkh == (getUserId . dNft'owner) datum
+
+  when (isJust auctionState) $ Contract.throwError "Can't open: auction is already in progress"
+
+  (_oref, ciTxOut, _oldDatum) <- findNft txScrAddress $ nftId
+
+  ownPkh <- pubKeyHash <$> Contract.ownPubKey
+  unless (isOwner oldDatum ownPkh) $ Contract.throwError "Only owner can start auction"
+
+  let newAuctionState =
+        AuctionState
+          { as'highestBid = Nothing
+          , as'deadline = deadline
+          , as'minBid = minBid
+          }
+      newDatum' =
+        -- Unserialised Datum
+        DatumNft
+          { dNft'id = dNft'id oldDatum
+          , dNft'share = dNft'share oldDatum
+          , dNft'author = dNft'author oldDatum
+          , dNft'owner = dNft'owner oldDatum
+          , dNft'price = dNft'price oldDatum
+          , dNft'auctionState = Just newAuctionState
+          }
+      action = OpenAuctionAct
+      redeemer = asRedeemer action
+      newValue = ciTxOut ^. ciTxOutValue -- TODO: why needed?
+      -- newDatum = Datum . PlutusTx.toBuiltinData $ newDatum' -- Serialised Datum
+      (lookups, txConstraints) =
+        ( mconcat
+            [ Constraints.typedValidatorLookups txPolicy
+            , Constraints.otherScript (validatorScript txPolicy)
+            , Constraints.unspentOutputs $ Map.singleton oref ciTxOut
+            ]
+        , mconcat
+            [ Constraints.mustPayToTheScript newDatum' newValue -- try swapping with val
+            -- , Constraints.mustIncludeDatum newDatum
+            , Constraints.mustSpendScriptOutput oref redeemer
+            ]
+        )
+  void $ Contract.submitTxConstraintsWith @NftTrade lookups txConstraints
+  void $ Contract.logInfo @Hask.String $ printf "Started auction for %s" $ Hask.show val
+
 {- | BUY.
  Attempts to buy a new NFT by changing the owner, pays the current owner and
  the author, and sets a new price for the NFT.
@@ -218,7 +272,6 @@ buy (BuyRequestUser nftId bid newPrice) = do
           void $ Contract.logInfo @Hask.String $ printf "Bought %s" $ Hask.show val
 
 -- SET PRICE --
--- TODO: disallow set price during the auction?
 setPrice :: SetPriceParams -> Contract w NFTAppSchema Text ()
 setPrice spParams = do
   result <-
@@ -294,6 +347,7 @@ endpoints =
     [ endpoint @"mint" mint
     , endpoint @"buy" buy
     , endpoint @"set-price" setPrice
+    , endpoint @"auction-open" openAuction
     ]
 
 -- Query Endpoints are used for Querying, with no on-chain tx generation.
