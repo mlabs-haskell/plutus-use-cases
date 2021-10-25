@@ -158,15 +158,15 @@ openAuction (AuctionOpenParams nftId deadline minBid) = do
   -- TODO: remove, keep only `findNft`?
   oldDatum <- getNftDatum nftId
   let scrAddress = txScrAddress
-      oref = nftId'outRef . dNft'id $ oldDatum
-      nftPolicy = mintPolicy scrAddress oref nftId
+      _oref = nftId'outRef . dNft'id $ oldDatum
+      nftPolicy = mintPolicy scrAddress _oref nftId
       val = Value.singleton (scriptCurrencySymbol nftPolicy) (nftId'token nftId) 1
       auctionState = dNft'auctionState oldDatum
       isOwner datum pkh = pkh == (getUserId . dNft'owner) datum
 
   when (isJust auctionState) $ Contract.throwError "Can't open: auction is already in progress"
 
-  (_oref, ciTxOut, _oldDatum) <- findNft txScrAddress $ nftId
+  (oref, ciTxOut, _oldDatum) <- findNft txScrAddress $ nftId
 
   ownPkh <- pubKeyHash <$> Contract.ownPubKey
   unless (isOwner oldDatum ownPkh) $ Contract.throwError "Only owner can start auction"
@@ -190,7 +190,7 @@ openAuction (AuctionOpenParams nftId deadline minBid) = do
       action = OpenAuctionAct
       redeemer = asRedeemer action
       newValue = ciTxOut ^. ciTxOutValue -- TODO: why needed?
-      -- newDatum = Datum . PlutusTx.toBuiltinData $ newDatum' -- Serialised Datum
+      newDatum = Datum . PlutusTx.toBuiltinData $ newDatum' -- Serialised Datum
       (lookups, txConstraints) =
         ( mconcat
             [ Constraints.typedValidatorLookups txPolicy
@@ -199,7 +199,7 @@ openAuction (AuctionOpenParams nftId deadline minBid) = do
             ]
         , mconcat
             [ Constraints.mustPayToTheScript newDatum' newValue -- try swapping with val
-            -- , Constraints.mustIncludeDatum newDatum
+            , Constraints.mustIncludeDatum newDatum
             , Constraints.mustSpendScriptOutput oref redeemer
             ]
         )

@@ -152,9 +152,14 @@ auctionTrace1 = do
     Nothing -> Trace.throwError (Trace.GenericError "NftId not found")
     Just nid -> return nid
   void $ Trace.waitNSlots 1
+  logInfo @Hask.String $ Hask.show oState
+  void $ Trace.waitNSlots 2
+
   callEndpoint @"auction-open" h1 (openParams nftId)
 
-  logInfo @Hask.String $ Hask.show oState
+  -- callEndpoint @"set-price" h1 (SetPriceParams nftId (Just 20))
+
+  logInfo @Hask.String "auction1 test end"
   where
     artwork =
       MintParams

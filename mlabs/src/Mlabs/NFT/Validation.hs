@@ -217,8 +217,8 @@ mkTxPolicy datum act ctx =
     && traceIfFalse "Datum is not present." correctDatum'
     && traceIfFalse "New Price cannot be negative." (setPositivePrice act)
     && traceIfFalse "Previous TX is not consumed." prevTxConsumed
-    && traceIfFalse "NFT sent to wrong address." tokenSentToCorrectAddress
-    && traceIfFalse "Transaction cannot mint." noMint
+    -- && traceIfFalse "NFT sent to wrong address." tokenSentToCorrectAddress
+    -- && traceIfFalse "Transaction cannot mint." noMint
     && case act of
       BuyAct {..} ->
         traceIfFalse "Auction is in progress" noAuctionInProgress
@@ -237,6 +237,7 @@ mkTxPolicy datum act ctx =
           && traceIfFalse "Only owner exclusively can set NFT price." ownerSetsPrice
       OpenAuctionAct ->
         traceIfFalse "Auction is in progress" noAuctionInProgress
+        && traceIfFalse "FOOBAR" False
       BidAuctionAct {..} ->
         traceIfFalse "No auction is in progress" (not noAuctionInProgress)
           -- Treats dNft'price as a minimum bid in an auction
@@ -378,7 +379,9 @@ mkTxPolicy datum act ctx =
         case act'newPrice action of
           Nothing -> True
           Just x -> x > 0
-      _ -> False
+      OpenAuctionAct -> True
+      BidAuctionAct {} -> True
+      CloseAuctionAct -> True
 
     ------------------------------------------------------------------------------
     -- Check if the previous Tx containing the token is consumed.
