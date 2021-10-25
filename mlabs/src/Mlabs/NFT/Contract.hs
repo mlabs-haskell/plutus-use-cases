@@ -219,6 +219,61 @@ bidAuction (AuctionBidParams nftId bidAmount) = do
   when (isNothing mauctionState) $ Contract.throwError "Can't bid: no auction in progress"
   auctionState <- maybe (Contract.throwError "No auction state when expected") pure mauctionState
 
+  when (bidAmount < as'minBid) (Contract.throwError "Auction bid lower than minimal bid")
+  ownPkh <- pubKeyHash <$> Contract.ownPubKey
+  let newHighestBid =
+        AuctionBid
+          { ab'bid = bidAmount
+          , ab'bidder = UserId ownPkh
+          }
+
+      newAuctionState =
+        -- TODO: checks that only owner can set deadline & minBid
+        auctionState { as'highestBid = Just newHighestid }
+      newDatum' =
+        -- Unserialised Datum
+        DatumNft
+          { dNft'id = dNft'id oldDatum
+          , dNft'share = dNft'share oldDatum
+          , dNft'author = dNft'author oldDatum
+          , dNft'owner = dNft'owner oldDatum
+          , dNft'price = dNft'price oldDatum
+          , dNft'auctionState = Just newAuctionState
+          }
+      action = CloseAuctionAct (nftCurrency nftId)
+      redeemer = asRedeemer action
+      newValue = (ciTxOut ^. ciTxOutValue) <> Ada.lovelaceValueOf bidAmount
+      newDatum = Datum . PlutusTx.toBuiltinData $ newDatum' -- Serialised Datum
+
+      bidDependentTxConstraints =
+        case as'highestBid auctionState of
+          Nothing -> []
+          Just (AuctionBid bid bidder) ->
+            let (amountPaidToOwner, amountPaidToAuthor) = calculateShares bid $ dNft'share oldDatum
+             in [ Constraints.mustPayToPubKey (getUserId . dNft'owner $ oldDatum) amountPaidToOwner
+                , Constraints.mustPayToPubKey (getUserId . dNft'author $ oldDatum) amountPaidToAuthor
+                ]
+
+      (lookups, txConstraints) =
+        ( mconcat
+            [ Constraints.typedValidatorLookups txPolicy
+              , Constraints.otherScript (validatorScript txPolicy)
+              , Constraints.unspentOutputs $ Map.singleton oref ciTxOut
+              ]
+        , mconcat
+            ( [ Constraints.mustPayToTheScript newDatum' newValue -- try swapping with val
+              , Constraints.mustIncludeDatum newDatum
+              , Constraints.mustSpendScriptOutput oref redeemer
+              , Constraints.mustValidateIn (to $ as'deadline auctionState)
+              ]
+                ++ bidDependentTxConstraints
+            )
+        )
+  ledgerTx <- Contract.submitTxConstraintsWith @NftTrade lookups txConstraints
+  void $ Contract.logInfo @Hask.String $ printf "Closing auction for %s" $ Hask.show val
+  void $ Contract.awaitTxConfirmed $ Ledger.txId ledgerTx
+  void $ Contract.logInfo @Hask.String $ printf "Confirmed close auction for %s" $ Hask.show val
+
 
 
 closeAuction :: AuctionCloseParams -> Contract w NFTAppSchema Text ()
