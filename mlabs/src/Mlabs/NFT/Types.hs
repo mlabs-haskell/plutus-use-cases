@@ -195,7 +195,9 @@ instance Eq AuctionOpenParams where
 
 data AuctionBidParams = AuctionBidParams
   { -- | TODO
-    op'bidAmount :: Integer
+    bp'nftId :: NftId
+  , -- | TODO
+    bp'bidAmount :: Integer
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
@@ -204,18 +206,22 @@ PlutusTx.makeLift ''AuctionBidParams
 
 instance Eq AuctionBidParams where
   {-# INLINEABLE (==) #-}
-  (AuctionBidParams bid1) == (AuctionBidParams bid2) =
-    bid1 == bid2
+  (AuctionBidParams nftId1 bid1) == (AuctionBidParams nftId2 bid2) =
+    nftId1 == nftId2 && bid1 == bid2
 
 data AuctionCloseParams = AuctionCloseParams
+  { -- | TODO
+    cp'nftId :: NftId
+  }
   deriving stock (Hask.Show, Generic, Hask.Eq)
-  deriving anyclass (FromJSON, ToJSON) --, ToSchema)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
 PlutusTx.unstableMakeIsData ''AuctionCloseParams
 PlutusTx.makeLift ''AuctionCloseParams
 
 instance Eq AuctionCloseParams where
   {-# INLINEABLE (==) #-}
-  AuctionCloseParams == AuctionCloseParams = True
+  (AuctionCloseParams nftId1) == (AuctionCloseParams nftId2) =
+    nftId1 == nftId2
 
 data BuyRequestUser = BuyRequestUser
   { -- | nftId to Buy

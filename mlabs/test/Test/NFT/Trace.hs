@@ -3,17 +3,17 @@ module Test.NFT.Trace where
 import PlutusTx.Prelude
 import Prelude qualified as Hask
 
+import Data.Default (def)
 import Data.Monoid (Last (..))
 import Data.Text (Text)
-import Data.Default (def)
 
 import Control.Monad (void)
 import Control.Monad.Freer.Extras.Log as Extra (logInfo)
 
+import Ledger.TimeSlot (slotToBeginPOSIXTime)
 import Plutus.Trace.Emulator (EmulatorTrace, activateContractWallet, callEndpoint, runEmulatorTraceIO)
 import Plutus.Trace.Emulator qualified as Trace
 import Wallet.Emulator qualified as Emulator
-import Ledger.TimeSlot (slotToBeginPOSIXTime)
 
 import Mlabs.Utils.Wallet (walletFromNumber)
 
@@ -137,7 +137,6 @@ queryPriceTrace = do
         , mp'price = Just 100
         }
 
-
 auctionTrace1 :: EmulatorTrace ()
 auctionTrace1 = do
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
@@ -156,9 +155,19 @@ auctionTrace1 = do
   void $ Trace.waitNSlots 1
 
   callEndpoint @"auction-open" h1 (openParams nftId)
-  void $ Trace.waitNSlots 1
+  void $ Trace.waitNSlots 2
 
-  callEndpoint @"set-price" h1 (SetPriceParams nftId (Just 20))
+  -- callEndpoint @"set-price" h1 (SetPriceParams nftId (Just 20))
+  -- void $ Trace.waitNSlots 1
+
+  callEndpoint @"auction-bid" h2 (bidParams nftId 100)
+  void $ Trace.waitNSlots 2
+
+  callEndpoint @"auction-close" h1 (closeParams nftId)
+  void $ Trace.waitNSlots 10
+
+  -- callEndpoint @"auction-close" h1 (closeParams nftId)
+  -- void $ Trace.waitNSlots 3
 
   logInfo @Hask.String "auction1 test end"
   where
@@ -174,8 +183,10 @@ auctionTrace1 = do
     slotTwentyTime = slotToBeginPOSIXTime def 20
 
     buyParams nftId = BuyRequestUser nftId 6 (Just 200)
-
     openParams nftId = AuctionOpenParams nftId slotTenTime 100
+    closeParams nftId = AuctionCloseParams nftId
+
+    bidParams = AuctionBidParams
 
 -- | Test for prototyping.
 test :: Hask.IO ()
