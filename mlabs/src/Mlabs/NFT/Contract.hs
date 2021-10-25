@@ -210,7 +210,16 @@ openAuction (AuctionOpenParams nftId deadline minBid) = do
 
 bidAuction :: AuctionBidParams -> Contract w NFTAppSchema Text ()
 bidAuction (AuctionBidParams nftId bidAmount) = do
-  undefined
+  (oref, ciTxOut, oldDatum) <- findNft txScrAddress $ nftId
+  let scrAddress = txScrAddress
+      nftPolicy = mintPolicy scrAddress oref nftId
+      val = Value.singleton (scriptCurrencySymbol nftPolicy) (nftId'token nftId) 1
+      mauctionState = dNft'auctionState oldDatum
+
+  when (isNothing mauctionState) $ Contract.throwError "Can't bid: no auction in progress"
+  auctionState <- maybe (Contract.throwError "No auction state when expected") pure mauctionState
+
+
 
 closeAuction :: AuctionCloseParams -> Contract w NFTAppSchema Text ()
 closeAuction (AuctionCloseParams nftId) = do
@@ -273,7 +282,6 @@ closeAuction (AuctionCloseParams nftId) = do
         )
   ledgerTx <- Contract.submitTxConstraintsWith @NftTrade lookups txConstraints
   void $ Contract.logInfo @Hask.String $ printf "Closing auction for %s" $ Hask.show val
-  -- TODO: this is not reached for some reason; investigate
   void $ Contract.awaitTxConfirmed $ Ledger.txId ledgerTx
   void $ Contract.logInfo @Hask.String $ printf "Confirmed close auction for %s" $ Hask.show val
 
@@ -420,6 +428,7 @@ endpoints =
     , endpoint @"set-price" setPrice
     , endpoint @"auction-open" openAuction
     , endpoint @"auction-close" closeAuction
+    , endpoint @"auction-bid" bidAuction
     ]
 
 -- Query Endpoints are used for Querying, with no on-chain tx generation.
