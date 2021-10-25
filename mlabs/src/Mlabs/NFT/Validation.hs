@@ -17,6 +17,7 @@ import PlutusTx.Prelude
 import Prelude qualified as Hask
 
 import Data.Aeson (FromJSON, ToJSON)
+import Data.List (sort)
 import GHC.Generics (Generic)
 import Plutus.V1.Ledger.Ada qualified as Ada (
   adaSymbol,
@@ -76,7 +77,8 @@ import Ledger.Value (
   singleton,
   valueOf,
  )
-import Plutus.V1.Ledger.Value (AssetClass (AssetClass), assetClassValueOf, isZero)
+import Data.Function (on)
+import Plutus.V1.Ledger.Value (AssetClass (..), assetClassValueOf, isZero)
 import PlutusTx qualified
 import Schema (ToSchema)
 
@@ -89,17 +91,77 @@ asRedeemer = Redeemer . PlutusTx.toBuiltinData
 
 -- | Minting policy for NFTs.
 mkMintPolicy :: NftAppInstance -> MintAct -> ScriptContext -> Bool
-mkMintPolicy _ act _ =
-  traceIfFalse "Only One Token Can be Minted" True
+mkMintPolicy appInstance act ctx =
+  traceIfFalse "Only One Token Can be Minted" checkMintedAmount
     && case act of
       Mint nftid ->
-        traceIfFalse "NFT Minting failed." True
-          && traceIfFalse "Neighbouring transactions are not present." True
-          && traceIfFalse "The token is not sent to the right address" True
+        traceIfFalse "Second node changed." (second == newSecond)
+          && traceIfFalse "Inserted node changed." (inserted == newInserted)
+          && traceIfFalse "Only pointer of first node can change." checkFirstNodeAltered
+          && traceIfFalse "Old first node must point to second node." (first `pointsTo` second)
+          && traceIfFalse "New first node must point to new node." (newFirst `pointsTo` inserted)
+          && traceIfFalse "New node must point to second node." (inserted `pointsTo` second)
+          && traceIfFalse "New price cannot be negative." priceNotNegative'
+          && traceIfFalse "Currency symbol must match app instance" checkCurrencySymbol
+          && traceIfFalse "Minted tokens are sent to script address" checkSentAddress
       Initialise ->
         traceIfFalse "The token is not present." True
           && traceIfFalse "The initial token is not being consumed." True
           && traceIfFalse "The token is not sent to the right address" True
+  where
+    info = scriptContextTxInfo ctx
+    scriptAddress = appInstance'Address appInstance
+
+    -- Tuple bouble sort
+    sort3 =
+      (\(a, b, c) -> if a > b then (b, a, c) else (a, b, c)) .
+      (\(a, b, c) -> if b > c then (a, c, b) else (a, b, c)) .
+      (\(a, b, c) -> if a > b then (b, a, c) else (a, b, c))
+
+    priceNotNegative' = case inserted of
+      NodeDatum node -> priceNotNegative (info'price . node'information $ node)
+      _ -> False
+
+    checkSentAddress = all sentToScript $ txInfoOutputs info
+
+    sentToScript TxOut {..} =
+      txOutAddress == scriptAddress
+
+    checkCurrencySymbol =
+      getAppInstance first == appInstance
+      && getAppInstance inserted == appInstance
+      && getAppInstance second == appInstance
+
+    (newFirst, newInserted, newSecond) = case getContinuingOutputs ctx of
+      outs@[_,_,_] ->
+        let datums :: [DatumNft] = mapMaybe (PlutusTx.fromBuiltinData . getDatum) . mapMaybe (\hash -> findDatum hash info) . mapMaybe txOutDatumHash $ outs
+        in case datums of
+          [x, y, z] -> sort3 (x, y, z)
+          _ -> traceError "Expected exactly three continuing outputs with datums"
+      _ -> traceError "Expected exactly three continuing outputs"
+
+    (first, inserted, second) = case getCtxDatum ctx of
+      [x, y, z] -> sort3 (x, y, z)
+      _ -> traceError "Expected exactly three inputs with datums"
+    
+    checkMintedAmount = case flattenValue (txInfoMint info) of
+      [(cur, tn, val)] ->
+        ownCurrencySymbol ctx == cur
+          && nftTokenName inserted == tn
+          && val == 1
+      _ -> False
+
+    checkFirstNodeAltered = case (first, newFirst) of
+      (NodeDatum node1, NodeDatum node2) ->
+        node'appInstance node1 == node'appInstance node2
+        && node'information node1 == node'information node2
+      _ -> False
+
+    pointsTo d1 d2 = case (d1, d2) of
+      (_, NodeDatum _) -> case getDatumPointer d1 of
+        Just ptr -> (== nftTokenName d2) . snd . unAssetClass . pointer'assetClass $ ptr
+        Nothing -> False
+      _ -> False
 
 mintPolicy :: NftAppInstance -> MintingPolicy
 mintPolicy appInstance =
@@ -146,16 +208,6 @@ mKTxPolicy datum' act ctx =
           _ -> Nothing
         ------------------------------------------------------------------------------
         -- Utility functions.
-
-        -- Get datum form script context
-        getCtxDatum :: PlutusTx.FromData a => ScriptContext -> [a]
-        getCtxDatum =
-          catMaybes'
-            . fmap PlutusTx.fromBuiltinData
-            . fmap (\(Datum d) -> d)
-            . fmap snd
-            . txInfoData
-            . scriptContextTxInfo
 
         containsNft v = valueOf v (instanceCurrency $ node'appInstance node) (nftTokenName datum') == 1
 
@@ -330,3 +382,15 @@ calculateOwnerShare x y = fst $ calculateShares x y
 -- | Returns the calculated value of shares.
 calculateAuthorShare :: Integer -> Rational -> Value
 calculateAuthorShare x y = snd $ calculateShares x y
+
+{-# INLINEABLE getCtxDatum #-}
+
+-- | Get datum form script context
+getCtxDatum :: PlutusTx.FromData a => ScriptContext -> [a]
+getCtxDatum =
+  catMaybes'
+    . fmap PlutusTx.fromBuiltinData
+    . fmap (\(Datum d) -> d)
+    . fmap snd
+    . txInfoData
+    . scriptContextTxInfo
