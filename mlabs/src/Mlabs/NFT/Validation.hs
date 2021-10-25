@@ -90,36 +90,29 @@ asRedeemer = Redeemer . PlutusTx.toBuiltinData
 -- | Minting policy for NFTs.
 mkMintPolicy :: NftAppInstance -> MintAct -> ScriptContext -> Bool
 mkMintPolicy appInstance act ctx =
-  True
-    --     && traceIfFalse "Only One Token Can be Minted" checkMintedAmount
+  traceIfFalse "Only One Token Can be Minted" checkMintedAmount
     && case act of
       Mint nftid ->
-        traceIfFalse "Only pointer of first node can change." True
-      --          && traceIfFalse "Old first node must point to second node." (first `pointsTo'` second)
-      --          && traceIfFalse "New first node must point to new node." (newFirst `pointsTo` newInserted)
-      --          && traceIfFalse "New node must point to second node." (newInserted `pointsTo'` second)
-      --          && traceIfFalse "New price cannot be negative." priceNotNegative'
-      --          && traceIfFalse "Currency symbol must match app instance" checkCurrencySymbol
-      --          && traceIfFalse "Minted tokens are sent to script address" checkSentAddress
+        traceIfFalse "Only pointer of first node can change." firstChangedOnlyPtr
+          && traceIfFalse "Old first node must point to second node." (first `pointsTo'` second)
+          && traceIfFalse "New first node must point to new node." (newFirst `pointsTo` newInserted)
+          && traceIfFalse "New node must point to second node." (newInserted `pointsTo'` second)
+          && traceIfFalse "New price cannot be negative." priceNotNegative'
+          && traceIfFalse "Currency symbol must match app instance" checkCurrencySymbol
+          && traceIfFalse "Minted tokens are sent to script address" checkSentAddress
       Initialise ->
         traceIfFalse "The token is not present." True -- todo
           && traceIfFalse "The token is not sent to the right address" True -- todo
   where
+    ------------------------------------------------------------------------------
+    -- Helpers
+
     info = scriptContextTxInfo ctx
     scriptAddress = appInstance'Address appInstance
 
-    priceNotNegative' = case newInserted of
-      NodeDatum node -> priceNotNegative (info'price . node'information $ node)
-      _ -> False
+    sort2 (x, y) = if x < y then (x, y) else (y, x)
 
-    checkSentAddress = all sentToScript $ txInfoOutputs info
-
-    sentToScript TxOut {..} =
-      txOutAddress == scriptAddress
-
-    checkCurrencySymbol =
-      getAppInstance first == appInstance
-        && getAppInstance newInserted == appInstance
+    sentToScript TxOut {..} = txOutAddress == scriptAddress
 
     (newFirst, newInserted) =
       let outs = getContinuingOutputs ctx
@@ -129,31 +122,18 @@ mkMintPolicy appInstance act ctx =
               . mapMaybe txOutDatumHash
               $ outs
        in case datums of
-            [x, y] -> (x, y)
-            _ -> traceError "Expected exactly two continuing outputs with datums."
+            [x, y] -> sort2 (x, y)
+            [_] -> traceError "Expected exactly two continuing outputs  with datums. Receiving one."
+            [] -> traceError "Expected exactly two continuing outputs  with datums. Receiving none."
+            _ -> traceError "Expected exactly two continuing outputs with datums. Receiving more."
 
     (first, inserted) = case getCtxDatum ctx of
-      [x, y] -> if x < y then (x, y) else (y, x)
-      [_] -> traceError "Expected exactly two inputs with datums. Receiving less."
+      [x, y] -> sort2 (x, y)
+      [_] -> traceError "Expected exactly two inputs with datums. Receiving one."
       [] -> traceError "Expected exactly two inputs with datums. Receiving none."
       _ -> traceError "Expected exactly two inputs with datums. Receiving more."
 
     second = getDatumPointer first
-
-    checkMintedAmount = case flattenValue (txInfoMint info) of
-      [(cur, tn, val)] ->
-        ownCurrencySymbol ctx == cur
-          && nftTokenName newInserted == tn
-          && val == 1
-      _ -> False
-
-    checkFirstNodeAltered = case (first, newFirst) of
-      (NodeDatum node1, NodeDatum node2) ->
-        node'appInstance node1 == node'appInstance node2
-          && node'information node1 == node'information node2
-      (HeadDatum node1, HeadDatum node2) ->
-        head'appInstance node1 == head'appInstance node2
-      _ -> False
 
     pointsTo d1 d2 = case (d1, d2) of
       (_, NodeDatum _) -> case getDatumPointer d1 of
@@ -163,6 +143,41 @@ mkMintPolicy appInstance act ctx =
 
     pointsTo' :: DatumNft -> Maybe Pointer -> Bool
     pointsTo' datum pointer = getDatumPointer datum == pointer
+
+    ------------------------------------------------------------------------------
+    -- Checks
+
+    -- Check if price is positive
+    priceNotNegative' = case newInserted of
+      NodeDatum node -> priceNotNegative (info'price . node'information $ node)
+      _ -> False
+
+    -- Check if all nodes are sent back to script
+    checkSentAddress = all sentToScript $ txInfoOutputs info
+
+    -- Check if currency symbol is consistent
+    checkCurrencySymbol =
+      getAppInstance first == appInstance
+        && getAppInstance newInserted == appInstance
+
+    -- Check if minting only one token
+    checkMintedAmount = case flattenValue (txInfoMint info) of
+      [(cur, tn, val)] ->
+        ownCurrencySymbol ctx == cur
+          && nftTokenName newInserted == tn
+          && val == 1
+      _ -> False
+
+    -- Check if only thing changed in first node is `next` pointer
+    firstChangedOnlyPtr = case (first, newFirst) of
+      (NodeDatum node1, NodeDatum node2) ->
+        node'appInstance node1 == node'appInstance node2
+          && node'information node1 == node'information node2
+      (HeadDatum node1, HeadDatum node2) ->
+        head'appInstance node1 == head'appInstance node2
+      _ -> False
+
+
 
 mintPolicy :: NftAppInstance -> MintingPolicy
 mintPolicy appInstance =
@@ -176,10 +191,31 @@ mintPolicy appInstance =
 mKTxPolicy :: DatumNft -> UserAct -> ScriptContext -> Bool
 mKTxPolicy datum' act ctx =
   case datum' of
-    HeadDatum _ ->
-      traceIfFalse "Proof Token must be paid back" True -- todo
+    HeadDatum head -> case act of
+      MintAct{} ->
+        traceIfFalse "Proof Token must be paid back when using Head" proofPaidBack
       -- must always pay back the proof Token. This happens when the Head datum is
       -- updated as the utxo needs to be consumed
+      _ -> traceError "Cannot buy or set price of Head."
+      where
+        nAppInstance = head'appInstance head
+        proofPaidBack =
+          let outs = getContinuingOutputs ctx
+              containsHead tx = fromMaybe False $ do
+                hash <- txOutDatumHash tx
+                datum <- findDatum hash $ scriptContextTxInfo ctx
+                decoded <- PlutusTx.fromBuiltinData . getDatum $ datum
+                case decoded of
+                  HeadDatum _ -> Just True
+                  _ -> Just False
+          in case filter containsHead $ getContinuingOutputs ctx of
+            [tx] -> case flattenValue . txOutValue $ tx of
+              [(cs, tn, am)] ->
+                cs == instanceCurrency nAppInstance
+                && tn == TokenName (nftId'contentHash $ act'nftId act)
+                && am == 1
+              _ -> False
+            _ -> False
     NodeDatum node ->
       traceIfFalse "New Price cannot be negative." priceNotNegative'
         && traceIfFalse "Previous TX is not consumed." prevTxConsumed
@@ -187,8 +223,7 @@ mKTxPolicy datum' act ctx =
         && traceIfFalse "Transaction cannot mint." noMint
         && case act of
           MintAct {} ->
-            traceIfFalse "Only one token can be minted" True -- todo
-              && traceIfFalse "Proof token must be paid back when using Head" True -- todo
+            traceIfFalse "Only one token can be minted" checkMintedAmount
           BuyAct {} ->
             let bid = act'bid act
              in traceIfFalse "NFT not for sale." nftForSale
@@ -230,6 +265,14 @@ mKTxPolicy datum' act ctx =
 
         ------------------------------------------------------------------------------
         -- Checks
+
+        -- Check if minting only one token
+        checkMintedAmount = case flattenValue (txInfoMint . scriptContextTxInfo $ ctx) of
+          [(cur, tn, val)] ->
+            ownCurrencySymbol ctx == cur
+            && nftTokenName datum' == tn
+            && val == 1
+          _ -> False
 
         consistentDatumBuy = case prevDatum of
           NodeDatum prevNode ->
@@ -279,6 +322,7 @@ mKTxPolicy datum' act ctx =
                 [_] -> True
                 _ -> False
 
+        -- Check if only thing changed in nodes is price
         consistentDatumSetPrice = case prevDatum of
           NodeDatum prevNode ->
             on (==) node'next prevNode node
