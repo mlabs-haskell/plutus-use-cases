@@ -230,7 +230,7 @@ data InformationNft = InformationNft
   deriving anyclass (ToJSON, FromJSON)
 
 instance Ord InformationNft where
-  x <= y = (info'id x) <= (info'id y)
+  x <= y = info'id x <= info'id y
 
 PlutusTx.unstableMakeIsData ''InformationNft
 PlutusTx.makeLift ''InformationNft
@@ -318,7 +318,7 @@ data NftListNode = NftListNode
   deriving anyclass (ToJSON, FromJSON)
 
 instance Ord NftListNode where
-  x <= y = (node'information x) <= (node'information y)
+  x <= y = node'information x <= node'information y
 
 PlutusTx.unstableMakeIsData ''NftListNode
 PlutusTx.makeLift ''NftListNode
@@ -331,6 +331,8 @@ data DatumNft
     HeadDatum NftListHead
   | -- | A node of the list.
     NodeDatum NftListNode
+  | -- | Proof Datum
+    ProofDatum
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
 
@@ -407,11 +409,11 @@ instance Eq UserAct where
 -- | Easy type to find and use Nodes by.
 data PointInfo = PointInfo
   { pi'datum :: DatumNft
-  , pi'TOR   :: TxOutRef
+  , pi'TOR :: TxOutRef
   , pi'CITxO :: ChainIndexTxOut
-  , pi'CITx  :: ChainIndexTx
+  , pi'CITx :: ChainIndexTx
   }
-  deriving stock (Hask.Eq)
+  deriving stock (Hask.Eq, Hask.Show)
 
 instance Eq PointInfo where
   {-# INLINEABLE (==) #-}

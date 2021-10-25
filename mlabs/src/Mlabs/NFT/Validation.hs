@@ -69,6 +69,7 @@ import Ledger.Typed.Scripts (
   wrapValidator,
  )
 
+import Data.Function (on)
 import Ledger.Value (
   TokenName (..),
   assetClass,
@@ -174,8 +175,9 @@ mintPolicy appInstance =
 mKTxPolicy :: DatumNft -> UserAct -> ScriptContext -> Bool
 mKTxPolicy datum' act ctx =
   -- I think the tests should be rethough on the basis of the Redeemer - let's
-  -- discuss on Monday. todo: potential fix 
+  -- discuss on Monday. todo: potential fix
   case datum' of
+    -- must pay back the Proof Token Always! todo: test
     HeadDatum _ -> True -- this sometimes does happen.
     NodeDatum node ->
       traceIfFalse "New Price cannot be negative." priceNotNegative'
@@ -185,13 +187,13 @@ mKTxPolicy datum' act ctx =
         && case act of
           BuyAct {..} ->
             traceIfFalse "NFT not for sale." nftForSale
-            && traceIfFalse "Bid is too low for the NFT price." (bidHighEnough act'bid)
-            && traceIfFalse "Datum is not consistent, illegaly altered." consistentDatumBuy
-            && if ownerIsAuthor
-               then traceIfFalse "Amount paid to author/owner does not match bid." (correctPaymentOnlyAuthor act'bid)
-               else
-                 traceIfFalse "Current owner is not paid their share." (correctPaymentOwner act'bid)
-                 && traceIfFalse "Author is not paid their share." (correctPaymentAuthor act'bid)
+              && traceIfFalse "Bid is too low for the NFT price." (bidHighEnough act'bid)
+              && traceIfFalse "Datum is not consistent, illegaly altered." consistentDatumBuy
+              && if ownerIsAuthor
+                then traceIfFalse "Amount paid to author/owner does not match bid." (correctPaymentOnlyAuthor act'bid)
+                else
+                  traceIfFalse "Current owner is not paid their share." (correctPaymentOwner act'bid)
+                    && traceIfFalse "Author is not paid their share." (correctPaymentAuthor act'bid)
           SetPriceAct {} ->
             traceIfFalse "Datum does not correspond to NFTId, no datum is present, or more than one suitable datums are present." correctDatumSetPrice
               && traceIfFalse "Only owner exclusively can set NFT price." ownerSetsPrice
@@ -217,10 +219,9 @@ mKTxPolicy datum' act ctx =
           where
             info = scriptContextTxInfo ctx
             personId = getUserId . userIdGetter $ node
-            share = info'share . node'information  $ node
+            share = info'share . node'information $ node
             personGetsAda = getAda $ valuePaidTo info personId
             personWantsAda = getAda $ shareCalcFn bid share
-
 
         ------------------------------------------------------------------------------
         -- Checks
@@ -228,10 +229,10 @@ mKTxPolicy datum' act ctx =
         consistentDatumBuy = case prevDatum of
           NodeDatum prevNode ->
             on (==) node'next prevNode node
-            && on (==) node'appInstance prevNode node
-            && on (==) (info'author . node'information) prevNode node
-            && on (==) (info'share . node'information) prevNode node
-            && on (==) (info'id . node'information) prevNode node
+              && on (==) node'appInstance prevNode node
+              && on (==) (info'author . node'information) prevNode node
+              && on (==) (info'share . node'information) prevNode node
+              && on (==) (info'id . node'information) prevNode node
           _ -> False
 
         -- Check if nft is for sale (price is not Nothing)
@@ -261,7 +262,13 @@ mKTxPolicy datum' act ctx =
         correctDatumSetPrice :: Bool
         correctDatumSetPrice =
           let datums :: [DatumNft] = getCtxDatum ctx
-              nodes :: [NftListNode] = mapMaybe (\d -> case d of NodeDatum n -> Just n; _ -> Nothing) datums
+              nodes :: [NftListNode] =
+                mapMaybe
+                  ( \case
+                      NodeDatum n -> Just n
+                      _ -> Nothing
+                  )
+                  datums
               suitableDatums = filter (== info'id nInfo) . fmap (info'id . node'information) $ nodes
            in case suitableDatums of
                 [_] -> True
@@ -270,11 +277,11 @@ mKTxPolicy datum' act ctx =
         consistentDatumSetPrice = case prevDatum of
           NodeDatum prevNode ->
             on (==) node'next prevNode node
-            && on (==) node'appInstance prevNode node
-            && on (==) (info'author . node'information) prevNode node
-            && on (==) (info'owner . node'information) prevNode node
-            && on (==) (info'share . node'information) prevNode node
-            && on (==) (info'id . node'information) prevNode node
+              && on (==) node'appInstance prevNode node
+              && on (==) (info'author . node'information) prevNode node
+              && on (==) (info'owner . node'information) prevNode node
+              && on (==) (info'share . node'information) prevNode node
+              && on (==) (info'id . node'information) prevNode node
           _ -> False
 
         -- Check if the price of NFT is changed by the owner of NFT
