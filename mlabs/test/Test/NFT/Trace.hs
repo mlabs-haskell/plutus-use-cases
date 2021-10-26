@@ -160,11 +160,14 @@ auctionTrace1 = do
   -- callEndpoint @"set-price" h1 (SetPriceParams nftId (Just 20))
   -- void $ Trace.waitNSlots 1
 
-  callEndpoint @"auction-bid" h2 (bidParams nftId 100)
-  void $ Trace.waitNSlots 2
+  callEndpoint @"auction-bid" h2 (bidParams nftId 3333)
+  void $ Trace.waitNSlots 12
 
   callEndpoint @"auction-close" h1 (closeParams nftId)
   void $ Trace.waitNSlots 10
+
+  callEndpoint @"set-price" h2 (SetPriceParams nftId (Just 20))
+  void $ Trace.waitNSlots 2
 
   -- callEndpoint @"auction-close" h1 (closeParams nftId)
   -- void $ Trace.waitNSlots 3
@@ -183,7 +186,7 @@ auctionTrace1 = do
     slotTwentyTime = slotToBeginPOSIXTime def 20
 
     buyParams nftId = BuyRequestUser nftId 6 (Just 200)
-    openParams nftId = AuctionOpenParams nftId slotTenTime 100
+    openParams nftId = AuctionOpenParams nftId slotTenTime 400
     closeParams nftId = AuctionCloseParams nftId
 
     bidParams = AuctionBidParams

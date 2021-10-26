@@ -10,7 +10,8 @@ import PlutusTx.Prelude hiding (mconcat, (<>))
 import Prelude (mconcat, (<>))
 import Prelude qualified as Hask
 
-import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right)
+import Control.Lens (filtered, traversed, (^.), (^..), _Just, _Right)
+import Control.Lens qualified as Lens (to)
 import Control.Monad (void, when)
 import Data.List qualified as L
 import Data.Map qualified as Map
@@ -21,6 +22,7 @@ import Text.Printf (printf)
 
 import Plutus.Contract (Contract, Endpoint, endpoint, utxosTxOutTxAt, type (.\/))
 import Plutus.Contract qualified as Contract
+import Plutus.V1.Ledger.Ada qualified as Ada
 import PlutusTx qualified
 
 import Ledger (
@@ -36,6 +38,7 @@ import Ledger (
   pubKeyAddress,
   pubKeyHash,
   scriptCurrencySymbol,
+  to,
   txId,
  )
 
@@ -219,17 +222,17 @@ bidAuction (AuctionBidParams nftId bidAmount) = do
   when (isNothing mauctionState) $ Contract.throwError "Can't bid: no auction in progress"
   auctionState <- maybe (Contract.throwError "No auction state when expected") pure mauctionState
 
-  when (bidAmount < as'minBid) (Contract.throwError "Auction bid lower than minimal bid")
+  when (bidAmount < as'minBid auctionState) (Contract.throwError "Auction bid lower than minimal bid")
   ownPkh <- pubKeyHash <$> Contract.ownPubKey
   let newHighestBid =
         AuctionBid
           { ab'bid = bidAmount
           , ab'bidder = UserId ownPkh
           }
-
       newAuctionState =
         -- TODO: checks that only owner can set deadline & minBid
-        auctionState { as'highestBid = Just newHighestid }
+        -- TODO: check that bid == value in lovelace locked
+        auctionState {as'highestBid = Just newHighestBid}
       newDatum' =
         -- Unserialised Datum
         DatumNft
@@ -240,26 +243,23 @@ bidAuction (AuctionBidParams nftId bidAmount) = do
           , dNft'price = dNft'price oldDatum
           , dNft'auctionState = Just newAuctionState
           }
-      action = CloseAuctionAct (nftCurrency nftId)
+      action = BidAuctionAct bidAmount (nftCurrency nftId)
       redeemer = asRedeemer action
       newValue = (ciTxOut ^. ciTxOutValue) <> Ada.lovelaceValueOf bidAmount
       newDatum = Datum . PlutusTx.toBuiltinData $ newDatum' -- Serialised Datum
-
       bidDependentTxConstraints =
         case as'highestBid auctionState of
           Nothing -> []
           Just (AuctionBid bid bidder) ->
-            let (amountPaidToOwner, amountPaidToAuthor) = calculateShares bid $ dNft'share oldDatum
-             in [ Constraints.mustPayToPubKey (getUserId . dNft'owner $ oldDatum) amountPaidToOwner
-                , Constraints.mustPayToPubKey (getUserId . dNft'author $ oldDatum) amountPaidToAuthor
-                ]
+            [ Constraints.mustPayToPubKey (getUserId bidder) (Ada.lovelaceValueOf bid)
+            ]
 
       (lookups, txConstraints) =
         ( mconcat
             [ Constraints.typedValidatorLookups txPolicy
-              , Constraints.otherScript (validatorScript txPolicy)
-              , Constraints.unspentOutputs $ Map.singleton oref ciTxOut
-              ]
+            , Constraints.otherScript (validatorScript txPolicy)
+            , Constraints.unspentOutputs $ Map.singleton oref ciTxOut
+            ]
         , mconcat
             ( [ Constraints.mustPayToTheScript newDatum' newValue -- try swapping with val
               , Constraints.mustIncludeDatum newDatum
@@ -270,11 +270,9 @@ bidAuction (AuctionBidParams nftId bidAmount) = do
             )
         )
   ledgerTx <- Contract.submitTxConstraintsWith @NftTrade lookups txConstraints
-  void $ Contract.logInfo @Hask.String $ printf "Closing auction for %s" $ Hask.show val
+  void $ Contract.logInfo @Hask.String $ printf "Bidding %s in auction for %s" (Hask.show newHighestBid) (Hask.show val)
   void $ Contract.awaitTxConfirmed $ Ledger.txId ledgerTx
-  void $ Contract.logInfo @Hask.String $ printf "Confirmed close auction for %s" $ Hask.show val
-
-
+  void $ Contract.logInfo @Hask.String $ printf "Confirmed bid %s in auction for %s" (Hask.show newHighestBid) (Hask.show val)
 
 closeAuction :: AuctionCloseParams -> Contract w NFTAppSchema Text ()
 closeAuction (AuctionCloseParams nftId) = do
@@ -290,25 +288,30 @@ closeAuction (AuctionCloseParams nftId) = do
   ownPkh <- pubKeyHash <$> Contract.ownPubKey
   unless (isOwner oldDatum ownPkh) $ Contract.throwError "Only owner can close auction"
 
-  let newDatum' =
+  let newOwner =
+        case as'highestBid auctionState of
+          Nothing -> dNft'owner oldDatum
+          Just (AuctionBid _ bidder) -> getUserId bidder
+
+      newDatum' =
         -- Unserialised Datum
         DatumNft
           { dNft'id = dNft'id oldDatum
           , dNft'share = dNft'share oldDatum
           , dNft'author = dNft'author oldDatum
-          , dNft'owner = dNft'owner oldDatum
+          , dNft'owner = newOwner --
           , dNft'price = dNft'price oldDatum
           , dNft'auctionState = Nothing
           }
       action = CloseAuctionAct (nftCurrency nftId)
       redeemer = asRedeemer action
       newValue = ciTxOut ^. ciTxOutValue -- TODO: why needed?
+      -- newValue = val
       newDatum = Datum . PlutusTx.toBuiltinData $ newDatum' -- Serialised Datum
-      bidDependentLookups =
-        case as'highestBid auctionState of
-          Nothing -> []
-          Just (AuctionBid bid bidder) -> []
-
+      -- bidDependentLookups =
+      --   case as'highestBid auctionState of
+      --     Nothing -> []
+      --     Just (AuctionBid bid bidder) -> []
       bidDependentTxConstraints =
         case as'highestBid auctionState of
           Nothing -> []
@@ -324,7 +327,7 @@ closeAuction (AuctionCloseParams nftId) = do
               , Constraints.otherScript (validatorScript txPolicy)
               , Constraints.unspentOutputs $ Map.singleton oref ciTxOut
               ]
-                ++ bidDependentLookups
+              -- ++ bidDependentLookups
             )
         , mconcat
             ( [ Constraints.mustPayToTheScript newDatum' newValue -- try swapping with val
@@ -528,7 +531,7 @@ getNftDatum nftId = do
         utxos
           ^.. traversed . Ledger.ciTxOutDatum
             . _Right
-            . to (PlutusTx.fromBuiltinData @DatumNft . getDatum)
+            . Lens.to (PlutusTx.fromBuiltinData @DatumNft . getDatum)
             . _Just
             . filtered (\d -> dNft'id d == nftId)
   Contract.logInfo @Hask.String $ Hask.show $ "Datum Found:" <> Hask.show datums
