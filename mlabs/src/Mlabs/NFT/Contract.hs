@@ -161,8 +161,10 @@ nftIdInit mP = do
 
 openAuction :: AuctionOpenParams -> Contract w NFTAppSchema Text ()
 openAuction (AuctionOpenParams nftId deadline minBid) = do
-  (oref, ciTxOut, oldDatum) <- findNft txScrAddress $ nftId
-
+  oldDatum <- getNftDatum nftId
+  -- TODO: what's difference between this `oref` and `nftOref`?
+  let oref = nftId'outRef . dNft'id $ oldDatum
+  (nftOref, ciTxOut, _oldDatum) <- findNft txScrAddress $ nftId
   let scrAddress = txScrAddress
       nftPolicy = mintPolicy scrAddress oref nftId
       val = Value.singleton (scriptCurrencySymbol nftPolicy) (nftId'token nftId) 1
@@ -192,19 +194,17 @@ openAuction (AuctionOpenParams nftId deadline minBid) = do
           }
       action = OpenAuctionAct (nftCurrency nftId)
       redeemer = asRedeemer action
-      newValue = ciTxOut ^. ciTxOutValue -- TODO: why needed?
-      -- newValue = val
       newDatum = Datum . PlutusTx.toBuiltinData $ newDatum' -- Serialised Datum
       (lookups, txConstraints) =
         ( mconcat
             [ Constraints.typedValidatorLookups txPolicy
             , Constraints.otherScript (validatorScript txPolicy)
-            , Constraints.unspentOutputs $ Map.singleton oref ciTxOut
+            , Constraints.unspentOutputs $ Map.singleton nftOref ciTxOut
             ]
         , mconcat
-            [ Constraints.mustPayToTheScript newDatum' newValue -- try swapping with val
+            [ Constraints.mustPayToTheScript newDatum' val
             , Constraints.mustIncludeDatum newDatum
-            , Constraints.mustSpendScriptOutput oref redeemer
+            , Constraints.mustSpendScriptOutput nftOref redeemer
             ]
         )
   void $ Contract.logInfo @Hask.String $ printf "DEBUG open auction newValue: %s" (Hask.show newValue)
@@ -216,7 +216,9 @@ openAuction (AuctionOpenParams nftId deadline minBid) = do
 
 bidAuction :: AuctionBidParams -> Contract w NFTAppSchema Text ()
 bidAuction (AuctionBidParams nftId bidAmount) = do
-  (oref, ciTxOut, oldDatum) <- findNft txScrAddress $ nftId
+  oldDatum <- getNftDatum nftId
+  let oref = nftId'outRef . dNft'id $ oldDatum
+  (nftOref, ciTxOut, _oldDatum) <- findNft txScrAddress $ nftId
   let scrAddress = txScrAddress
       nftPolicy = mintPolicy scrAddress oref nftId
       val = Value.singleton (scriptCurrencySymbol nftPolicy) (nftId'token nftId) 1
@@ -248,9 +250,7 @@ bidAuction (AuctionBidParams nftId bidAmount) = do
           }
       action = BidAuctionAct bidAmount (nftCurrency nftId)
       redeemer = asRedeemer action
-      newValue = (ciTxOut ^. ciTxOutValue) <> Ada.lovelaceValueOf bidAmount
-      -- newValue = val <> Ada.lovelaceValueOf bidAmount
-      -- newValue = Ada.lovelaceValueOf bidAmount
+      newValue = val <> Ada.lovelaceValueOf bidAmount
       newDatum = Datum . PlutusTx.toBuiltinData $ newDatum' -- Serialised Datum
       bidDependentTxConstraints =
         case as'highestBid auctionState of
@@ -263,13 +263,13 @@ bidAuction (AuctionBidParams nftId bidAmount) = do
         ( mconcat
             [ Constraints.typedValidatorLookups txPolicy
             , Constraints.otherScript (validatorScript txPolicy)
-            , Constraints.unspentOutputs $ Map.singleton oref ciTxOut
+            , Constraints.unspentOutputs $ Map.singleton nftOref ciTxOut
             ]
         , mconcat
-            ( [ Constraints.mustPayToTheScript newDatum' newValue -- try swapping with val
+            ( [ Constraints.mustPayToTheScript newDatum' newValue
             -- , Constraints.mustPayToTheScript
               , Constraints.mustIncludeDatum newDatum
-              , Constraints.mustSpendScriptOutput oref redeemer
+              , Constraints.mustSpendScriptOutput nftOref redeemer
               , Constraints.mustValidateIn (to $ as'deadline auctionState)
               ]
                 ++ bidDependentTxConstraints
@@ -284,7 +284,9 @@ bidAuction (AuctionBidParams nftId bidAmount) = do
 
 closeAuction :: AuctionCloseParams -> Contract w NFTAppSchema Text ()
 closeAuction (AuctionCloseParams nftId) = do
-  (oref, ciTxOut, oldDatum) <- findNft txScrAddress $ nftId
+  oldDatum <- getNftDatum nftId
+  let oref = nftId'outRef . dNft'id $ oldDatum
+  (nftOref, ciTxOut, _oldDatum) <- findNft txScrAddress $ nftId
   let scrAddress = txScrAddress
       nftPolicy = mintPolicy scrAddress oref nftId
       val = Value.singleton (scriptCurrencySymbol nftPolicy) (nftId'token nftId) 1
@@ -313,8 +315,7 @@ closeAuction (AuctionCloseParams nftId) = do
           }
       action = CloseAuctionAct (nftCurrency nftId)
       redeemer = asRedeemer action
-      newValue = ciTxOut ^. ciTxOutValue -- TODO: why needed?
-      -- newValue = val
+      newValue = val
       newDatum = Datum . PlutusTx.toBuiltinData $ newDatum' -- Serialised Datum
       bidDependentTxConstraints =
         case as'highestBid auctionState of
@@ -329,12 +330,12 @@ closeAuction (AuctionCloseParams nftId) = do
         ( mconcat
             [ Constraints.typedValidatorLookups txPolicy
             , Constraints.otherScript (validatorScript txPolicy)
-            , Constraints.unspentOutputs $ Map.singleton oref ciTxOut
+            , Constraints.unspentOutputs $ Map.singleton nftOref ciTxOut
             ]
         , mconcat
-            ( [ Constraints.mustPayToTheScript newDatum' newValue -- try swapping with val (fails with InsufficientFunds)
+            ( [ Constraints.mustPayToTheScript newDatum' newValue
               , Constraints.mustIncludeDatum newDatum
-              , Constraints.mustSpendScriptOutput oref redeemer
+              , Constraints.mustSpendScriptOutput nftOref redeemer
               , Constraints.mustValidateIn (from $ as'deadline auctionState)
               ]
                 ++ bidDependentTxConstraints
