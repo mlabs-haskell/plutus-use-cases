@@ -141,8 +141,10 @@ auctionTrace1 :: EmulatorTrace ()
 auctionTrace1 = do
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
       wallet2 = walletFromNumber 2 :: Emulator.Wallet
+      wallet3 = walletFromNumber 3 :: Emulator.Wallet
   h1 :: AppTraceHandle <- activateContractWallet wallet1 endpoints
   h2 :: AppTraceHandle <- activateContractWallet wallet2 endpoints
+  h3 :: AppTraceHandle <- activateContractWallet wallet3 endpoints
   callEndpoint @"mint" h1 artwork
 
   void $ Trace.waitNSlots 1
@@ -160,11 +162,14 @@ auctionTrace1 = do
   -- callEndpoint @"set-price" h1 (SetPriceParams nftId (Just 20))
   -- void $ Trace.waitNSlots 1
 
-  callEndpoint @"auction-bid" h2 (bidParams nftId 3333)
+  callEndpoint @"auction-bid" h2 (bidParams nftId 11111111)
+  void $ Trace.waitNSlots 2
+
+  callEndpoint @"auction-bid" h3 (bidParams nftId 22222222)
   void $ Trace.waitNSlots 12
 
   callEndpoint @"auction-close" h1 (closeParams nftId)
-  void $ Trace.waitNSlots 10
+  void $ Trace.waitNSlots 2
 
   callEndpoint @"set-price" h2 (SetPriceParams nftId (Just 20))
   void $ Trace.waitNSlots 2

@@ -193,6 +193,7 @@ openAuction (AuctionOpenParams nftId deadline minBid) = do
       action = OpenAuctionAct (nftCurrency nftId)
       redeemer = asRedeemer action
       newValue = ciTxOut ^. ciTxOutValue -- TODO: why needed?
+      -- newValue = val
       newDatum = Datum . PlutusTx.toBuiltinData $ newDatum' -- Serialised Datum
       (lookups, txConstraints) =
         ( mconcat
@@ -206,7 +207,9 @@ openAuction (AuctionOpenParams nftId deadline minBid) = do
             , Constraints.mustSpendScriptOutput oref redeemer
             ]
         )
+  void $ Contract.logInfo @Hask.String $ printf "DEBUG open auction newValue: %s" (Hask.show newValue)
   ledgerTx <- Contract.submitTxConstraintsWith @NftTrade lookups txConstraints
+  void $ Contract.logInfo @Hask.String $ printf "DEBUG open auction TX: %s" (Hask.show ledgerTx)
   void $ Contract.logInfo @Hask.String $ printf "Started auction for %s" $ Hask.show val
   void $ Contract.awaitTxConfirmed $ Ledger.txId ledgerTx
   void $ Contract.logInfo @Hask.String $ printf "Confirmed start auction for %s" $ Hask.show val
@@ -246,6 +249,8 @@ bidAuction (AuctionBidParams nftId bidAmount) = do
       action = BidAuctionAct bidAmount (nftCurrency nftId)
       redeemer = asRedeemer action
       newValue = (ciTxOut ^. ciTxOutValue) <> Ada.lovelaceValueOf bidAmount
+      -- newValue = val <> Ada.lovelaceValueOf bidAmount
+      -- newValue = Ada.lovelaceValueOf bidAmount
       newDatum = Datum . PlutusTx.toBuiltinData $ newDatum' -- Serialised Datum
       bidDependentTxConstraints =
         case as'highestBid auctionState of
@@ -262,6 +267,7 @@ bidAuction (AuctionBidParams nftId bidAmount) = do
             ]
         , mconcat
             ( [ Constraints.mustPayToTheScript newDatum' newValue -- try swapping with val
+            -- , Constraints.mustPayToTheScript
               , Constraints.mustIncludeDatum newDatum
               , Constraints.mustSpendScriptOutput oref redeemer
               , Constraints.mustValidateIn (to $ as'deadline auctionState)
@@ -269,7 +275,9 @@ bidAuction (AuctionBidParams nftId bidAmount) = do
                 ++ bidDependentTxConstraints
             )
         )
+  void $ Contract.logInfo @Hask.String $ printf "DEBUG bid auction newValue: %s" (Hask.show newValue)
   ledgerTx <- Contract.submitTxConstraintsWith @NftTrade lookups txConstraints
+  void $ Contract.logInfo @Hask.String $ printf "DEBUG bid auction TX: %s" (Hask.show ledgerTx)
   void $ Contract.logInfo @Hask.String $ printf "Bidding %s in auction for %s" (Hask.show newHighestBid) (Hask.show val)
   void $ Contract.awaitTxConfirmed $ Ledger.txId ledgerTx
   void $ Contract.logInfo @Hask.String $ printf "Confirmed bid %s in auction for %s" (Hask.show newHighestBid) (Hask.show val)
@@ -291,7 +299,7 @@ closeAuction (AuctionCloseParams nftId) = do
   let newOwner =
         case as'highestBid auctionState of
           Nothing -> dNft'owner oldDatum
-          Just (AuctionBid _ bidder) -> getUserId bidder
+          Just (AuctionBid _ bidder) -> bidder
 
       newDatum' =
         -- Unserialised Datum
@@ -308,10 +316,6 @@ closeAuction (AuctionCloseParams nftId) = do
       newValue = ciTxOut ^. ciTxOutValue -- TODO: why needed?
       -- newValue = val
       newDatum = Datum . PlutusTx.toBuiltinData $ newDatum' -- Serialised Datum
-      -- bidDependentLookups =
-      --   case as'highestBid auctionState of
-      --     Nothing -> []
-      --     Just (AuctionBid bid bidder) -> []
       bidDependentTxConstraints =
         case as'highestBid auctionState of
           Nothing -> []
@@ -323,14 +327,12 @@ closeAuction (AuctionCloseParams nftId) = do
 
       (lookups, txConstraints) =
         ( mconcat
-            ( [ Constraints.typedValidatorLookups txPolicy
-              , Constraints.otherScript (validatorScript txPolicy)
-              , Constraints.unspentOutputs $ Map.singleton oref ciTxOut
-              ]
-              -- ++ bidDependentLookups
-            )
+            [ Constraints.typedValidatorLookups txPolicy
+            , Constraints.otherScript (validatorScript txPolicy)
+            , Constraints.unspentOutputs $ Map.singleton oref ciTxOut
+            ]
         , mconcat
-            ( [ Constraints.mustPayToTheScript newDatum' newValue -- try swapping with val
+            ( [ Constraints.mustPayToTheScript newDatum' newValue -- try swapping with val (fails with InsufficientFunds)
               , Constraints.mustIncludeDatum newDatum
               , Constraints.mustSpendScriptOutput oref redeemer
               , Constraints.mustValidateIn (from $ as'deadline auctionState)
@@ -338,7 +340,10 @@ closeAuction (AuctionCloseParams nftId) = do
                 ++ bidDependentTxConstraints
             )
         )
+  void $ Contract.logInfo @Hask.String $ printf "DEBUG close auction highestBid: %s" (Hask.show $ as'highestBid auctionState)
+  void $ Contract.logInfo @Hask.String $ printf "DEBUG close auction newValue: %s" (Hask.show newValue)
   ledgerTx <- Contract.submitTxConstraintsWith @NftTrade lookups txConstraints
+  void $ Contract.logInfo @Hask.String $ printf "DEBUG close auction TX: %s" (Hask.show ledgerTx)
   void $ Contract.logInfo @Hask.String $ printf "Closing auction for %s" $ Hask.show val
   void $ Contract.awaitTxConfirmed $ Ledger.txId ledgerTx
   void $ Contract.logInfo @Hask.String $ printf "Confirmed close auction for %s" $ Hask.show val
