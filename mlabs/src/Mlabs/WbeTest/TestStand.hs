@@ -1,6 +1,13 @@
-module Mlabs.WbeTest.TestStand (run, runSimple) where
+module Mlabs.WbeTest.TestStand (
+  run
+, runSimple
+-- , runQU
+) where
 
 import Prelude
+import Data.Set (Set)
+import Data.Map (Map)
+
 import Mlabs.WbeTest.TxRead
 import Mlabs.WbeTest.TxBuilder
 import Mlabs.WbeTest.WbeClient as WbeClient
@@ -8,6 +15,7 @@ import Mlabs.WbeTest.Types
 import Mlabs.WbeTest.TxCheck
 
 -- simple test imports
+import Ledger
 import Ledger.Constraints qualified as Constraints
 import Ledger.Crypto (PubKeyHash (..), pubKeyHash)
 import qualified Cardano.Api as C
@@ -17,6 +25,14 @@ import Plutus.V1.Ledger.Ada (adaValueOf)
 import Data.Void
 import Data.Maybe (fromJust)
 import Plutus.Contract.Wallet (ExportTx (..))
+import Plutus.Contract.CardanoAPI (fromCardanoTxOut)
+import Control.Monad (void)
+import Data.Set qualified as Set
+import Data.Map qualified as Map
+import  Mlabs.WbeTest.CardanoAPI
+import System.Environment (getEnv)
+import Control.Monad ((>=>))
+import System.Exit (die)
 -- simple test imports -- END
 
 testnetWalletId :: WalletId
@@ -33,8 +49,13 @@ run = do
 
 type BalanceCall = WbeClientCfg -> WbeExportTx -> IO (Either String (WbeTx 'Balanced))
 
-runBalanceTest :: BalanceCall -> WbeClientCfg -> WbeExportTx -> IO () 
-runBalanceTest call cfg exportTx = do
+runBalanceTest 
+  :: BalanceCall 
+  -> UTXOGetter
+  -> WbeClientCfg
+  -> WbeExportTx 
+  -> IO () 
+runBalanceTest call utxosGetter cfg exportTx = do
   balanced <- call cfg exportTx
   case balanced of
     Left err -> putStrLn $ "Balance check failed with: " <> err
@@ -47,7 +68,7 @@ runBalanceTest call cfg exportTx = do
       putStrLn "\nCorresponging balanced ChainIndexTx:"
       print $ parseTx wbeTx 
       putStrLn "\nCheck:"
-      print $ checkBalanced exportTx wbeTx 
+      checkBalanced utxosGetter exportTx wbeTx 
 
 doFakeBalance :: BalanceCall
 doFakeBalance _ _ = return . Right 
@@ -59,18 +80,29 @@ runSignTest = putStrLn "TODO: WBE sign test"
 runSimple :: IO ()
 runSimple = do
   Just (params :: C.ProtocolParameters)
-    <- decodeFileStrict "./src/Mlabs/WbeTest/network_params.json"
-  let netId = C.Testnet $ C.NetworkMagic 8
+         <- decodeFileStrict "./src/Mlabs/WbeTest/network_params.json"
+  socket <- getEnv "CARDANO_NODE_SOCKET_PATH"
+
+  let connectionInfo = C.LocalNodeConnectInfo
+                        (C.CardanoModeParams (C.EpochSlots 21600))
+                        (C.Testnet $ C.NetworkMagic 8)
+                        socket
+      netId = C.Testnet $ C.NetworkMagic 8
+      -- transaction related stuff
       pkh :: PubKeyHash = 
         fromJust $ decode $
           "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d2\"}" 
       value = adaValueOf 5
       txC = Constraints.mustPayToPubKey pkh value
-
       ethTx = WbeExportTx <$> buildTx @Void netId params mempty txC
-  Right  tx <- return ethTx
+
+  Right  tx <- return ethTx -- TODO: shortcut, need error better handling
   putStrLn "Submitted for balancing:"
   print $ let (WbeExportTx (ExportTx apiTx _ _)) = tx in toChainIndexTx apiTx
   putStrLn ""
-  runBalanceTest WbeClient.balance clientCfg tx
+  runBalanceTest
+    WbeClient.balance 
+    (getUTXOs connectionInfo)
+    clientCfg 
+    tx
   return ()
