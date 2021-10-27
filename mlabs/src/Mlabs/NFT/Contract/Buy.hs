@@ -42,38 +42,39 @@ import Mlabs.NFT.Contract.Aux
 import Mlabs.NFT.Types
 import Mlabs.NFT.Validation
 
--- TODO: Move shared code to some Utils module
-import Mlabs.NFT.Contract.Mint (getDatumsTxsOrdered)
-
 {- | BUY.
  Attempts to buy a new NFT by changing the owner, pays the current owner and
  the author, and sets a new price for the NFT.
 -}
 buy :: NftAppSymbol -> BuyRequestUser -> Contract (Last NftId) s Text ()
-buy symbol params = do
+buy symbol BuyRequestUser {..} = do
   ownOrefTxOut <- getUserAddr >>= fstUtxoAt
   ownPkh <- pubKeyHash <$> Contract.ownPubKey
-  (node, (oref, toOut)) <- findNode symbol params.ur'nftId
+  PointInfo {..} <- findNft ur'nftId symbol
+  node <- case pi'datum of
+    NodeDatum n -> Hask.pure n
+    _ -> Contract.throwError "NFT not found"
   case node.node'information.info'price of
     Nothing -> Contract.logError @Hask.String "NFT not for sale."
     Just price ->
-      if params.ur'price < price
+      if ur'price < price
         then Contract.logError @Hask.String "Bid price is too low."
         else do
           userUtxos <- getUserUtxos
-          let (paidToOwner, paidToAuthor) = calculateShares params.ur'price node.node'information.info'share
+          let (paidToOwner, paidToAuthor) = calculateShares ur'price node.node'information.info'share
               nftDatum = NodeDatum $ updateDatum ownPkh node
-              nftVal = toOut ^. ciTxOutValue
+              nftVal = pi'CITxO ^. ciTxOutValue
               action =
                 BuyAct
-                  { act'bid = params.ur'price
-                  , act'newPrice = params.ur'newPrice
+                  { act'bid = ur'price
+                  , act'newPrice = ur'newPrice
+                  , act'symbol = symbol
                   }
               lookups =
                 mconcat
                   [ Constraints.unspentOutputs userUtxos
                   , Constraints.unspentOutputs $ Map.fromList [ownOrefTxOut]
-                  , Constraints.unspentOutputs $ Map.fromList [(oref, toOut)]
+                  , Constraints.unspentOutputs $ Map.fromList [(pi'TOR, pi'CITxO)]
                   , Constraints.typedValidatorLookups txPolicy
                   , Constraints.otherScript (validatorScript txPolicy)
                   ]
@@ -82,37 +83,21 @@ buy symbol params = do
                   [ Constraints.mustPayToTheScript nftDatum nftVal
                   , Constraints.mustIncludeDatum (Datum . PlutusTx.toBuiltinData $ nftDatum)
                   , Constraints.mustPayToPubKey (getUserId node.node'information.info'author) paidToAuthor
-                  , Constraints.mustPayToPubKey (getUserId node.node'information.info'owner) paidToAuthor
+                  , Constraints.mustPayToPubKey (getUserId node.node'information.info'owner) paidToOwner
                   , Constraints.mustSpendPubKeyOutput (fst ownOrefTxOut)
                   , Constraints.mustSpendScriptOutput
-                      oref
+                      pi'TOR
                       (Redeemer . PlutusTx.toBuiltinData $ action)
                   ]
           void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
-  Contract.tell . Last . Just $ params.ur'nftId
+          Contract.tell . Last . Just $ ur'nftId
+          Contract.logInfo  @Hask.String "buy successful!"
   where
     updateDatum newOwner node =
       node
         { node'information =
             node.node'information
-              { info'price = params.ur'newPrice
+              { info'price = ur'newPrice
               , info'owner = UserId newOwner
               }
         }
-
-    getNode (NodeDatum datum, x) = Just (datum, x)
-    getNode _ = Nothing
-
-    nftEq nftId (datum, _) = nftId == info'id (node'information datum)
-
-    findNode ::
-      NftAppSymbol ->
-      NftId ->
-      Contract w s Text (NftListNode, (TxOutRef, ChainIndexTxOut)) -- to change to new PointInfo
-    findNode appCS nftId = error ()
-
---      lst <- getDatumsTxsOrdered appCS
---      let res = find (nftEq nftId) . mapMaybe getNode $ lst
---      case res of
---        Nothing -> Contract.throwError "NFT not found"
---        Just res' -> Hask.pure res'

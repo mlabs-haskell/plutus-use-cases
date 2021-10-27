@@ -95,6 +95,7 @@ mint symbol params = do
       let lookups = mconcat [lLk, nLk]
           tx = mconcat [lCx, nCx]
       void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
+      Contract.tell . Last . Just . info'id . node'information $ newNode
       Contract.logInfo @Hask.String $ printf "mint successful!"
   where
     nftIdInit = NftId . hashData
@@ -166,7 +167,7 @@ mint symbol params = do
         newToken = assetClass (app'symbol appSymbol) (TokenName .getDatumValue . NodeDatum $ newNode)
         newDatum = updatePointer (Pointer newToken)
         oref = pi'TOR insertPoint
-        redeemer = asRedeemer . MintAct . NftId . getDatumValue . NodeDatum $ newNode
+        redeemer = asRedeemer $ MintAct (NftId . getDatumValue . NodeDatum $ newNode) symbol
         oldDatum = pi'datum insertPoint
         uniqueToken = assetClassValue (appInstance'AppAssetClass appInstance) 1
 

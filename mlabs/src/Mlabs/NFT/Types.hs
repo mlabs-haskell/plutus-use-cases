@@ -381,16 +381,22 @@ data UserAct
         act'bid :: Integer
       , -- | new price for NFT. In Lovelace.
         act'newPrice :: Maybe Integer
+      , -- | Nft symbol
+        act'symbol :: NftAppSymbol
       }
   | -- | Set new price for NFT
     SetPriceAct
       { -- | new price for NFT. In Lovelace.
         act'newPrice :: Maybe Integer
+      , -- | Nft symbol
+        act'symbol :: NftAppSymbol
       }
   | -- | Mint a new Unique NFT.
     MintAct
       { -- | NFT.
         act'nftId :: NftId
+      , -- | Nft symbol
+        act'symbol :: NftAppSymbol
       }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
@@ -400,10 +406,10 @@ PlutusTx.unstableMakeIsData ''UserAct
 
 instance Eq UserAct where
   {-# INLINEABLE (==) #-}
-  (BuyAct bid1 newPrice1) == (BuyAct bid2 newPrice2) =
-    bid1 == bid2 && newPrice1 == newPrice2
-  (SetPriceAct newPrice1) == (SetPriceAct newPrice2) =
-    newPrice1 == newPrice2
+  (BuyAct bid1 newPrice1 symbol1) == (BuyAct bid2 newPrice2 symbol2) =
+    bid1 == bid2 && newPrice1 == newPrice2 && symbol1 == symbol2
+  (SetPriceAct newPrice1 symbol1) == (SetPriceAct newPrice2 symbol2) =
+    newPrice1 == newPrice2 && symbol1 == symbol2
   _ == _ = False
 
 -- OffChain utility types.
