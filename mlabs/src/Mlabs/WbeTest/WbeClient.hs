@@ -9,6 +9,7 @@ module Mlabs.WbeTest.WbeClient (
 import Control.Monad.IO.Class (MonadIO)
 
 import Data.Aeson (FromJSON, ToJSON, eitherDecode)
+import Data.Bifunctor (first)
 import Data.Text (Text)
 import qualified Data.Text.Encoding as Text
 
@@ -32,21 +33,21 @@ balance ::
   MonadIO m =>
   WbeClientCfg ->
   WbeExportTx ->
-  m (Either String (WbeTx 'Balanced))
+  m (Either WbeError (WbeTx 'Balanced))
 balance cfg = postWallet cfg "transactions-balance"
 
 sign ::
   MonadIO m =>
   WbeClientCfg ->
   WbeTx 'Balanced ->
-  m (Either String (WbeTx 'Signed))
+  m (Either WbeError (WbeTx 'Signed))
 sign cfg = postWallet cfg "transactions-sign"
 
 submit ::
   MonadIO m =>
   WbeClientCfg ->
   WbeTx 'Signed ->
-  m (Either String (WbeTx 'Signed))
+  m (Either WbeError (WbeTx 'Signed))
 submit WbeClientCfg {..} (WbeTx tx) = eitherDecodeLbs mkReq
   where
     mkReq = Req.req Req.POST url (Req.ReqBodyBs rawTx) Req.lbsResponse options
@@ -62,7 +63,7 @@ postWallet ::
   WbeClientCfg ->
   Text ->
   a ->
-  m (Either String b)
+  m (Either WbeError b)
 postWallet WbeClientCfg {..} path reqBody = eitherDecodeLbs mkReq
   where
     mkReq =
@@ -73,10 +74,11 @@ postWallet WbeClientCfg {..} path reqBody = eitherDecodeLbs mkReq
 eitherDecodeLbs ::
   (MonadIO m, FromJSON a) =>
   Req.Req Req.LbsResponse ->
-  m (Either String a)
+  m (Either WbeError a)
 eitherDecodeLbs =
-  Req.runReq Req.defaultHttpConfig
-    . fmap
-      ( eitherDecode
-          . Req.responseBody
-      )
+  fmap (first HttpError)
+  . Req.runReq Req.defaultHttpConfig
+  . fmap
+    ( eitherDecode
+        . Req.responseBody
+    )

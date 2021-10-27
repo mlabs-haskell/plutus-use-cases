@@ -45,6 +45,7 @@ common common-imports
     , cardano-ledger-alonzo
     , plutus-extra
     , purescript-bridge
+    , transformers
     -- wbe testing stuff
     , memory
     , req
