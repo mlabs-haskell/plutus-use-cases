@@ -13,21 +13,21 @@ import Data.Bifunctor (bimap)
 
 import Plutus.Contract.CardanoAPI
     ( fromCardanoTxIn, fromCardanoTxOut, toCardanoTxIn )
+import Mlabs.WbeTest.Types
 
 -- | Get UTxO from wallet by Ledger's `TxIn`
 getUTXOs 
   :: C.LocalNodeConnectInfo C.CardanoMode
   -> Set TxIn 
-  -> IO (Either String (Map TxIn TxOut))
+  -> IO (Either WbeError (Map TxIn TxOut))
 getUTXOs nodeInfo txIns = (>>= convert) <$> getApiUTXOs nodeInfo txIns
-
 
 getApiUTXOs
   :: C.LocalNodeConnectInfo C.CardanoMode
   -> Set TxIn
-  -> IO (Either String (C.UTxO C.AlonzoEra))
+  -> IO (Either WbeError (C.UTxO C.AlonzoEra))
 getApiUTXOs nodeInfo txIns = do
-  let cardanoTxIns = bimap (const "Failed to parse TxIn") Set.fromList
+  let cardanoTxIns = bimap (const $ DecoderError "Failed to parse TxIn") Set.fromList
                     $ traverse (toCardanoTxIn . txInRef) $ Set.toList txIns
   case cardanoTxIns of
     Right ins -> get ins
@@ -42,11 +42,11 @@ getApiUTXOs nodeInfo txIns = do
         Right (Right utxo)
           -> return $ Right $ utxo
         err
-          -> return . Left . show $ err
+          -> return . Left . DecoderError . show $ err
 
 -- | Converts UTxO of Cardano API to map of map of Plutus `TxIn` -> `TxOut`
-convert :: C.UTxO C.AlonzoEra -> Either String (Map TxIn TxOut)
-convert (C.UTxO utxoMap) = left show $
+convert :: C.UTxO C.AlonzoEra -> Either WbeError (Map TxIn TxOut)
+convert (C.UTxO utxoMap) = left (DecoderError . show) $
    traverse fromCardanoTxOut
    . Map.mapKeys ((`TxIn` Nothing)
    . fromCardanoTxIn)
