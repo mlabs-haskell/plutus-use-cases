@@ -31,6 +31,8 @@ import Mlabs.Governance.Contract.Validation qualified as Gov
 
 import Ledger (Address, CurrencySymbol, Value)
 import Ledger qualified
+import Mlabs.Utils.Wallet (walletFromNumber)
+
 import Plutus.Contract.Test (
   CheckOptions,
   Outcome (..),
@@ -40,6 +42,7 @@ import Plutus.Contract.Test (
   emulatorConfig,
   walletPubKey,
  )
+
 import Plutus.Trace.Emulator (initialChainState)
 import Plutus.V1.Ledger.Ada (adaSymbol, adaToken)
 import Plutus.V1.Ledger.Value qualified as Value (singleton)
@@ -54,10 +57,10 @@ checkOptions = defaultCheckOptions & emulatorConfig . initialChainState .~ Left 
 
 -- | Wallets that are used for testing.
 fstWalletWithGOV, sndWalletWithGOV, walletNoGOV, adminWallet :: Wallet
-fstWalletWithGOV = Wallet 1
-sndWalletWithGOV = Wallet 2
-walletNoGOV = Wallet 3
-adminWallet = Wallet 50
+fstWalletWithGOV = walletFromNumber 1
+sndWalletWithGOV = walletFromNumber 2
+walletNoGOV = walletFromNumber 3
+adminWallet = walletFromNumber 4
 
 scriptAddress :: Address
 scriptAddress = Gov.govAddress acGOV

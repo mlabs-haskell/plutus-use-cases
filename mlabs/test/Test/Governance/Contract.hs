@@ -8,7 +8,7 @@ module Test.Governance.Contract (
 import Data.Functor (void)
 import Data.Text (Text)
 import PlutusTx.Prelude hiding (error)
-import Prelude (error)
+import Prelude (Show (..), error)
 
 -- import Data.Monoid ((<>), mempty)
 
@@ -41,11 +41,13 @@ import Mlabs.Governance.Contract.Api (
  )
 import Mlabs.Governance.Contract.Server qualified as Gov
 import Test.Governance.Init as Test
-import Test.Utils (next)
+import Test.Utils (concatPredicates, next)
 
 import Ledger.Index (ValidationError (..))
 
 import Plutus.Trace.Effects.RunContract (RunContract)
+
+--import Control.Monad.Writer (Monoid(mempty))
 
 theContract :: Gov.GovernanceContract ()
 theContract = Gov.governanceEndpoints Test.acGOV
@@ -71,11 +73,12 @@ test =
         ]
     , testGroup
         "Withdraw"
-        [ testFullWithdraw
-        , testPartialWithdraw
-        , testCantWithdrawNegativeAmount
-        ]
+        []
     ]
+
+-- testFullWithdraw
+-- , testPartialWithdraw
+-- , testCantWithdrawNegativeAmount
 
 -- deposit tests
 testDepositHappyPath :: TestTree
@@ -158,48 +161,51 @@ testCantDepositNegativeAmount1 =
           next
 
 testCantDepositNegativeAmount2 :: TestTree
-testCantDepositNegativeAmount2 =
-  let (wallet, _, _, activateWallet) = setup Test.fstWalletWithGOV
-      errCheck _ e _ = case e of
-        ScriptFailure (EvaluationError _) -> True
-        _ -> False
-      depoAmt = 20
-   in checkPredicateOptions
-        Test.checkOptions
-        "Cant deposit negative GOV case 2"
-        ( assertFailedTransaction errCheck
-            .&&. walletFundsChange
-              wallet
-              ( Test.gov (negate depoAmt)
-                  <> Test.xgov wallet depoAmt
-              )
-            .&&. valueAtAddress Test.scriptAddress (== Test.gov depoAmt)
-        )
-        $ do
-          hdl <- activateWallet
-          void $ callEndpoint' @Deposit hdl (Deposit depoAmt)
-          next
-          void $ callEndpoint' @Deposit hdl (Deposit (negate 2))
-          next
+testCantDepositNegativeAmount2 = checkPredicateOptions Test.checkOptions msg predicates actions
+  where
+    msg = "Cannot deposit negative GOV case 2"
+
+    actions = do
+      hdl <- activateWallet
+      void $ callEndpoint' @Deposit hdl (Deposit depoAmt)
+      next
+      void $ callEndpoint' @Deposit hdl (Deposit (negate 2))
+      next
+
+    (wallet, _, _, activateWallet) = setup Test.fstWalletWithGOV
+
+    depoAmt = 20
+
+    predicates =
+      concatPredicates
+        [ assertFailedTransaction errCheck
+        , walletFundsChange wallet $ mconcat [Test.gov (negate depoAmt), Test.xgov wallet depoAmt]
+        , valueAtAddress Test.scriptAddress (== Test.gov depoAmt)
+        ]
+      where
+        errCheck _ e _ = case e of
+          NegativeValue _ -> True
+          _ -> False
 
 -- withdraw tests
 testFullWithdraw :: TestTree
-testFullWithdraw =
-  let (wallet, _, _, activateWallet) = setup Test.fstWalletWithGOV
-      depoAmt = 50
-   in checkPredicateOptions
-        Test.checkOptions
-        "Full withdraw"
-        ( assertNoFailedTransactions
-            .&&. walletFundsChange wallet mempty
-        )
-        $ do
-          hdl <- activateWallet
-          next
-          void $ callEndpoint' @Deposit hdl (Deposit depoAmt)
-          next
-          void $ callEndpoint' @Withdraw hdl (Withdraw $ Test.xgovEP wallet depoAmt)
-          next
+testFullWithdraw = checkPredicateOptions Test.checkOptions msg predicates actions
+  where
+    msg = "Full withdraw"
+    depoAmt = 50
+    (wallet, _, _, activateWallet) = setup Test.fstWalletWithGOV
+    predicates =
+      concatPredicates
+        [ assertNoFailedTransactions
+        , walletFundsChange wallet mempty
+        ]
+    actions = do
+      hdl <- activateWallet
+      next
+      void $ callEndpoint' @Deposit hdl (Deposit depoAmt)
+      next
+      void $ callEndpoint' @Withdraw hdl (Withdraw $ Test.xgovEP wallet depoAmt)
+      next
 
 testPartialWithdraw :: TestTree
 testPartialWithdraw =
