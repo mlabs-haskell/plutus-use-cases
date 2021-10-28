@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Mlabs.WbeTest.WbeClient (
   WbeClientCfg (..),
   defaultWbeClientCfg,
@@ -7,16 +9,17 @@ module Mlabs.WbeTest.WbeClient (
 ) where
 
 import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Trans.Except (ExceptT, except, throwE)
 
 import Data.Aeson (FromJSON, ToJSON, eitherDecode)
 import Data.Bifunctor (first)
 import Data.Text (Text)
-import qualified Data.Text.Encoding as Text
+import Data.Text.Encoding qualified as Text
 
 import Mlabs.WbeTest.Types
 
 import Network.HTTP.Req ((/:))
-import qualified Network.HTTP.Req as Req
+import Network.HTTP.Req qualified as Req
 
 import Prelude
 
@@ -29,26 +32,29 @@ data WbeClientCfg = WbeClientCfg
 defaultWbeClientCfg :: WalletId -> WbeClientCfg
 defaultWbeClientCfg = WbeClientCfg "localhost" 8090
 
+instance MonadIO m => Req.MonadHttp (ExceptT WbeError m) where
+  handleHttpException = throwE . HttpError
+
 balance ::
   MonadIO m =>
   WbeClientCfg ->
   WbeExportTx ->
-  m (Either WbeError (WbeTx 'Balanced))
+  ExceptT WbeError m (WbeTx 'Balanced)
 balance cfg = postWallet cfg "transactions-balance"
 
 sign ::
   MonadIO m =>
   WbeClientCfg ->
   WbeTx 'Balanced ->
-  m (Either WbeError (WbeTx 'Signed))
+  ExceptT WbeError m (WbeTx 'Signed)
 sign cfg = postWallet cfg "transactions-sign"
 
 submit ::
   MonadIO m =>
   WbeClientCfg ->
   WbeTx 'Signed ->
-  m (Either WbeError (WbeTx 'Signed))
-submit WbeClientCfg {..} (WbeTx tx) = eitherDecodeLbs mkReq
+  ExceptT WbeError m (WbeTx 'Signed)
+submit WbeClientCfg {..} (WbeTx tx) = eitherDecodeLbs =<< mkReq
   where
     mkReq = Req.req Req.POST url (Req.ReqBodyBs rawTx) Req.lbsResponse options
     url = Req.http host /: "v2" /: "proxy" /: "transactions"
@@ -63,8 +69,8 @@ postWallet ::
   WbeClientCfg ->
   Text ->
   a ->
-  m (Either WbeError b)
-postWallet WbeClientCfg {..} path reqBody = eitherDecodeLbs mkReq
+  ExceptT WbeError m b
+postWallet WbeClientCfg {..} path reqBody = eitherDecodeLbs =<< mkReq
   where
     mkReq =
       Req.req Req.POST url (Req.ReqBodyJson reqBody) Req.lbsResponse (Req.port port)
@@ -72,13 +78,9 @@ postWallet WbeClientCfg {..} path reqBody = eitherDecodeLbs mkReq
     url = Req.http host /: "v2" /: "wallets" /: unWalletId walletId /: path
 
 eitherDecodeLbs ::
-  (MonadIO m, FromJSON a) =>
-  Req.Req Req.LbsResponse ->
-  m (Either WbeError a)
+  forall a m. (FromJSON a, MonadIO m) => Req.LbsResponse -> ExceptT WbeError m a
 eitherDecodeLbs =
-  fmap (first HttpError)
-  . Req.runReq Req.defaultHttpConfig
-  . fmap
-    ( eitherDecode
-        . Req.responseBody
-    )
+  except
+    . first DecoderError
+    . eitherDecode @a
+    . Req.responseBody

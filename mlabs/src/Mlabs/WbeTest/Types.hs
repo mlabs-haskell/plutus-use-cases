@@ -37,6 +37,7 @@ import Data.String (IsString)
 import qualified Plutus.Contract.CardanoAPI as C
 import Ledger.Constraints (MkTxError)
 import Prettyprinter (pretty)
+import qualified Network.HTTP.Req as Req
 
 {- | Wrapper around 'ExportTx', whose 'ToJSON' instance does not match the format
  expected by the WBE (this should be unecessary after upgrading Plutus to the next
@@ -144,7 +145,7 @@ data MintBuilder = MintBuilder
   deriving stock (Hask.Show, Hask.Eq)
 
 data WbeError
-  = HttpError Hask.String
+  = HttpError Req.HttpException
   | DecoderError Hask.String
   | ConfigurationError Hask.String
   | CardanoError C.ToCardanoError
@@ -155,9 +156,10 @@ data WbeError
   deriving stock (Generic)
 
 instance Hask.Show WbeError where
-  show (HttpError err) = err
-  show (DecoderError err) = err
-  show (ConfigurationError err) = err
-  show (CardanoError err) = Hask.show $ pretty err
-  show (TxError err) = Hask.show $ pretty err
-  show (NodeError err) = err
+  show = \case
+    HttpError err -> Hask.show err
+    DecoderError err -> err
+    ConfigurationError err -> err
+    CardanoError err -> Hask.show $ pretty err
+    TxError err -> Hask.show $ pretty err
+    NodeError err -> err
