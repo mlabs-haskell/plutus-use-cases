@@ -4,13 +4,17 @@ module Mlabs.WbeTest.TxBuilder (
   buildTx,
   buildWbeTx,
   buildMintTx,
+  simpleAdaToWallet,
 ) where
 
 import qualified Cardano.Api as C
 import qualified Cardano.Api.Shelley as C
 
+import Data.Aeson (decode)
+import Data.Maybe (fromJust)
 import Data.Bifunctor (first)
 import qualified Data.Map as Map
+import Data.Void (Void(..))
 
 import Mlabs.NFT.Types (Content (..), MintParams (..), NftId (..), UserId (..))
 import Mlabs.NFT.Validation (
@@ -23,10 +27,12 @@ import Mlabs.NFT.Validation (
 import Mlabs.WbeTest.Types (MintBuilder (..), WbeExportTx (..), WbeError (..))
 
 import Ledger (TxOutRef, scriptCurrencySymbol)
+import Ledger.Crypto (PubKeyHash (..), pubKeyHash)
 import qualified Ledger.Constraints as Constraints
 import Ledger.Constraints.OffChain (MkTxError (..), UnbalancedTx, mkTx)
 import Ledger.Typed.Scripts.Validators (ValidatorTypes (..), validatorScript)
 import qualified Ledger.Value as Value
+import Plutus.V1.Ledger.Ada (adaValueOf)
 
 import Plutus.Contract.Wallet (ExportTx (..), export)
 
@@ -34,6 +40,23 @@ import PlutusTx (FromData, ToData)
 import PlutusTx.Prelude
 
 import qualified Prelude as Hask
+
+import Prettyprinter (pretty)
+
+-- Shortcuts for creating transactions --
+simpleAdaToWallet netId params ada = 
+  WbeExportTx <$> buildTx @Void netId params Hask.mempty txC
+  where
+    pkh :: PubKeyHash = 
+        -- todo check if we can do it w/o JSON decoding (was broken in earlier versions)
+        fromJust $ decode $
+          -- todo maybe we'll need more general one too one with PKH in arguments
+          "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d2\"}" 
+    value = adaValueOf ada
+    txC = Constraints.mustPayToPubKey pkh value
+
+
+-- Building transactions --
 
 -- | Build an 'WbeExportTx' from arbitrary lookups and transactions constraints
 buildWbeTx ::

@@ -1,9 +1,9 @@
-module Mlabs.WbeTest.TxCheck (
-  BalanceCheck (..),
-  SignCheck (..),
+module Mlabs.WbeTest.TxInfo (
+  BalanceInfo (..),
+  SignInfo (..),
   UTXOGetter,
-  checkBalanced,
-  checkSigned,
+  analyseBalanced,
+  analyseSigned,
 ) where
 
 import Cardano.Api.Shelley qualified as C
@@ -41,17 +41,18 @@ import Plutus.Contract.Wallet (ExportTx (..), ExportTxInput (..))
 
 import Prelude
 
-data BalanceCheck = BalanceCheck
+
+data BalanceInfo = BalanceInfo
   { utxoInputs :: Map TxIn TxOut
   , txInFromWallet :: Set TxIn
   , fee :: Maybe Coin
   , lookupsTotalValue :: Value
   , utxosTotalValue :: Value
-  , balancedTotalValue :: Value
+  , totalOutsValue :: Value
   }
   deriving stock (Show, Eq, Generic)
 
-data SignCheck = SignCheck
+data SignInfo = SignInfo
   { balancedWitnesses :: [C.KeyWitness C.AlonzoEra]
   , signedWitnesses :: [C.KeyWitness C.AlonzoEra]
   , witnessDiff :: [C.KeyWitness C.AlonzoEra]
@@ -60,24 +61,24 @@ data SignCheck = SignCheck
 
 type UTXOGetter = Set TxIn -> IO (Either WbeError (Map TxIn TxOut))
 
-checkBalanced ::
+analyseBalanced ::
   UTXOGetter ->
   WbeExportTx ->
   WbeTx 'Balanced ->
-  ExceptT WbeError IO BalanceCheck
-checkBalanced utxosGetter (WbeExportTx (ExportTx apiTx lookups _)) wtx = do
+  ExceptT WbeError IO BalanceInfo
+analyseBalanced utxosGetter (WbeExportTx (ExportTx apiTx lookups _)) wtx = do
   initial <- except $ toChainIndexTx apiTx
   balanced <- except $ parseTx wtx
 
-  let fromWallet = addedByWallet initial balanced
+  let fromWallet = addedByWallet balanced initial
 
   utxoInputs <- ExceptT $ utxosGetter fromWallet
 
   pure $
-    BalanceCheck
+    BalanceInfo
       { lookupsTotalValue = lookupsVal lookups
       , utxosTotalValue = utxosVal utxoInputs
-      , balancedTotalValue = chainIndexTxVal balanced
+      , totalOutsValue = chainIndexTxVal balanced
       , txInFromWallet = fromWallet
       , fee = balancedTxFee balanced
       , ..
@@ -101,14 +102,14 @@ checkBalanced utxosGetter (WbeExportTx (ExportTx apiTx lookups _)) wtx = do
         . rights
         . fmap (C.fromCardanoTxOut . txOut)
 
-checkSigned :: WbeTx 'Balanced -> WbeTx 'Signed -> Either WbeError SignCheck
-checkSigned btx stx =
-  second (uncurry mkSignCheck) $
+analyseSigned  :: WbeTx 'Balanced -> WbeTx 'Signed -> Either WbeError SignInfo
+analyseSigned  btx stx =
+  second (uncurry mkSignInfo) $
     (,) <$> parseApiTx btx <*> parseApiTx stx
   where
-    mkSignCheck :: C.Tx C.AlonzoEra -> C.Tx C.AlonzoEra -> SignCheck
-    mkSignCheck balanced signed =
-      SignCheck
+    mkSignInfo :: C.Tx C.AlonzoEra -> C.Tx C.AlonzoEra -> SignInfo
+    mkSignInfo balanced signed =
+      SignInfo
         { witnessDiff = balancedWitnesses \\ signedWitnesses
         , ..
         }
