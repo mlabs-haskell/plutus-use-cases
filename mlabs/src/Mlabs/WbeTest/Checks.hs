@@ -7,7 +7,6 @@ module Mlabs.WbeTest.Checks (
   -- checkSigned
 ) where
 
-import Prelude (print)
 import Prelude qualified as Hask
 import PlutusTx.Prelude
 
@@ -24,32 +23,29 @@ data CheckContext = Success | Fail
 -- todo maybe Tx id should be included here
 data Check a = Check CheckContext a
 
-data Balanced 
-  = Balanced 
+data Balanced
+  = Balanced
   | Unbalanced {insValue :: Value, outsValue :: Value}
   deriving stock Hask.Show
 
 mustBeBalanced :: BalanceInfo -> Check Balanced
-mustBeBalanced BalanceInfo {..} = 
-  if valueBalanced 
-    then  Check Success Balanced
-    else  Check Fail (Unbalanced totalInputsValue totalOutsValue)
+mustBeBalanced BalanceInfo {..}
+  | valueBalanced = Check Success Balanced
+  | otherwise = Check Fail (Unbalanced totalInputsValue totalOutsValue)
   where
     valueBalanced = totalInputsValue == totalOutsValue + feeLovelaces
     totalInputsValue = lookupsTotalValue + utxosTotalValue
     feeLovelaces = maybe mempty (lovelaceValueOf . unCoin) fee
 
-newtype Fee = 
+newtype Fee =
   Fee {feeCoin :: Maybe Coin}
   deriving newtype Hask.Show
 
 feeMustBeAdded :: BalanceInfo -> Check Fee
-feeMustBeAdded BalanceInfo {..} = 
-  if feeAdded
-    then Check Success (Fee fee)
-    else Check Fail (Fee fee)
+feeMustBeAdded BalanceInfo {..}
+  | isJust fee = Check Success (Fee fee)
+  | otherwise = Check Fail (Fee fee)
   where
-    feeAdded = isJust fee
 
 cNot :: Check a -> Check a
 cNot = \case
@@ -58,53 +54,48 @@ cNot = \case
 
 class Reportable a where
   report :: a -> Hask.String --todo color coding?
-  say :: a -> Hask.String
-  sayOpposite :: a -> Hask.String
+  say :: Bool -> a -> Hask.String
 
 instance Reportable (Check Balanced) where
   report c@(Check ctx res) = case ctx of
-    Success -> 
+    Success ->
       Hask.mconcat [
         "Balance check is Ok\n"
-      , "+ result expected to be ", say c
+      , "+ result expected to be ", say False c
       , " and it is: " ++ Hask.show res
       ]
     Fail -> Hask.mconcat [
         "Balance check FAILED\n"
-      , "- result expected to be ", sayOpposite c
+      , "- result expected to be ", say True c
       , " BUT it is: " ++ Hask.show res
       ]
 
-  say = \case
-    (Check _ Balanced) -> "balanced"
-    (Check _ (Unbalanced _ _)) -> "unbalanced"
-  
-  
-  sayOpposite = \case
-    (Check _ Balanced) -> "unbalanced"
-    (Check _ (Unbalanced _ _)) -> "balanced"
+  say opposite ch 
+    | not opposite && isBalanced 
+    = "balanced"
+    | otherwise 
+    = "unbalanced"
+    where
+      isBalanced = case ch of
+        (Check _ Balanced) -> True
+        (Check _ (Unbalanced _ _)) -> False
 
 instance Reportable (Check Fee) where
   report c@(Check ctx res) = case ctx of
-    Success -> 
+    Success ->
       Hask.mconcat [
         "Fee check is Ok\n"
-      , "+ result expected to ", say c
+      , "+ result expected to ", say False c
       , " and fee is: " ++ Hask.show res
       ]
     Fail -> Hask.mconcat [
         "Balance check FAILED\n"
-      , "- result expected to be ", sayOpposite c
+      , "- result expected to be ", say True c
       , " BUT fee is: " ++ Hask.show res
       ]
 
-  say (Check _ (Fee v)) = 
-    if isJust v
-      then "has fee"
-      else "has no fee"
-  
-  
-  sayOpposite (Check _ (Fee v)) = 
-    if isJust v
-      then "has no fee"
-      else "has fee fee"
+  say opposite (Check _ (Fee v)) 
+    | not opposite && isJust v 
+    = "has fee"
+    | otherwise 
+    = "has no fee"
