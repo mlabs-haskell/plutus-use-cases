@@ -5,6 +5,7 @@ module Mlabs.WbeTest.Types
   loadWbeConfig,
   WbeClientCfg(..),
   defaultWbeClientCfg,
+  WbeNetworkId(..),
   WbeExportTx(..),
   WalletId(..),
   Passphrase(..),
@@ -13,6 +14,7 @@ module Mlabs.WbeTest.Types
   WbeTxSubmitted(..),
   MintBuilder(..),
   WbeError(..),
+  connectionInfoFromConfig,
 ) where
 
 import Prelude qualified as Hask
@@ -20,14 +22,15 @@ import Prelude qualified as Hask
 import GHC.Generics (Generic)
 import Data.Aeson (
   FromJSON (..),
-  ToJSON (..),
-  KeyValue ((.=)),
+  (.=),
   Options (fieldLabelModifier),
-  object,
-  genericParseJSON,
+  ToJSON (..),
   defaultOptions,
-  genericToJSON
-  )
+  genericParseJSON,
+  genericToJSON,
+  object,
+  withText,
+ )
 import Data.Text (Text)
 import Plutus.Contract.Wallet (ExportTx (..), ExportTxInput (..))
 import qualified Cardano.Api as C
@@ -45,10 +48,15 @@ import Prettyprinter (pretty)
 import qualified Network.HTTP.Req as Req
 import Data.Yaml (ParseException, decodeFileEither)
 import Data.Bifunctor (first)
+import Data.Word (Word64, Word32)
+import qualified Data.Text as Text
+import Text.Read (readMaybe)
 
 data WbeConfig = WbeConfig
   { socketPath :: Hask.FilePath
   , networkParamsPath :: Hask.FilePath
+  , epochSlots :: Word64
+  , networkId :: WbeNetworkId
   , wbeClientCfg :: WbeClientCfg
   }
   deriving stock (Hask.Show, Hask.Eq, Generic)
@@ -56,6 +64,31 @@ data WbeConfig = WbeConfig
 
 loadWbeConfig :: Hask.FilePath -> Hask.IO (Either WbeError WbeConfig)
 loadWbeConfig = Hask.fmap (first YamlError) . decodeFileEither
+
+connectionInfoFromConfig :: WbeConfig -> C.LocalNodeConnectInfo C.CardanoMode
+connectionInfoFromConfig WbeConfig {..} =
+  C.LocalNodeConnectInfo
+    (C.CardanoModeParams $ C.EpochSlots epochSlots)
+    (unWbeNetworkId networkId)
+    socketPath
+
+-- | Wrapper for 'NetworkId', which has no 'FromJSON' instance
+newtype WbeNetworkId = WbeNetworkId
+  { unWbeNetworkId :: C.NetworkId
+  }
+  deriving stock (Hask.Show, Generic)
+  deriving newtype (Hask.Eq)
+
+instance FromJSON WbeNetworkId where
+  parseJSON = withText "WbeNetworkId" $ \t -> case Text.splitOn " " t of
+    ["mainnet"] -> Hask.pure $ WbeNetworkId C.Mainnet
+    ["testnet-magic", n] ->
+      maybe
+        (Hask.fail "Unrecognized network magic value")
+        (Hask.pure . WbeNetworkId . C.Testnet . C.NetworkMagic)
+        . readMaybe @Word32
+        $ Text.unpack n
+    _ -> Hask.fail "Unrecognized network ID"
 
 data WbeClientCfg = WbeClientCfg
   { host :: Text
