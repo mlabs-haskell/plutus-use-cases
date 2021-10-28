@@ -24,7 +24,7 @@ import Mlabs.NFT.Validation (
   txPolicy,
   txScrAddress,
  )
-import Mlabs.WbeTest.Types (MintBuilder (..), WbeExportTx (..))
+import Mlabs.WbeTest.Types (MintBuilder (..), WbeExportTx (..), WbeError (..))
 
 import Ledger (TxOutRef, scriptCurrencySymbol)
 import Ledger.Crypto (PubKeyHash (..), pubKeyHash)
@@ -68,7 +68,7 @@ buildWbeTx ::
   C.ProtocolParameters ->
   Constraints.ScriptLookups a ->
   Constraints.TxConstraints (RedeemerType a) (DatumType a) ->
-  Either [Hask.Char] WbeExportTx
+  Either WbeError WbeExportTx
 buildWbeTx netId pparams lookups = fmap WbeExportTx . buildTx netId pparams lookups
 
 -- | Build an 'ExportTx' from arbitrary lookups and transactions constraints
@@ -82,7 +82,7 @@ buildTx ::
   C.ProtocolParameters ->
   Constraints.ScriptLookups a ->
   Constraints.TxConstraints (RedeemerType a) (DatumType a) ->
-  Either [Hask.Char] ExportTx
+  Either WbeError ExportTx
 buildTx netId protoParams lookups = buildTxFrom netId protoParams . mkTx @a lookups
 
 -- | Attempts to construct an 'ExportTx' from a 'MintBuilder'
@@ -90,7 +90,7 @@ buildMintTx ::
   C.NetworkId ->
   C.ProtocolParameters ->
   MintBuilder ->
-  Either [Hask.Char] ExportTx
+  Either WbeError ExportTx
 buildMintTx netId pparams = buildTxFrom netId pparams . unbalancedMint
   where
     unbalancedMint MintBuilder {..} = case Map.toList utxos of
@@ -122,12 +122,11 @@ buildTxFrom ::
   C.NetworkId ->
   C.ProtocolParameters ->
   Either MkTxError UnbalancedTx ->
-  Either [Hask.Char] ExportTx
-buildTxFrom netId protoParams unbalanced =
-  first Hask.show $
-    either (Left . pretty) exp unbalanced
+  Either WbeError ExportTx
+buildTxFrom netId protoParams =
+  either (Left . TxError) (first CardanoError . exp)
   where
-    exp = first pretty . export protoParams netId
+    exp = export protoParams netId
 
 nftInit :: MintParams -> UserId -> TxOutRef -> DatumNft
 nftInit mps@MintParams {mp'share} user oref =

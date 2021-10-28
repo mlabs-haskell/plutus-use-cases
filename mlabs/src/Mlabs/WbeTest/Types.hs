@@ -7,6 +7,7 @@ module Mlabs.WbeTest.Types
   WbeTx(..),
   WbeTxSubmitted(..),
   MintBuilder(..),
+  WbeError(..),
 ) where
 
 import Prelude qualified as Hask
@@ -33,6 +34,10 @@ import Ledger (TxOutRef, ChainIndexTxOut)
 import qualified Data.Text.Encoding as Text
 import qualified Data.ByteString.Base16 as Base16
 import Data.String (IsString)
+import qualified Plutus.Contract.CardanoAPI as C
+import Ledger.Constraints (MkTxError)
+import Prettyprinter (pretty)
+import qualified Network.HTTP.Req as Req
 
 {- | Wrapper around 'ExportTx', whose 'ToJSON' instance does not match the format
  expected by the WBE (this should be unecessary after upgrading Plutus to the next
@@ -138,3 +143,23 @@ data MintBuilder = MintBuilder
   , utxos :: Map TxOutRef ChainIndexTxOut
   }
   deriving stock (Hask.Show, Hask.Eq)
+
+data WbeError
+  = HttpError Req.HttpException
+  | DecoderError Hask.String
+  | ConfigurationError Hask.String
+  | CardanoError C.ToCardanoError
+  | TxError MkTxError
+  -- HACK these errors come from @queryNodeLocalState@ and friends
+  -- Should find a better way to represent them
+  | NodeError Hask.String
+  deriving stock (Generic)
+
+instance Hask.Show WbeError where
+  show = \case
+    HttpError err -> Hask.show err
+    DecoderError err -> err
+    ConfigurationError err -> err
+    CardanoError err -> Hask.show $ pretty err
+    TxError err -> Hask.show $ pretty err
+    NodeError err -> err

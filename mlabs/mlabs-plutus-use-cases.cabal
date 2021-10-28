@@ -43,6 +43,7 @@ common common-imports
     , cardano-api
     , cardano-ledger-alonzo
     , plutus-extra
+    , transformers
     -- wbe testing stuff
     , memory
     , req
