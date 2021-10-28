@@ -8,7 +8,7 @@ import Ledger.Value (TokenName (..))
 import Ledger.Value qualified as Value
 import Mlabs.NFT.Contract qualified as NFT
 import Mlabs.NFT.Contract.Aux qualified as NFT
-import Mlabs.NFT.Types (Content (..), NftId (..), Title (..))
+import Mlabs.NFT.Types (Content (..), NftId (..), Title (..), NftAppInstance (..), NftAppSymbol (..))
 import Mlabs.NFT.Validation qualified as NFT
 import Plutus.V1.Ledger.Ada qualified as Ada
 import PlutusTx.Prelude hiding ((<>))
@@ -54,8 +54,10 @@ testTokenName = TokenName hData
   where
     hData = NFT.hashData $ Content "A painting."
 
+testNftId = NftId . unTokenName $ testTokenName
+
 nftPolicy :: Ledger.MintingPolicy
-nftPolicy = NFT.mintPolicy (error ()) -- FIXME
+nftPolicy = NFT.mintPolicy appInstance
 
 oneNft :: Value.Value
 oneNft = Value.singleton nftCurrencySymbol testTokenName 1
@@ -71,3 +73,10 @@ adaValue = Ada.lovelaceValueOf . (* 1_000_000)
 
 testStateAddr :: Ledger.Address
 testStateAddr = NFT.txScrAddress
+
+-- FIXME
+appInstance :: NftAppInstance
+appInstance = error ()
+
+appSymbol = NftAppSymbol . NFT.curSymbol $ appInstance
+

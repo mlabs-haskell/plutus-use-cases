@@ -56,14 +56,8 @@ nonMintingCtx =
     <> input (Input (PubKeyType TestValues.authorPkh) TestValues.oneAda)
 
 nftMintPolicy :: Ledger.MintingPolicy
-nftMintPolicy =
-  Ledger.mkMintingPolicyScript $
-    $$(PlutusTx.compile [||wrap||])
-      `PlutusTx.applyCode` ( $$(PlutusTx.compile [||NFT.mkMintPolicy||])
-                              `PlutusTx.applyCode` PlutusTx.liftCode TestValues.testStateAddr
-                              `PlutusTx.applyCode` PlutusTx.liftCode TestValues.testOref
-                              `PlutusTx.applyCode` PlutusTx.liftCode TestValues.testNftId
-                           )
+nftMintPolicy = NFT.mintPolicy TestValues.appInstance
+                           
   where
     wrap ::
       (() -> Ledger.ScriptContext -> Bool) ->

@@ -30,27 +30,48 @@ testDealing = withValidator "Test NFT dealing validator" dealingValidator $ do
 -- TODO: bring back this test if `tasty-plutus` would allow to change datum order
 -- shouldn'tValidate "Can't buy with inconsistent datum" validBuyData inconsistentDatumContext
 
-initialAuthorDatum :: NFT.DatumNft
-initialAuthorDatum =
-  NFT.DatumNft
-    { dNft'id = TestValues.testNftId
-    , dNft'share = 1 % 2
-    , dNft'author = NFT.UserId TestValues.authorPkh
-    , dNft'owner = NFT.UserId TestValues.authorPkh
-    , dNft'price = Just (100 * 1_000_000)
+initialNode = 
+  NFT.NftListNode
+    { node'information = NFT.InformationNft
+      { info'id = TestValues.testNftId
+      , info'share = 1 % 2
+      , info'author = NFT.UserId TestValues.authorPkh
+      , info'owner = NFT.UserId TestValues.authorPkh
+      , info'price = Just (100 * 1_000_000)
+      }
+    , node'next = Nothing
+    , node'appInstance = TestValues.appInstance
     }
+  
+initialAuthorDatum :: NFT.DatumNft
+initialAuthorDatum = NFT.NodeDatum initialNode
 
 ownerUserOneDatum :: NFT.DatumNft
-ownerUserOneDatum = initialAuthorDatum {NFT.dNft'owner = NFT.UserId TestValues.userOnePkh}
+ownerUserOneDatum =
+  NFT.NodeDatum $ initialNode
+    { NFT.node'information = (NFT.node'information initialNode)
+      { NFT.info'owner = NFT.UserId TestValues.userOnePkh
+      }
+    }
 
 notForSaleDatum :: NFT.DatumNft
-notForSaleDatum = initialAuthorDatum {NFT.dNft'price = Nothing}
-
+notForSaleDatum =
+  NFT.NodeDatum $ initialNode
+    { NFT.node'information = (NFT.node'information initialNode)
+      { NFT.info'price = Nothing
+      }
+    }
+  
 ownerNotPaidDatum :: NFT.DatumNft
 ownerNotPaidDatum = ownerUserOneDatum
 
 inconsistentDatum :: NFT.DatumNft
-inconsistentDatum = initialAuthorDatum {NFT.dNft'share = 1 % 10}
+inconsistentDatum = 
+  NFT.NodeDatum $ initialNode
+    { NFT.node'information = (NFT.node'information initialNode)
+      { NFT.info'share = 1 % 10
+      }
+    }
 
 -- Buy test cases
 
@@ -63,7 +84,7 @@ validBuyData = SpendingTest dtm redeemer val
       NFT.BuyAct
         { act'bid = 100 * 1_000_000
         , act'newPrice = Nothing
-        , act'cs = TestValues.nftCurrencySymbol
+        , act'symbol = TestValues.appSymbol
         }
     val = TestValues.adaValue 100 <> TestValues.oneNft
 
@@ -76,7 +97,7 @@ notForSaleData = SpendingTest dtm redeemer val
       NFT.BuyAct
         { act'bid = 100 * 1_000_000
         , act'newPrice = Just 150
-        , act'cs = TestValues.nftCurrencySymbol
+        , act'symbol = TestValues.appSymbol        
         }
     val = TestValues.adaValue 100 <> TestValues.oneNft
 
@@ -89,7 +110,7 @@ bidNotHighEnoughData = SpendingTest dtm redeemer val
       NFT.BuyAct
         { act'bid = 90 * 1_000_000
         , act'newPrice = Nothing
-        , act'cs = TestValues.nftCurrencySymbol
+        , act'symbol = TestValues.appSymbol        
         }
     val = TestValues.adaValue 100 <> TestValues.oneNft
 
@@ -102,7 +123,7 @@ ownerNotPaidData = SpendingTest dtm redeemer val
       NFT.BuyAct
         { act'bid = 100 * 1_000_000
         , act'newPrice = Nothing
-        , act'cs = TestValues.nftCurrencySymbol
+        , act'symbol = TestValues.appSymbol
         }
     val = TestValues.adaValue 0 <> TestValues.oneNft
 
@@ -115,7 +136,7 @@ inconsistentDatumData = SpendingTest dtm redeemer val
       NFT.BuyAct
         { act'bid = 100 * 1_000_000
         , act'newPrice = Nothing
-        , act'cs = TestValues.nftCurrencySymbol
+        , act'symbol = TestValues.appSymbol
         }
     val = TestValues.adaValue 100 <> TestValues.oneNft
 
@@ -159,7 +180,7 @@ validSetPriceData = SpendingTest dtm redeemer val
     redeemer =
       NFT.SetPriceAct
         { act'newPrice = Just (150 * 1_000_000)
-        , act'cs = TestValues.nftCurrencySymbol
+        , act'symbol = TestValues.appSymbol
         }
     val = TestValues.oneNft
 
@@ -171,7 +192,7 @@ ownerUserOneSetPriceData = SpendingTest dtm redeemer val
     redeemer =
       NFT.SetPriceAct
         { act'newPrice = Nothing
-        , act'cs = TestValues.nftCurrencySymbol
+        , act'symbol = TestValues.appSymbol
         }
     val = TestValues.oneNft
 
