@@ -3,6 +3,7 @@
 module Mlabs.WbeTest.Types
 ( WbeExportTx(..),
   WalletId(..),
+  Passphrase(..),
   WbeStage(..),
   WbeTx(..),
   WbeTxSubmitted(..),
@@ -100,6 +101,12 @@ instance ToJSON WbeExportTx where
 
 newtype WalletId = WalletId
   { unWalletId :: Text
+  }
+  deriving stock (Hask.Show, Generic)
+  deriving newtype (Hask.Eq, FromJSON, ToJSON, IsString)
+
+newtype Passphrase = Passphrase
+  { unPassphrase :: Text
   }
   deriving stock (Hask.Show, Generic)
   deriving newtype (Hask.Eq, FromJSON, ToJSON, IsString)
