@@ -1,7 +1,12 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Mlabs.WbeTest.Types
-( WbeExportTx(..),
+( WbeConfig(..),
+  loadWbeConfig,
+  WbeClientCfg(..),
+  defaultWbeClientCfg,
+  WbeNetworkId(..),
+  WbeExportTx(..),
   WalletId(..),
   Passphrase(..),
   WbeStage(..),
@@ -9,6 +14,7 @@ module Mlabs.WbeTest.Types
   WbeTxSubmitted(..),
   MintBuilder(..),
   WbeError(..),
+  connectionInfoFromConfig,
 ) where
 
 import Prelude qualified as Hask
@@ -16,14 +22,15 @@ import Prelude qualified as Hask
 import GHC.Generics (Generic)
 import Data.Aeson (
   FromJSON (..),
-  ToJSON (..),
-  KeyValue ((.=)),
+  (.=),
   Options (fieldLabelModifier),
-  object,
-  genericParseJSON,
+  ToJSON (..),
   defaultOptions,
-  genericToJSON
-  )
+  genericParseJSON,
+  genericToJSON,
+  object,
+  withText,
+ )
 import Data.Text (Text)
 import Plutus.Contract.Wallet (ExportTx (..), ExportTxInput (..))
 import qualified Cardano.Api as C
@@ -39,6 +46,61 @@ import qualified Plutus.Contract.CardanoAPI as C
 import Ledger.Constraints (MkTxError)
 import Prettyprinter (pretty)
 import qualified Network.HTTP.Req as Req
+import Data.Yaml (ParseException, decodeFileEither)
+import Data.Bifunctor (first)
+import Data.Word (Word64, Word32)
+import qualified Data.Text as Text
+import Text.Read (readMaybe)
+
+data WbeConfig = WbeConfig
+  { socketPath :: Hask.FilePath
+  , networkParamsPath :: Hask.FilePath
+  , epochSlots :: Word64
+  , networkId :: WbeNetworkId
+  , wbeClientCfg :: WbeClientCfg
+  }
+  deriving stock (Hask.Show, Hask.Eq, Generic)
+  deriving anyclass (FromJSON)
+
+loadWbeConfig :: Hask.FilePath -> Hask.IO (Either WbeError WbeConfig)
+loadWbeConfig = Hask.fmap (first YamlError) . decodeFileEither
+
+connectionInfoFromConfig :: WbeConfig -> C.LocalNodeConnectInfo C.CardanoMode
+connectionInfoFromConfig WbeConfig {..} =
+  C.LocalNodeConnectInfo
+    (C.CardanoModeParams $ C.EpochSlots epochSlots)
+    (unWbeNetworkId networkId)
+    socketPath
+
+-- | Wrapper for 'NetworkId', which has no 'FromJSON' instance
+newtype WbeNetworkId = WbeNetworkId
+  { unWbeNetworkId :: C.NetworkId
+  }
+  deriving stock (Hask.Show, Generic)
+  deriving newtype (Hask.Eq)
+
+instance FromJSON WbeNetworkId where
+  parseJSON = withText "WbeNetworkId" $ \t -> case Text.splitOn " " t of
+    ["mainnet"] -> Hask.pure $ WbeNetworkId C.Mainnet
+    ["testnet-magic", n] ->
+      maybe
+        (Hask.fail "Unrecognized network magic value")
+        (Hask.pure . WbeNetworkId . C.Testnet . C.NetworkMagic)
+        . readMaybe @Word32
+        $ Text.unpack n
+    _ -> Hask.fail "Unrecognized network ID"
+
+data WbeClientCfg = WbeClientCfg
+  { host :: Text
+  , port :: Hask.Int
+  , walletId :: WalletId
+  , passphrase :: Passphrase
+  }
+  deriving stock (Hask.Show, Hask.Eq, Generic)
+  deriving anyclass (FromJSON)
+
+defaultWbeClientCfg :: WalletId -> Passphrase -> WbeClientCfg
+defaultWbeClientCfg = WbeClientCfg "localhost" 8090
 
 {- | Wrapper around 'ExportTx', whose 'ToJSON' instance does not match the format
  expected by the WBE (this should be unecessary after upgrading Plutus to the next
@@ -154,6 +216,7 @@ data MintBuilder = MintBuilder
 data WbeError
   = HttpError Req.HttpException
   | DecoderError Hask.String
+  | YamlError ParseException
   | ConfigurationError Hask.String
   | CardanoError C.ToCardanoError
   | TxError MkTxError
@@ -166,6 +229,7 @@ instance Hask.Show WbeError where
   show = \case
     HttpError err -> Hask.show err
     DecoderError err -> err
+    YamlError err -> Hask.show err
     ConfigurationError err -> err
     CardanoError err -> Hask.show $ pretty err
     TxError err -> Hask.show $ pretty err
