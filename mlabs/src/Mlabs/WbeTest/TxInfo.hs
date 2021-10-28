@@ -1,9 +1,9 @@
-module Mlabs.WbeTest.TxCheck (
-  BalanceCheck (..),
-  SignCheck (..),
+module Mlabs.WbeTest.TxInfo (
+  BalanceInfo (..),
+  SignInfo (..),
   UTXOGetter,
-  checkBalanced,
-  checkSigned,
+  analyseBalanced,
+  analyseSigned,
 ) where
 
 import Cardano.Api.Shelley qualified as C
@@ -42,17 +42,17 @@ import Prelude
 
 import System.Exit (die)
 
-data BalanceCheck = BalanceCheck
+data BalanceInfo = BalanceInfo
   { utxoInputs :: Map TxIn TxOut
   , txInFromWallet :: Set TxIn
   , fee :: Maybe Coin
   , lookupsTotalValue :: Value
   , utxosTotalValue :: Value
-  , balancedTotalValue :: Value
+  , totalOutsValue :: Value
   }
   deriving stock (Show, Eq, Generic)
 
-data SignCheck = SignCheck
+data SignInfo = SignInfo
   { balancedWitnesses :: [C.KeyWitness C.AlonzoEra]
   , signedWitnesses :: [C.KeyWitness C.AlonzoEra]
   , witnessDiff :: [C.KeyWitness C.AlonzoEra]
@@ -61,28 +61,30 @@ data SignCheck = SignCheck
 
 type UTXOGetter = Set TxIn -> IO (Either String (Map TxIn TxOut))
 
-checkBalanced ::
+analyseBalanced ::
   UTXOGetter ->
   WbeExportTx ->
   WbeTx 'Balanced ->
-  IO BalanceCheck
-checkBalanced utxosGetter (WbeExportTx (ExportTx apiTx lookups _)) wtx =
+  IO BalanceInfo
+analyseBalanced utxosGetter (WbeExportTx (ExportTx apiTx lookups _)) wtx =
   case (,) <$> toChainIndexTx apiTx <*> parseTx wtx of
     Left e -> die e
     Right (initial, balanced) -> do
+      print $ "Added from Wallet:\n" ++ show fromWallet
       utxoInputs <- either die pure =<< utxosGetter fromWallet
+      print $ "TXOs from Wallet:\n" ++ show utxoInputs
       pure $
-        BalanceCheck
+        BalanceInfo
           { lookupsTotalValue = lookupsVal lookups
           , utxosTotalValue = utxosVal utxoInputs
-          , balancedTotalValue = chainIndexTxVal balanced
+          , totalOutsValue = chainIndexTxVal balanced
           , txInFromWallet = fromWallet
           , fee = balancedTxFee balanced
           , ..
           }
       where
         fromWallet :: Set TxIn
-        fromWallet = addedByWallet initial balanced
+        fromWallet = addedByWallet balanced initial 
 
         addedByWallet :: ChainIndexTx -> ChainIndexTx -> Set TxIn
         addedByWallet = Set.difference `on` (^. citxInputs)
@@ -102,14 +104,14 @@ checkBalanced utxosGetter (WbeExportTx (ExportTx apiTx lookups _)) wtx =
             . rights
             . fmap (C.fromCardanoTxOut . txOut)
 
-checkSigned :: WbeTx 'Balanced -> WbeTx 'Signed -> Either String SignCheck
-checkSigned btx stx =
-  second (uncurry mkSignCheck) $
+analyseSigned :: WbeTx 'Balanced -> WbeTx 'Signed -> Either String SignInfo
+analyseSigned btx stx =
+  second (uncurry mkSignInfo) $
     (,) <$> parseApiTx btx <*> parseApiTx stx
   where
-    mkSignCheck :: C.Tx C.AlonzoEra -> C.Tx C.AlonzoEra -> SignCheck
-    mkSignCheck balanced signed =
-      SignCheck
+    mkSignInfo :: C.Tx C.AlonzoEra -> C.Tx C.AlonzoEra -> SignInfo
+    mkSignInfo balanced signed =
+      SignInfo
         { witnessDiff = balancedWitnesses \\ signedWitnesses
         , ..
         }
