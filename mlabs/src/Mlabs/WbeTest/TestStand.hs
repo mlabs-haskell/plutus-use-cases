@@ -12,7 +12,8 @@ import Mlabs.WbeTest.TxRead
 import Mlabs.WbeTest.TxBuilder
 import Mlabs.WbeTest.WbeClient as WbeClient
 import Mlabs.WbeTest.Types
-import Mlabs.WbeTest.TxCheck
+import Mlabs.WbeTest.TxInfo
+import Mlabs.WbeTest.Checks
 
 -- simple test imports
 import Ledger
@@ -44,31 +45,49 @@ clientCfg = defaultWbeClientCfg testnetWalletId
 -- Main entry point
 run ::IO ()
 run = do
-  runBalanceTest doFakeBalance clientCfg . WbeExportTx $ error "FIXME"
+  -- todo: TBD, see `runSimple` for now
+  -- runBalanceTest doFakeBalance clientCfg . WbeExportTx $ error "FIXME"
   runSignTest
 
 type BalanceCall = WbeClientCfg -> WbeExportTx -> IO (Either String (WbeTx 'Balanced))
+type SignCall = WbeClientCfg -> WbeTx 'Balanced -> IO (Either String (WbeTx 'Signed))
 
 runBalanceTest 
   :: BalanceCall 
+  -> SignCall
   -> UTXOGetter
   -> WbeClientCfg
   -> WbeExportTx 
   -> IO () 
-runBalanceTest call utxosGetter cfg exportTx = do
-  balanced <- call cfg exportTx
+runBalanceTest goBalance goSign utxosGetter cfg exportTx = do
+  printStep "BALANCING"
+  balanced <- goBalance cfg exportTx
   case balanced of
     Left err -> putStrLn $ "Balance check failed with: " <> err
-    Right wbeTx -> examine wbeTx
+    Right wbeTx -> do 
+      examine wbeTx
+      printStep "SIGNING"
+      signed <- goSign cfg wbeTx
+      print signed
   where
-    -- todo something to proof that balncing really happened =)
     examine wbeTx = do
       putStrLn "Balanced API Tx:"
       print $ parseApiTx wbeTx
       putStrLn "\nCorresponging balanced ChainIndexTx:"
       print $ parseTx wbeTx 
-      putStrLn "\nCheck:"
-      checkBalanced utxosGetter exportTx wbeTx 
+      putStrLn "\nInfo:"
+      info <- analyseBalanced utxosGetter exportTx wbeTx
+      print info
+      putStrLn "\nCheck:" --todo probably some Tx id should be here
+      let reports = 
+            [ report $ mustBeBalanced info
+            , report $ feeMustBeAdded info
+            ]
+      mapM_ putStrLn reports
+
+    printStep name = 
+      let padding = replicate 5 '*' 
+      in putStrLn $ padding ++ " " ++ name ++ " " ++ padding
 
 doFakeBalance :: BalanceCall
 doFakeBalance _ _ = return . Right 
@@ -89,19 +108,15 @@ runSimple = do
                         socket
       netId = C.Testnet $ C.NetworkMagic 8
       -- transaction related stuff
-      pkh :: PubKeyHash = 
-        fromJust $ decode $
-          "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d2\"}" 
-      value = adaValueOf 5
-      txC = Constraints.mustPayToPubKey pkh value
-      ethTx = WbeExportTx <$> buildTx @Void netId params mempty txC
-
+      
+      ethTx = simpleAdaToWallet netId params 5
   Right  tx <- return ethTx -- TODO: shortcut, need error better handling
   putStrLn "Submitted for balancing:"
   print $ let (WbeExportTx (ExportTx apiTx _ _)) = tx in toChainIndexTx apiTx
   putStrLn ""
   runBalanceTest
     WbeClient.balance 
+    WbeClient.sign 
     (getUTXOs connectionInfo)
     clientCfg 
     tx

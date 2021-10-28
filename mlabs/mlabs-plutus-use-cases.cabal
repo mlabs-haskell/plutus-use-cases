@@ -196,8 +196,9 @@ library
     Mlabs.WbeTest.TestStand
     Mlabs.WbeTest.Types
     Mlabs.WbeTest.TxBuilder
-    Mlabs.WbeTest.TxCheck
+    Mlabs.WbeTest.TxInfo
     Mlabs.WbeTest.CardanoAPI
+    Mlabs.WbeTest.Checks
 
 executable mlabs-plutus-use-cases
   import:  common-imports
