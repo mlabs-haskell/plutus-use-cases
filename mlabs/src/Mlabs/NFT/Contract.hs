@@ -127,7 +127,8 @@ mint nftContent = do
             , Constraints.mustPayToTheScript nft val
             ]
         )
-  void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
+  ledgerTx <- Contract.submitTxConstraintsWith @NftTrade lookups tx
+  void $ Contract.logInfo @Hask.String $ printf "DEBUG mint TX: %s" (Hask.show ledgerTx)
   Contract.tell . Last . Just $ nftId
   Contract.logInfo @Hask.String $ printf "forged %s" (Hask.show val)
 
@@ -207,7 +208,6 @@ openAuction (AuctionOpenParams nftId deadline minBid) = do
             , Constraints.mustSpendScriptOutput nftOref redeemer
             ]
         )
-  void $ Contract.logInfo @Hask.String $ printf "DEBUG open auction newValue: %s" (Hask.show newValue)
   ledgerTx <- Contract.submitTxConstraintsWith @NftTrade lookups txConstraints
   void $ Contract.logInfo @Hask.String $ printf "DEBUG open auction TX: %s" (Hask.show ledgerTx)
   void $ Contract.logInfo @Hask.String $ printf "Started auction for %s" $ Hask.show val
@@ -231,7 +231,7 @@ bidAuction (AuctionBidParams nftId bidAmount) = do
   ownPkh <- pubKeyHash <$> Contract.ownPubKey
   let newHighestBid =
         AuctionBid
-          { ab'bid = bidAmount
+          { ab'bid = 10 -- bidAmount
           , ab'bidder = UserId ownPkh
           }
       newAuctionState =
@@ -268,7 +268,7 @@ bidAuction (AuctionBidParams nftId bidAmount) = do
         , mconcat
             ( [ Constraints.mustPayToTheScript newDatum' newValue
             -- , Constraints.mustPayToTheScript
-              , Constraints.mustIncludeDatum newDatum
+              -- , Constraints.mustIncludeDatum newDatum
               , Constraints.mustSpendScriptOutput nftOref redeemer
               , Constraints.mustValidateIn (to $ as'deadline auctionState)
               ]

@@ -245,16 +245,22 @@ mkTxPolicy datum act ctx =
       SetPriceAct {} ->
         traceIfFalse "Can't set price: Auction is in progress" noAuctionInProgress
           && traceIfFalse "Price can not be negative." priceNotNegative'
-          && traceIfFalse "Only owner exclusively can set NFT price." ownerSetsPrice
+          && traceIfFalse "Only owner exclusively can set NFT price." signedByOwner
       OpenAuctionAct {} ->
         traceIfFalse "Can't open auction: already in progress" noAuctionInProgress
+          && traceIfFalse "Only owner can open auction" signedByOwner
       BidAuctionAct {..} ->
         traceIfFalse "Can't bid: No auction is in progress" (not noAuctionInProgress)
           && traceIfFalse "Auction bid is too low" (auctionBidHighEnough act'bid)
           && traceIfFalse "Auction deadline reached" correctAuctionBidSlotInterval
+          && traceIfFalse "Datum illegally altered" auctionConsistentDatum
+          -- && traceIfFalse "Auction bid value not supplied" auctionBidValueCorrectInput
+          && traceIfFalse "Redeemer and datum auction bids are inconsistent" (auctionConsistentDatumRedeemer act'bid)
       CloseAuctionAct {} ->
         traceIfFalse "Can't close auction: none in progress" (not noAuctionInProgress)
           && traceIfFalse "Auction deadline not yet reached" auctionDeadlineReached
+          && traceIfFalse "Only owner can close auction" signedByOwner
+          -- TODO: check amounts paid to owner & author
   where
     ------------------------------------------------------------------------------
     -- Utility functions.
@@ -290,7 +296,7 @@ mkTxPolicy datum act ctx =
       withAuctionState $ \auctionState ->
         case as'highestBid auctionState of
           Nothing -> amount >= as'minBid auctionState
-          Just highestBid -> amount >= ab'bid highestBid
+          Just highestBid -> amount > ab'bid highestBid
 
     correctAuctionBidSlotInterval :: Bool
     correctAuctionBidSlotInterval =
@@ -301,6 +307,29 @@ mkTxPolicy datum act ctx =
     auctionDeadlineReached =
       withAuctionState $ \auctionState ->
         (from $ as'deadline auctionState) `contains` txInfoValidRange info
+
+    auctionConsistentDatumRedeemer :: Integer -> Bool
+    auctionConsistentDatumRedeemer redeemerBid =
+      withAuctionState $ \auctionState ->
+        case as'highestBid auctionState of
+          Nothing -> True
+          Just highestBid -> False -- ab'bid highestBid == redeemerBid
+
+    auctionConsistentDatum =
+      let prevDatum :: DatumNft = head . getCtxDatum $ ctx
+          -- TODO: remove?
+          checkHighestBid =
+            case (dNft'auctionState prevDatum, dNft'auctionState datum) of
+              (Just (AuctionState (Just prevBid) _ _), Just (AuctionState (Just bid) _ _)) ->
+                ab'bid prevBid < ab'bid bid
+              (_, _) -> True
+
+       in dNft'id prevDatum == dNft'id datum
+            && dNft'share prevDatum == dNft'share datum
+            && dNft'author prevDatum == dNft'author datum
+            && dNft'owner prevDatum == dNft'owner datum
+            && dNft'price prevDatum == dNft'price datum
+            && checkHighestBid
 
     -- Check if the datum attached is also present in the is also in the transaction.
     correctDatum :: Bool
@@ -403,7 +432,7 @@ mkTxPolicy datum act ctx =
 
     ------------------------------------------------------------------------------
     -- Check that price set by NFT owner.
-    ownerSetsPrice =
+    signedByOwner =
       case txInfoSignatories $ scriptContextTxInfo ctx of
         [pkh] -> pkh == getUserId (dNft'owner datum)
         _ -> False
