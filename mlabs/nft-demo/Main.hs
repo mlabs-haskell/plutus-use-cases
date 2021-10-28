@@ -26,6 +26,10 @@ import Mlabs.System.Console.Utils (logAction, logMlabs)
 import Mlabs.Utils.Wallet (walletFromNumber)
 import PlutusTx.Ratio qualified as R
 
+-- logWalletBalance :: forall (t :: Type).Wallet -> Eff (PAB.PABEffects t (Simulator.SimulatorState t)) ()
+logWalletBalance w =
+   logBalance (show w) =<< Simulator.valueAt (Wallet.walletAddress w)
+
 -- | Main function to run simulator
 main :: IO ()
 main = Handler.runSimulator startParams $ do
@@ -46,6 +50,13 @@ main = Handler.runSimulator startParams $ do
   test "User 2 sets the sale price to 500 Lovelace, User 3 buys The Mona Lisa from User 2 for 500 Lovelace setting the new sale price to 1000 Lovelace, User 1 receives a royalty from the sale" [1, 2, 3] $ do
     setPrice u2 (Just 500)
     buy u3 500 (Just 1000)
+  
+  -- toggle below code in for demo
+  _ <- forever $ do
+    _ <- Simulator.waitNSlots 10
+    logAction $ "updated wallets"
+    logWalletBalance $ Wallet 2
+    pure ()
 
   liftIO $ putStrLn "Fin (Press enter to Exit)"
   where

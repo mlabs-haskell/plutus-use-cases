@@ -18,6 +18,7 @@ common common-imports
     , extra
     , freer-simple
     , mtl
+    , openapi3
     , playground-common
     , plutus-core
     , plutus-contract
@@ -30,8 +31,6 @@ common common-imports
     , plutus-use-cases
     , prettyprinter
     , pretty-show
-    , record-dot-preprocessor
-    , record-hasfield
     , row-types
     , stm
     , lens
@@ -90,6 +89,7 @@ common common-ghc-options
     -fno-strictness
     -fno-warn-orphans
     -fobject-code
+--    -fplugin-opt PlutusTx.Plugin:defer-errors -- do not use for build 
 
 library
   import:  common-imports
@@ -99,7 +99,12 @@ library
                   
   Ghc-Options:
     -Wall
-    -fplugin=RecordDotPreprocessor
+    -Wcompat
+    -Wincomplete-uni-patterns
+    -Wredundant-constraints
+    -Wmissing-export-lists
+    -Wmissing-deriving-strategies
+    -Werror
     
   hs-source-dirs:
     src/
@@ -152,6 +157,9 @@ library
     Mlabs.System.Console.PrettyLogger
     Mlabs.System.Console.Utils
     Mlabs.Utils.Wallet 
+    Mlabs.NFT.Types
+    Mlabs.NFT.Contract
+    Mlabs.NFT.Validation
 
 executable mlabs-plutus-use-cases
   import:  common-imports
@@ -166,6 +174,8 @@ executable deploy-app
   import:  common-imports
   import:  common-language
   import:  common-configs
+  import:  common-ghc-options
+
   main-is: deploy-app/Main.hs
   build-depends: 
       mlabs-plutus-use-cases
@@ -177,31 +187,36 @@ executable deploy-app
 executable nft-demo
   import:  common-imports
   import:  common-language
+  import:  common-configs
   import:  common-ghc-options  
+
   main-is: nft-demo/Main.hs
   build-depends: mlabs-plutus-use-cases
 
 executable governance-demo
   import:  common-imports
   import:  common-language
+  import:  common-configs
   import:  common-ghc-options  
+
   main-is: governance-demo/Main.hs
-  build-depends: 
-      mlabs-plutus-use-cases
+  build-depends: mlabs-plutus-use-cases
 
 executable lendex-demo
   import:  common-imports
   import:  common-language
   import:  common-configs
   import:  common-ghc-options  
+
   main-is: lendex-demo/Main.hs
   build-depends: mlabs-plutus-use-cases
 
 Test-suite mlabs-plutus-use-cases-tests
-  import:          common-imports
-  import:          common-language
-  import:          common-configs
+  import:  common-imports
+  import:  common-language
+  import:  common-configs
   import:  common-ghc-options  
+
   Type:            exitcode-stdio-1.0
   hs-source-dirs:  test
   Main-is:         Main.hs
@@ -210,7 +225,7 @@ Test-suite mlabs-plutus-use-cases-tests
     -Wall
     -threaded
     -rtsopts
-    -fplugin=RecordDotPreprocessor
+    -- -fplugin=RecordDotPreprocessor
   
   Build-Depends:
     base 
@@ -238,6 +253,7 @@ Test-suite mlabs-plutus-use-cases-tests
     , tasty
     , tasty-hunit
     , tasty-expected-failure
+    , tasty-plutus
     , tasty-quickcheck
     , QuickCheck
     , text
@@ -254,7 +270,15 @@ Test-suite mlabs-plutus-use-cases-tests
     Test.Nft.Init
     Test.Nft.Logic
     Test.Utils
-                     
+    Test.NFT.Init
+    Test.NFT.Trace
+    Test.NFT.Contract
+    Test.NFT.QuickCheck
+    Test.NFT.Script.Main
+    Test.NFT.Script.Dealing
+    Test.NFT.Script.Minting
+    Test.NFT.Script.Values
+
   default-extensions:
     RecordWildCards
     OverloadedStrings

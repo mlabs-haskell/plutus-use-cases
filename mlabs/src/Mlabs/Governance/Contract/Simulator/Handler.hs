@@ -9,7 +9,13 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Mlabs.Governance.Contract.Simulator.Handler where
+module Mlabs.Governance.Contract.Simulator.Handler (
+  GovernanceContracts (..),
+  handlers,
+  wallets,
+  govTokenName,
+  govAmount,
+) where
 
 import Control.Monad (forM_, when)
 import PlutusTx.Prelude
@@ -22,6 +28,7 @@ import Mlabs.Governance.Contract.Validation (AssetClassGov (..))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Default (Default (def))
 import Data.Monoid (Last (..))
+import Data.OpenApi.Schema qualified as OpenApi
 import Data.Text (Text, pack)
 import Data.Text.Prettyprint.Doc (Pretty (..), viaShow)
 import GHC.Generics (Generic)
@@ -29,12 +36,12 @@ import GHC.Generics (Generic)
 import Control.Monad.Freer (interpret)
 import Plutus.Contract (Contract, EmptySchema, awaitTxConfirmed, mapError, ownPubKey, submitTx, tell)
 
-import Ledger (CurrencySymbol, pubKeyHash, txId)
+import Ledger (CurrencySymbol, PubKeyHash, pubKeyHash, txId)
 import Ledger.Constraints (mustPayToPubKey)
 import Mlabs.Utils.Wallet (walletFromNumber)
 import Plutus.Contracts.Currency as Currency
 import Plutus.V1.Ledger.Value qualified as Value
-import Wallet.Emulator.Types (Wallet (..), WalletNumber (..), fromWalletNumber, walletPubKey)
+import Wallet.Emulator.Types (Wallet, walletPubKey)
 
 import Plutus.PAB.Core (EffectHandlers)
 import Plutus.PAB.Effects.Contract.Builtin (Builtin, BuiltinHandler (contractHandler), HasDefinitions (..), SomeBuiltin (..), endpointsToSchemas, handleBuiltin)
@@ -43,8 +50,11 @@ import Plutus.PAB.Simulator as Simulator
 
 -- FIXME this was passed as `BootstrapCfg` before update from calling side,
 --       but now coz `bootstrapGovernance` moved here, had to hardcode them till can figure out better way
+wallets :: [Wallet]
 wallets = walletFromNumber <$> [1 .. 3] -- wallets participating, wallet #1 is admin
+govTokenName :: Value.TokenName
 govTokenName = "GOVToken" -- name of GOV token to be paid in exchange of xGOV tokens
+govAmount :: Integer
 govAmount = 100
 
 -- data BootstrapCfg = BootstrapCfg
@@ -57,8 +67,8 @@ govAmount = 100
 data GovernanceContracts
   = Bootstrap
   | Governance AssetClassGov
-  deriving (Show, Generic)
-  deriving anyclass (FromJSON, ToJSON)
+  deriving stock (Show, Generic)
+  deriving anyclass (FromJSON, ToJSON, OpenApi.ToSchema)
 
 instance Pretty GovernanceContracts where
   pretty = viaShow
@@ -112,4 +122,5 @@ bootstrapGovernance = do
 
     toText = pack . show
 
+walletPKH :: Wallet -> PubKeyHash
 walletPKH = pubKeyHash . walletPubKey
