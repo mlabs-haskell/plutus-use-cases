@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Mlabs.NFT.Validation (
   DatumNft (..),
   NftTrade,
