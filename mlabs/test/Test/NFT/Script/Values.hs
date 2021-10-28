@@ -7,6 +7,7 @@ import Ledger.Address qualified as Ledger
 import Ledger.Value (TokenName (..))
 import Ledger.Value qualified as Value
 import Mlabs.NFT.Contract qualified as NFT
+import Mlabs.NFT.Contract.Aux qualified as NFT
 import Mlabs.NFT.Types (Content (..), NftId (..), Title (..))
 import Mlabs.NFT.Validation qualified as NFT
 import Plutus.V1.Ledger.Ada qualified as Ada
@@ -53,16 +54,8 @@ testTokenName = TokenName hData
   where
     hData = NFT.hashData $ Content "A painting."
 
-testNftId :: NftId
-testNftId =
-  NftId
-    { nftId'title = Title "Fiona Lisa"
-    , nftId'token = testTokenName
-    , nftId'outRef = testOref
-    }
-
 nftPolicy :: Ledger.MintingPolicy
-nftPolicy = NFT.mintPolicy testStateAddr testOref testNftId
+nftPolicy = NFT.mintPolicy (error ()) -- FIXME
 
 oneNft :: Value.Value
 oneNft = Value.singleton nftCurrencySymbol testTokenName 1
