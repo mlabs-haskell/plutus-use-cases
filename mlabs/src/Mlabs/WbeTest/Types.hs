@@ -1,7 +1,11 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Mlabs.WbeTest.Types
-( WbeExportTx(..),
+( WbeConfig(..),
+  loadWbeConfig,
+  WbeClientCfg(..),
+  defaultWbeClientCfg,
+  WbeExportTx(..),
   WalletId(..),
   Passphrase(..),
   WbeStage(..),
@@ -39,6 +43,31 @@ import qualified Plutus.Contract.CardanoAPI as C
 import Ledger.Constraints (MkTxError)
 import Prettyprinter (pretty)
 import qualified Network.HTTP.Req as Req
+import Data.Yaml (ParseException, decodeFileEither)
+import Data.Bifunctor (first)
+
+data WbeConfig = WbeConfig
+  { socketPath :: Hask.FilePath
+  , networkParamsPath :: Hask.FilePath
+  , wbeClientCfg :: WbeClientCfg
+  }
+  deriving stock (Hask.Show, Hask.Eq, Generic)
+  deriving anyclass (FromJSON)
+
+loadWbeConfig :: Hask.FilePath -> Hask.IO (Either WbeError WbeConfig)
+loadWbeConfig = Hask.fmap (first YamlError) . decodeFileEither
+
+data WbeClientCfg = WbeClientCfg
+  { host :: Text
+  , port :: Hask.Int
+  , walletId :: WalletId
+  , passphrase :: Passphrase
+  }
+  deriving stock (Hask.Show, Hask.Eq, Generic)
+  deriving anyclass (FromJSON)
+
+defaultWbeClientCfg :: WalletId -> Passphrase -> WbeClientCfg
+defaultWbeClientCfg = WbeClientCfg "localhost" 8090
 
 {- | Wrapper around 'ExportTx', whose 'ToJSON' instance does not match the format
  expected by the WBE (this should be unecessary after upgrading Plutus to the next
@@ -154,6 +183,7 @@ data MintBuilder = MintBuilder
 data WbeError
   = HttpError Req.HttpException
   | DecoderError Hask.String
+  | YamlError ParseException
   | ConfigurationError Hask.String
   | CardanoError C.ToCardanoError
   | TxError MkTxError
@@ -166,6 +196,7 @@ instance Hask.Show WbeError where
   show = \case
     HttpError err -> Hask.show err
     DecoderError err -> err
+    YamlError err -> Hask.show err
     ConfigurationError err -> err
     CardanoError err -> Hask.show $ pretty err
     TxError err -> Hask.show $ pretty err
