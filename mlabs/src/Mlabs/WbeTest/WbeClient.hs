@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Mlabs.WbeTest.WbeClient (
@@ -11,7 +12,7 @@ module Mlabs.WbeTest.WbeClient (
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Except (ExceptT, except, throwE)
 
-import Data.Aeson (FromJSON, ToJSON, eitherDecode)
+import Data.Aeson (FromJSON, ToJSON, eitherDecode, object, (.=))
 import Data.Bifunctor (first)
 import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
@@ -27,9 +28,10 @@ data WbeClientCfg = WbeClientCfg
   { host :: Text
   , port :: Int
   , walletId :: WalletId
+  , passphrase :: Passphrase
   }
 
-defaultWbeClientCfg :: WalletId -> WbeClientCfg
+defaultWbeClientCfg :: WalletId -> Passphrase -> WbeClientCfg
 defaultWbeClientCfg = WbeClientCfg "localhost" 8090
 
 instance MonadIO m => Req.MonadHttp (ExceptT WbeError m) where
@@ -47,7 +49,12 @@ sign ::
   WbeClientCfg ->
   WbeTx 'Balanced ->
   ExceptT WbeError m (WbeTx 'Signed)
-sign cfg = postWallet cfg "transactions-sign"
+sign cfg@WbeClientCfg {passphrase} (WbeTx tx) =
+  postWallet cfg "transactions-sign" $
+    object
+      [ "passphrase" .= passphrase
+      , "transaction" .= tx
+      ]
 
 submit ::
   MonadIO m =>
