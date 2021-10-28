@@ -128,4 +128,4 @@ testnetWalletId :: WalletId
 testnetWalletId = "01f9f1dda617eb8bff71468c702afceee5b1ccbf"
 
 clientCfg :: WbeClientCfg
-clientCfg = defaultWbeClientCfg testnetWalletId
+clientCfg = defaultWbeClientCfg testnetWalletId (error "FIXME")
