@@ -2,8 +2,6 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Mlabs.WbeTest.WbeClient (
-  WbeClientCfg (..),
-  defaultWbeClientCfg,
   balance,
   sign,
   submit,
@@ -23,16 +21,6 @@ import Network.HTTP.Req ((/:))
 import Network.HTTP.Req qualified as Req
 
 import Prelude
-
-data WbeClientCfg = WbeClientCfg
-  { host :: Text
-  , port :: Int
-  , walletId :: WalletId
-  , passphrase :: Passphrase
-  }
-
-defaultWbeClientCfg :: WalletId -> Passphrase -> WbeClientCfg
-defaultWbeClientCfg = WbeClientCfg "localhost" 8090
 
 instance MonadIO m => Req.MonadHttp (ExceptT WbeError m) where
   handleHttpException = throwE . HttpError

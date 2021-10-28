@@ -54,6 +54,7 @@ common common-imports
     , shelley-spec-ledger
     , ouroboros-consensus-shelley
     , cardano-ledger-core
+    , yaml
 
 common common-language
     default-extensions:
