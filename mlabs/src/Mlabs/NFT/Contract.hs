@@ -231,7 +231,7 @@ bidAuction (AuctionBidParams nftId bidAmount) = do
   ownPkh <- pubKeyHash <$> Contract.ownPubKey
   let newHighestBid =
         AuctionBid
-          { ab'bid = 10 -- bidAmount
+          { ab'bid = bidAmount
           , ab'bidder = UserId ownPkh
           }
       newAuctionState =

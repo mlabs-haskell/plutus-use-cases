@@ -253,9 +253,9 @@ mkTxPolicy datum act ctx =
         traceIfFalse "Can't bid: No auction is in progress" (not noAuctionInProgress)
           && traceIfFalse "Auction bid is too low" (auctionBidHighEnough act'bid)
           && traceIfFalse "Auction deadline reached" correctAuctionBidSlotInterval
-          && traceIfFalse "Datum illegally altered" auctionConsistentDatum
-          -- && traceIfFalse "Auction bid value not supplied" auctionBidValueCorrectInput
-          && traceIfFalse "Redeemer and datum auction bids are inconsistent" (auctionConsistentDatumRedeemer act'bid)
+          && traceIfFalse "(change) wrong input value" correctInputValue
+          -- && traceIfFalse "Datum illegally altered" auctionConsistentDatum
+          -- && traceIfFalse "Auction bid value not supplied" (auctionBidValueCorrectInput act'bid)
       CloseAuctionAct {} ->
         traceIfFalse "Can't close auction: none in progress" (not noAuctionInProgress)
           && traceIfFalse "Auction deadline not yet reached" auctionDeadlineReached
@@ -289,7 +289,7 @@ mkTxPolicy datum act ctx =
 
     mauctionState = dNft'auctionState datum
 
-    withAuctionState f = maybe False f mauctionState
+    withAuctionState f = maybe (traceError "Auction state expected") f mauctionState
 
     auctionBidHighEnough :: Integer -> Bool
     auctionBidHighEnough amount =
@@ -308,28 +308,35 @@ mkTxPolicy datum act ctx =
       withAuctionState $ \auctionState ->
         (from $ as'deadline auctionState) `contains` txInfoValidRange info
 
-    auctionConsistentDatumRedeemer :: Integer -> Bool
-    auctionConsistentDatumRedeemer redeemerBid =
-      withAuctionState $ \auctionState ->
-        case as'highestBid auctionState of
-          Nothing -> True
-          Just highestBid -> False -- ab'bid highestBid == redeemerBid
+    tokenValue :: Value
+    tokenValue = singleton (act'cs act) (nftTokenName datum) 1
+
+    correctInputValue :: Bool
+    correctInputValue =
+      case findOwnInput ctx of
+        Nothing -> traceError "findOwnInput: Nothing"
+        Just (TxInInfo _ out) ->
+          case mauctionState of
+            Nothing -> traceError "mauctionState: Nothing"
+            Just as -> case as'highestBid as of
+              Nothing -> tokenValue == txOutValue out
+              Just hb -> txOutValue out == (tokenValue <> Ada.lovelaceValueOf (ab'bid hb))
 
     auctionConsistentDatum =
       let prevDatum :: DatumNft = head . getCtxDatum $ ctx
           -- TODO: remove?
-          checkHighestBid =
-            case (dNft'auctionState prevDatum, dNft'auctionState datum) of
-              (Just (AuctionState (Just prevBid) _ _), Just (AuctionState (Just bid) _ _)) ->
-                ab'bid prevBid < ab'bid bid
-              (_, _) -> True
+          -- checkHighestBid =
+          --   case (dNft'auctionState prevDatum, dNft'auctionState datum) of
+          --     (Just (AuctionState (Just prevBid) _ _), Just (AuctionState (Just bid) _ _)) ->
+          --       ab'bid prevBid < ab'bid bid
+          --     (_, _) -> True
 
        in dNft'id prevDatum == dNft'id datum
             && dNft'share prevDatum == dNft'share datum
             && dNft'author prevDatum == dNft'author datum
             && dNft'owner prevDatum == dNft'owner datum
             && dNft'price prevDatum == dNft'price datum
-            && checkHighestBid
+            -- && checkHighestBid
 
     -- Check if the datum attached is also present in the is also in the transaction.
     correctDatum :: Bool
