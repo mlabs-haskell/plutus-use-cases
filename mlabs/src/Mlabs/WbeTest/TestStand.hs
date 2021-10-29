@@ -1,15 +1,15 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Mlabs.WbeTest.TestStand (
-  run,
+  runAll,
 ) where
 
 import Prelude
 
 
 
-import Control.Monad (forM_)
-import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Exception (throw)
+import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Except (liftEither)
 import Control.Monad.Reader (asks)
 
@@ -33,33 +33,55 @@ import Mlabs.WbeTest.WbeClient as WbeClient
 import Plutus.V1.Ledger.Ada (adaValueOf)
 
 -- Main entry point
--- todo not quite sure how to handle errors here, if one of tests fail we still need to run rest
--- idea: split this into two separate actions, traverse list of [WbeT ()] and use runWbeT in each
--- to collect [Either WbeError ()]. run should have the type WbeT () when this is implemented
-run :: WbeConfig -> IO (Either WbeError ())
-run cfg = runWbeT cfg $ do
-  params <-
-    liftEither
-      . first DecoderError
-      =<< liftIO . eitherDecodeFileStrict @C.ProtocolParameters
-      =<< asks networkParamsPath
-  connInfo <- asks connectionInfoFromConfig
-
-  testTransactions <- getTestTxs params connInfo
-
-  forM_ testTransactions $ \tx -> do
-    balanced <- testBalance connInfo tx
-    _ <- testSign balanced
-    pure ()
+runAll :: WbeConfig -> IO [Either WbeError ()]
+runAll cfg =
+  runWbeT cfg setupTests >>= \case
+    Right (connInfo, txs) -> traverse (runWbeT cfg . run connInfo) txs
+    -- It probably makes sense to just throw an exception here. If we
+    -- can't set up the tests, there's no point in continuing
+    Left e -> throw e
   where
-    testBalance connInfo exportTx = do
+    setupTests :: WbeT (C.LocalNodeConnectInfo C.CardanoMode, [WbeExportTx])
+    setupTests = do
+      (connInfo, params) <- getConnectionInfoAndParams
+      txs <- getTestTxs params connInfo
+      pure (connInfo, txs)
+      where
+        getConnectionInfoAndParams ::
+          WbeT
+            ( C.LocalNodeConnectInfo C.CardanoMode
+            , C.ProtocolParameters
+            )
+        getConnectionInfoAndParams =
+          (,) <$> getConnectionInfo
+            <*> getProtocolParams
+
+        getConnectionInfo :: WbeT (C.LocalNodeConnectInfo C.CardanoMode)
+        getConnectionInfo = asks connectionInfoFromConfig
+
+        getProtocolParams :: WbeT C.ProtocolParameters
+        getProtocolParams =
+          liftEither
+            . first DecoderError
+            =<< liftIO . eitherDecodeFileStrict @C.ProtocolParameters
+            =<< asks networkParamsPath
+
+run :: C.LocalNodeConnectInfo C.CardanoMode -> WbeExportTx -> WbeT ()
+run connInfo exportTx = do
+  balanced <- testBalance
+  _ <- testSign balanced
+  pure ()
+  where
+    testBalance :: WbeT (WbeTx 'Balanced)
+    testBalance = do
       balanced <- WbeClient.balance exportTx
       info <- analyseBalanced (getUTXOs connInfo) exportTx balanced
       liftIO $ do
         -- print $ let (WbeExportTx (ExportTx apiTx _ _)) = exportTx in apiTx
         -- print $ encode exportTx
         putStrLn "\nCheck for Tx [id]:" --todo probably some Tx id should be here
-        mapM_ putStrLn 
+        mapM_
+          putStrLn
           [ report $ mustBeBalanced info
           , report $ feeMustBeAdded info
           , report $ cNot $ inputsMustBeAdded info
@@ -67,10 +89,9 @@ run cfg = runWbeT cfg $ do
           ]
       return balanced
 
-    testSign _ = runSignTest
-
-runSignTest :: WbeT ()
-runSignTest = liftIO $ putStrLn "TODO: WBE sign test"
+    -- TODO
+    testSign :: WbeTx 'Balanced -> WbeT ()
+    testSign _ = liftIO $ putStrLn "TODO: WBE sign test"
 
 doFakeBalance :: WbeT (WbeTx 'Balanced)
 doFakeBalance =
@@ -82,6 +103,8 @@ getTestTxs ::
   C.ProtocolParameters -> C.LocalNodeConnectInfo mode -> WbeT [WbeExportTx]
 getTestTxs params connInfo = mapM liftEither [tx1]
     where
+      tx1 = WbeExportTx
+              <$> buildTx @Void (C.localNodeNetworkId connInfo) params mempty txC
       -- I don't think we need to hadle parsing error here, it's not quite part of business logic
       -- it's just ugly way to get PKH and if we can't do it this way, better just `die` - it should not happen;
       -- need to find a way to parse it w/o json decodeing
@@ -95,7 +118,7 @@ debugConfig socketPath = WbeConfig
   { socketPath
   , networkParamsPath = "./src/Mlabs/WbeTest/network_params.json"
   , epochSlots = 21600
-  , networkId = WbeNetworkId $ debugNetId
+  , networkId = WbeNetworkId debugNetId
   , wbeClientCfg = debugClientCfg
   }
 
