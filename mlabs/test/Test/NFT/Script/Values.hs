@@ -45,10 +45,6 @@ userTwoWallet = Emu.fromWalletNumber (Emu.WalletNumber 3)
 
 testTxId :: Ledger.TxId
 testTxId = fromJust $ Aeson.decode "{\"getTxId\" : \"61626364\"}"
-
-testOref :: Ledger.TxOutRef
-testOref = Ledger.TxOutRef testTxId 1
-
 testTokenName :: TokenName
 testTokenName = TokenName hData
   where
@@ -63,7 +59,7 @@ oneNft :: Value.Value
 oneNft = Value.singleton nftCurrencySymbol testTokenName 1
 
 nftCurrencySymbol :: Value.CurrencySymbol
-nftCurrencySymbol = Ledger.scriptCurrencySymbol nftPolicy
+nftCurrencySymbol = app'symbol appSymbol
 
 oneAda :: Value.Value
 oneAda = Ada.lovelaceValueOf 1_000_000
@@ -76,7 +72,7 @@ testStateAddr = NFT.txScrAddress
 
 -- FIXME
 appInstance :: NftAppInstance
-appInstance = error ()
+appInstance = NftAppInstance testStateAddr (Value.AssetClass  ("00a6b45b792d07aa2a778d84c49c6a0d0c0b2bf80d6c1c16accdbe01","Unique App Token"))
 
 appSymbol = NftAppSymbol . NFT.curSymbol $ appInstance
 

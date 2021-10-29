@@ -86,7 +86,7 @@ validBuyData = SpendingTest dtm redeemer val
         , act'newPrice = Nothing
         , act'symbol = TestValues.appSymbol
         }
-    val = TestValues.adaValue 100 <> TestValues.oneNft
+    val = TestValues.adaValue 100
 
 notForSaleData :: TestData 'ForSpending
 notForSaleData = SpendingTest dtm redeemer val
@@ -154,14 +154,12 @@ notForSaleContext =
 
 authorNotPaidContext :: ContextBuilder 'ForSpending
 authorNotPaidContext =
-  paysToWallet TestValues.userOneWallet TestValues.oneNft
-    <> paysToWallet TestValues.authorWallet (TestValues.adaValue 5)
+    paysToWallet TestValues.authorWallet (TestValues.adaValue 5)
     <> paysSelf oneNft initialAuthorDatum
 
 ownerNotPaidContext :: ContextBuilder 'ForSpending
 ownerNotPaidContext =
-  paysToWallet TestValues.userTwoWallet TestValues.oneNft
-    <> paysToWallet TestValues.authorWallet (TestValues.adaValue 50)
+    paysToWallet TestValues.authorWallet (TestValues.adaValue 50)
     <> paysSelf oneNft ownerNotPaidDatum
 
 inconsistentDatumContext :: ContextBuilder 'ForSpending

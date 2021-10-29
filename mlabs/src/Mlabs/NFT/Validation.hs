@@ -104,8 +104,8 @@ mkMintPolicy appInstance act ctx =
         && traceIfFalse "New node must point to second node." (newInserted `pointsTo'` second)
         && traceIfFalse "New price cannot be negative." priceNotNegative'
         && traceIfFalse "Currency symbol must match app instance" checkCurrencySymbol
-        && traceIfFalse "Minted tokens are sent to script address" (checkSentAddress nftid)
-        && traceIfFalse "Nodes are sent to script address" checkNodesAddresses
+        && traceIfFalse "Minted token must be sent to script address" (checkSentAddress nftid)
+        && traceIfFalse "Nodes must be sent to script address" checkNodesAddresses
     Initialise ->
       traceIfFalse "The token is not present." True -- todo
         && traceIfFalse "Only One Unique Token Can be Minted" True -- todo
