@@ -11,8 +11,8 @@ import Cardano.Ledger.Alonzo.TxBody qualified as C
 import Cardano.Ledger.Coin (Coin)
 
 import Control.Lens ((^.))
-import Control.Applicative (liftA2)
-import Control.Monad.Trans.Except (ExceptT (ExceptT), except)
+import Control.Monad.Error.Class (liftEither)
+import Control.Monad.IO.Class (liftIO)
 
 import Data.Bifunctor (second)
 import Data.Either (rights)
@@ -42,9 +42,6 @@ import Plutus.Contract.Wallet (ExportTx (..), ExportTxInput (..))
 
 import Prelude
 
-import Control.Monad.IO.Class (MonadIO (liftIO))
-
-
 data BalanceInfo = BalanceInfo
   { fromWalletTotalValue :: Value
   , txInFromWallet :: Set TxIn
@@ -69,28 +66,14 @@ analyseBalanced ::
   UTXOGetter ->
   WbeExportTx ->
   WbeTx 'Balanced ->
-  ExceptT WbeError IO BalanceCheck
-checkBalanced utxosGetter (WbeExportTx (ExportTx apiTx lookups _)) wtx = do
-  initial <- except $ toChainIndexTx apiTx
-  balanced <- except $ parseTx wtx
-  -- debug print
-  -- liftIO $ print "-------------------" 
-  -- liftIO $ print "init" 
-  -- liftIO $ print "-------------------" 
-  -- liftIO $ print (initial ^. citxInputs)
-  -- liftIO $ print "-------------------" 
-  -- liftIO $ print (initial ^. citxOutputs)
-  -- liftIO $ print "-------------------" 
-  -- liftIO $ print "balanced" 
-  -- liftIO $ print "-------------------" 
-  -- liftIO $ print (balanced ^. citxInputs)
-  -- liftIO $ print "-------------------" 
-  -- liftIO $ print (balanced ^. citxOutputs)
-  -- liftIO $ print "-------------------" 
+  WbeT BalanceInfo
+analyseBalanced utxosGetter (WbeExportTx (ExportTx apiTx lookups _)) wtx = do
+  initial <- liftEither $ toChainIndexTx apiTx
+  balanced <- liftEither $ parseTx wtx
 
-  let fromWallet = addedByWallet initial balanced
+  let fromWallet = addedByWallet balanced initial
 
-  utxosFoundInWallet <- ExceptT $ utxosGetter fromWallet
+  utxoInputs <- liftEither =<< liftIO (utxosGetter fromWallet)
 
   pure $
     BalanceCheck
