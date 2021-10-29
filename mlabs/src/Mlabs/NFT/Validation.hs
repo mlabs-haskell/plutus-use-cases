@@ -227,7 +227,6 @@ mkTxPolicy datum' act ctx =
                 _ -> True
     NodeDatum node ->
         traceIfFalse "Transaction cannot mint." noMint
-        && traceIfFalse "Previous TX is not consumed." prevTxConsumed
         && traceIfFalse "NFT sent to wrong address." tokenSentToCorrectAddress
         && case act of
           MintAct {} ->
@@ -258,7 +257,6 @@ mkTxPolicy datum' act ctx =
         -- Utility functions.
 
         containsNft v = valueOf v (app'symbol . act'symbol $ act) (nftTokenName datum') == 1
-        -- containsNft _ = True
 
         getAda = flip assetClassValueOf $ assetClass Ada.adaSymbol Ada.adaToken
 
@@ -316,8 +314,8 @@ mkTxPolicy datum' act ctx =
 
         -- Check if buy bid is higher or equal than price
         bidHighEnough bid = case info'price . node'information $ oldNode of
-          Nothing -> traceError "NFT not for sale."
-          Just price -> price >= bid
+          Nothing -> False -- NFT not for sale.
+          Just price -> price <= bid
 
         -- Check if the datum attached is also present in the set price transaction.
         correctDatumSetPrice =
@@ -348,13 +346,8 @@ mkTxPolicy datum' act ctx =
         -- Check if the NFT is sent to the correct address.
         tokenSentToCorrectAddress = case filter (containsNft . txOutValue) (txInfoOutputs . scriptContextTxInfo $ ctx) of
           [tx] -> (txOutAddress tx) == (appInstance'Address . node'appInstance $ oldNode)
-          _ -> traceError "NFT not sent anywhere"
+          _ -> False
 
-        -- Check if the previous Tx containing the token is consumed.
-        prevTxConsumed =
-          case findOwnInput ctx of
-            Just (TxInInfo _ out) -> containsNft $ txOutValue out
-            Nothing -> False
 
 {-# INLINEABLE catMaybes' #-}
 catMaybes' :: [Maybe a] -> [a]
