@@ -1,7 +1,10 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Mlabs.WbeTest.Types
-( WbeConfig(..),
+module Mlabs.WbeTest.Types (
+  WbeT(..),
+  runWbeT,
+  liftEitherWbeT,
+  WbeConfig(..),
   loadWbeConfig,
   WbeClientCfg(..),
   defaultWbeClientCfg,
@@ -17,12 +20,16 @@ module Mlabs.WbeTest.Types
   connectionInfoFromConfig,
 ) where
 
-import Prelude qualified as Hask
+import Prelude
 
-import GHC.Generics (Generic)
+import Cardano.Api qualified as C
+
+import Control.Monad.Except (ExceptT, MonadError, runExceptT, throwError)
+import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.Reader (MonadReader, ReaderT (runReaderT))
+
 import Data.Aeson (
   FromJSON (..),
-  (.=),
   Options (fieldLabelModifier),
   ToJSON (..),
   defaultOptions,
@@ -30,40 +37,67 @@ import Data.Aeson (
   genericToJSON,
   object,
   withText,
+  (.=),
  )
-import Data.Text (Text)
-import Plutus.Contract.Wallet (ExportTx (..), ExportTxInput (..))
-import qualified Cardano.Api as C
-import qualified Ledger.Value as Value
-import PlutusTx.Prelude
-import Mlabs.NFT.Types (MintParams(..), UserId (..))
-import Data.Map (Map)
-import Ledger (TxOutRef, ChainIndexTxOut)
-import qualified Data.Text.Encoding as Text
-import qualified Data.ByteString.Base16 as Base16
-import Data.String (IsString)
-import qualified Plutus.Contract.CardanoAPI as C
-import Ledger.Constraints (MkTxError)
-import Prettyprinter (pretty)
-import qualified Network.HTTP.Req as Req
-import Data.Yaml (ParseException, decodeFileEither)
 import Data.Bifunctor (first)
-import Data.Word (Word64, Word32)
-import qualified Data.Text as Text
+import Data.ByteString.Base16 qualified as Base16
+import Data.Map (Map)
+import Data.String (IsString)
+import Data.Text (Text)
+import Data.Text qualified as Text
+import Data.Text.Encoding qualified as Text
+import Data.Word (Word32, Word64)
+import Data.Yaml (ParseException, decodeFileEither)
+
+import GHC.Generics (Generic)
+
+import Ledger (ChainIndexTxOut, TxOutRef)
+import Ledger.Constraints (MkTxError)
+import Ledger.Value qualified as Value
+
+import Mlabs.NFT.Types (MintParams (..), UserId (..))
+
+import Network.HTTP.Req qualified as Req
+
+import Plutus.Contract.CardanoAPI qualified as C
+import Plutus.Contract.Wallet (ExportTx (..), ExportTxInput (..))
+
+import Prettyprinter (pretty)
+
 import Text.Read (readMaybe)
 
+newtype WbeT a = WbeT (ReaderT WbeConfig (ExceptT WbeError IO) a)
+  deriving stock (Generic)
+  deriving newtype
+    ( Functor
+    , Applicative
+    , Monad
+    , MonadIO
+    , MonadReader WbeConfig
+    , MonadError WbeError
+    )
+
+instance Req.MonadHttp WbeT where
+  handleHttpException = throwError . HttpError
+
+runWbeT :: WbeConfig -> WbeT a -> IO (Either WbeError a)
+runWbeT cfg (WbeT a) = runExceptT $ runReaderT a cfg
+
+liftEitherWbeT :: IO (Either WbeError a) -> WbeT a
+liftEitherWbeT x = WbeT $ liftIO x >>= either throwError pure
+
 data WbeConfig = WbeConfig
-  { socketPath :: Hask.FilePath
-  , networkParamsPath :: Hask.FilePath
+  { socketPath :: FilePath
+  , networkParamsPath :: FilePath
   , epochSlots :: Word64
   , networkId :: WbeNetworkId
   , wbeClientCfg :: WbeClientCfg
   }
-  deriving stock (Hask.Show, Hask.Eq, Generic)
+  deriving stock (Show, Eq, Generic)
   deriving anyclass (FromJSON)
 
-loadWbeConfig :: Hask.FilePath -> Hask.IO (Either WbeError WbeConfig)
-loadWbeConfig = Hask.fmap (first YamlError) . decodeFileEither
+loadWbeConfig :: FilePath -> IO (Either WbeError WbeConfig)
+loadWbeConfig = fmap (first YamlError) . decodeFileEither
 
 connectionInfoFromConfig :: WbeConfig -> C.LocalNodeConnectInfo C.CardanoMode
 connectionInfoFromConfig WbeConfig {..} =
@@ -76,27 +110,27 @@ connectionInfoFromConfig WbeConfig {..} =
 newtype WbeNetworkId = WbeNetworkId
   { unWbeNetworkId :: C.NetworkId
   }
-  deriving stock (Hask.Show, Generic)
-  deriving newtype (Hask.Eq)
+  deriving stock (Show, Generic)
+  deriving newtype (Eq)
 
 instance FromJSON WbeNetworkId where
   parseJSON = withText "WbeNetworkId" $ \t -> case Text.splitOn " " t of
-    ["mainnet"] -> Hask.pure $ WbeNetworkId C.Mainnet
+    ["mainnet"] -> pure $ WbeNetworkId C.Mainnet
     ["testnet-magic", n] ->
       maybe
-        (Hask.fail "Unrecognized network magic value")
-        (Hask.pure . WbeNetworkId . C.Testnet . C.NetworkMagic)
+        (fail "Unrecognized network magic value")
+        (pure . WbeNetworkId . C.Testnet . C.NetworkMagic)
         . readMaybe @Word32
         $ Text.unpack n
-    _ -> Hask.fail "Unrecognized network ID"
+    _ -> fail "Unrecognized network ID"
 
 data WbeClientCfg = WbeClientCfg
   { host :: Text
-  , port :: Hask.Int
+  , port :: Int
   , walletId :: WalletId
   , passphrase :: Passphrase
   }
-  deriving stock (Hask.Show, Hask.Eq, Generic)
+  deriving stock (Show, Eq, Generic)
   deriving anyclass (FromJSON)
 
 defaultWbeClientCfg :: WalletId -> Passphrase -> WbeClientCfg
@@ -122,7 +156,7 @@ instance ToJSON WbeExportTx where
 
       inputsForWbe (ExportTxInput (C.TxIn txId txIx) (C.TxOut addr val dat)) =
         object $
-          Hask.mconcat
+          mconcat
             [
               [ "id" .= txId
               , "index" .= txIx
@@ -152,26 +186,26 @@ instance ToJSON WbeExportTx where
 
 -- data ReqRedeemer = 
 --   ReqRedeemer
---   deriving stock (Hask.Show, Generic)
+--   deriving stock (Show, Generic)
 --   deriving anyclass (ToJSON, FromJSON)
   
 -- data ReqInput =
 --   ReqInput
---   deriving stock (Hask.Show, Generic)
+--   deriving stock (Show, Generic)
 --   deriving anyclass (ToJSON, FromJSON)
 -- -- WbeExportTx types - END
 
 newtype WalletId = WalletId
   { unWalletId :: Text
   }
-  deriving stock (Hask.Show, Generic)
-  deriving newtype (Hask.Eq, FromJSON, ToJSON, IsString)
+  deriving stock (Show, Generic)
+  deriving newtype (Eq, FromJSON, ToJSON, IsString)
 
 newtype Passphrase = Passphrase
   { unPassphrase :: Text
   }
-  deriving stock (Hask.Show, Generic)
-  deriving newtype (Hask.Eq, FromJSON, ToJSON, IsString)
+  deriving stock (Show, Generic)
+  deriving newtype (Eq, FromJSON, ToJSON, IsString)
 
 data WbeStage = Balanced | Signed
 
@@ -179,14 +213,14 @@ newtype WbeTx (a :: WbeStage) = WbeTx
   { -- | Base64 representation returned by WBE
     transaction :: Text
   }
-  deriving stock (Hask.Show, Generic)
+  deriving stock (Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
 
 newtype WbeTxSubmitted = WbeTxSubmitted
   { -- | ID of the completed transaction
     txId :: Text
   }
-  deriving stock (Hask.Show, Hask.Eq, Generic)
+  deriving stock (Show, Eq, Generic)
 
 instance FromJSON WbeTxSubmitted where
   parseJSON = genericParseJSON
@@ -200,7 +234,7 @@ instance ToJSON WbeTxSubmitted where
     { fieldLabelModifier = wbeTxSubmittedModifier
     }
 
-wbeTxSubmittedModifier :: Hask.String -> Hask.String
+wbeTxSubmittedModifier :: String -> String
 wbeTxSubmittedModifier = \case
   "txId" -> "id"
   s -> s
@@ -211,26 +245,26 @@ data MintBuilder = MintBuilder
   , user :: UserId
   , utxos :: Map TxOutRef ChainIndexTxOut
   }
-  deriving stock (Hask.Show, Hask.Eq)
+  deriving stock (Show, Eq)
 
 data WbeError
   = HttpError Req.HttpException
-  | DecoderError Hask.String
+  | DecoderError String
   | YamlError ParseException
-  | ConfigurationError Hask.String
+  | ConfigurationError String
   | CardanoError C.ToCardanoError
   | TxError MkTxError
   -- HACK these errors come from @queryNodeLocalState@ and friends
   -- Should find a better way to represent them
-  | NodeError Hask.String
+  | NodeError String
   deriving stock (Generic)
 
-instance Hask.Show WbeError where
+instance Show WbeError where
   show = \case
-    HttpError err -> Hask.show err
+    HttpError err -> show err
     DecoderError err -> err
-    YamlError err -> Hask.show err
+    YamlError err -> show err
     ConfigurationError err -> err
-    CardanoError err -> Hask.show $ pretty err
-    TxError err -> Hask.show $ pretty err
+    CardanoError err -> show $ pretty err
+    TxError err -> show $ pretty err
     NodeError err -> err
