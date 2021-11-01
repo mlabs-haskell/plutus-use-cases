@@ -1,5 +1,3 @@
-{-# LANGUAGE NamedFieldPuns #-}
-
 module Mlabs.WbeTest.TestStand (
   runAll,
 ) where
@@ -9,53 +7,53 @@ import Prelude
 
 
 import Control.Exception (throw)
-import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Except (liftEither)
+import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Reader (asks)
 
 import Data.Aeson (eitherDecodeFileStrict)
 import Data.Bifunctor (first)
+import Data.Foldable (for_)
+import Data.Maybe (fromJust, fromMaybe)
+import Data.Text.IO qualified as TextIO
+import Data.Void (Void)
 
 import Data.Map qualified as Map
 
 
 
 
-import Mlabs.WbeTest.CardanoAPI
-
-import Mlabs.WbeTest.TxInfo
-import Mlabs.WbeTest.Checks
-import Mlabs.WbeTest.TxRead
+import Mlabs.WbeTest.Checks hiding (Balanced)
+import Mlabs.WbeTest.TestCase
+import Mlabs.WbeTest.TxBuilder
 import Mlabs.WbeTest.Types
-import Mlabs.WbeTest.TestCases
-import Mlabs.WbeTest.WbeClient as WbeClient
 
+import Plutus.Contract.Wallet (ExportTx (..))
 import Plutus.V1.Ledger.Ada (adaValueOf)
 
 -- Main entry point
-runAll :: WbeConfig -> IO [Either WbeError ()]
-runAll cfg =
+runAll :: Maybe FilePath -> IO ()
+runAll mpath = do
+  cfg <-
+    either throw id
+      <$> loadWbeConfig (fromMaybe "./src/Mlabs/WbeTest/debug.yaml" mpath)
   runWbeT cfg setupTests >>= \case
-    Right (connInfo, txs) -> traverse (runWbeT cfg . run connInfo) txs
-    -- It probably makes sense to just throw an exception here. If we
-    -- can't set up the tests, there's no point in continuing
     Left e -> throw e
+    Right (connInfo, params) ->
+      for_ (getTestCases connInfo params) $ \TestCase {..} -> do
+        TextIO.putStrLn $ "Running test: " <> description
+        runWbeT cfg test >>= \case
+          Left e -> putStrLn $ "Test failed with: " <> show e
+          -- TODO get the tx ID
+          Right (Test (WbeExportTx ExportTx {}) checks) -> for_ checks $
+            \(AnyCheck check) -> do
+              putStrLn "\nCheck for Tx [id]:"
+              putStrLn $ report check
   where
-    setupTests :: WbeT (C.LocalNodeConnectInfo C.CardanoMode, [WbeExportTx])
-    setupTests = do
-      (connInfo, params) <- getConnectionInfoAndParams
-      txs <- getTestTxs params connInfo
-      pure (connInfo, txs)
+    setupTests ::
+      WbeT (C.LocalNodeConnectInfo C.CardanoMode, C.ProtocolParameters)
+    setupTests = (,) <$> getConnectionInfo <*> getProtocolParams
       where
-        getConnectionInfoAndParams ::
-          WbeT
-            ( C.LocalNodeConnectInfo C.CardanoMode
-            , C.ProtocolParameters
-            )
-        getConnectionInfoAndParams =
-          (,) <$> getConnectionInfo
-            <*> getProtocolParams
-
         getConnectionInfo :: WbeT (C.LocalNodeConnectInfo C.CardanoMode)
         getConnectionInfo = asks connectionInfoFromConfig
 
@@ -66,33 +64,6 @@ runAll cfg =
             =<< liftIO . eitherDecodeFileStrict @C.ProtocolParameters
             =<< asks networkParamsPath
 
-run :: C.LocalNodeConnectInfo C.CardanoMode -> WbeExportTx -> WbeT ()
-run connInfo exportTx = do
-  balanced <- testBalance
-  _ <- testSign balanced
-  pure ()
-  where
-    testBalance :: WbeT (WbeTx 'Balanced)
-    testBalance = do
-      balanced <- WbeClient.balance exportTx
-      info <- analyseBalanced (getUTXOs connInfo) exportTx balanced
-      liftIO $ do
-        -- print $ let (WbeExportTx (ExportTx apiTx _ _)) = exportTx in apiTx
-        -- print $ encode exportTx
-        putStrLn "\nCheck for Tx [id]:" --todo probably some Tx id should be here
-        mapM_
-          putStrLn
-          [ report $ mustBeBalanced info
-          , report $ feeMustBeAdded info
-          , report $ cNot $ inputsMustBeAdded info
-          , report $ unbalancedInsOutsShouldNotChange info
-          ]
-      return balanced
-
-    -- TODO
-    testSign :: WbeTx 'Balanced -> WbeT ()
-    testSign _ = liftIO $ putStrLn "TODO: WBE sign test"
-
 doFakeBalance :: WbeT (WbeTx 'Balanced)
 doFakeBalance =
   pure $
@@ -102,36 +73,15 @@ doFakeBalance =
 getTestTxs ::
   C.ProtocolParameters -> C.LocalNodeConnectInfo mode -> WbeT [WbeExportTx]
 getTestTxs params connInfo = mapM liftEither [tx1]
-    where
-      tx1 = WbeExportTx
-              <$> buildTx @Void (C.localNodeNetworkId connInfo) params mempty txC
-      -- I don't think we need to hadle parsing error here, it's not quite part of business logic
-      -- it's just ugly way to get PKH and if we can't do it this way, better just `die` - it should not happen;
-      -- need to find a way to parse it w/o json decodeing
-      pkh = fromJust $ decode @PubKeyHash
-        "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d2\"}"
-      txC = Constraints.mustPayToPubKey pkh (adaValueOf 5)
-
--- TODO this should be replicated in/replaced by a debug.yaml
-debugConfig :: FilePath -> WbeConfig
-debugConfig socketPath = WbeConfig
-  { socketPath
-  , networkParamsPath = "./src/Mlabs/WbeTest/network_params.json"
-  , epochSlots = 21600
-  , networkId = WbeNetworkId debugNetId
-  , wbeClientCfg = debugClientCfg
-  }
-
-debugWalletId :: WalletId
-debugWalletId = "01f9f1dda617eb8bff71468c702afceee5b1ccbf"
-
-debugClientCfg :: WbeClientCfg
-debugClientCfg = defaultWbeClientCfg debugWalletId
-
-debugNetId :: C.NetworkId
-debugNetId = C.Testnet $ C.NetworkMagic 8
-
-debugConnectionInfo =
-  C.LocalNodeConnectInfo
-    (C.CardanoModeParams (C.EpochSlots 21600))
-    debugNetId
+  where
+    tx1 =
+      WbeExportTx
+        <$> buildTx @Void (C.localNodeNetworkId connInfo) params mempty txC
+    -- I don't think we need to hadle parsing error here, it's not quite part of business logic
+    -- it's just ugly way to get PKH and if we can't do it this way, better just crash - it should not happen;
+    -- todo need to find a way to parse it w/o json decoding
+    pkh =
+      fromJust $
+        decode @PubKeyHash
+          "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d2\"}"
+    txC = Constraints.mustPayToPubKey pkh (adaValueOf 5)

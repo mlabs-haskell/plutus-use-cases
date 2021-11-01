@@ -3,7 +3,6 @@
 module Mlabs.WbeTest.Types (
   WbeT(..),
   runWbeT,
-  liftEitherWbeT,
   WbeConfig(..),
   loadWbeConfig,
   WbeClientCfg(..),
@@ -26,7 +25,7 @@ import Cardano.Api qualified as C
 
 import Control.Exception (Exception)
 import Control.Monad.Except (ExceptT, MonadError, runExceptT, throwError)
-import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader, ReaderT (runReaderT))
 
 import Data.Aeson (
@@ -83,9 +82,6 @@ instance Req.MonadHttp WbeT where
 
 runWbeT :: WbeConfig -> WbeT a -> IO (Either WbeError a)
 runWbeT cfg (WbeT a) = runExceptT $ runReaderT a cfg
-
-liftEitherWbeT :: IO (Either WbeError a) -> WbeT a
-liftEitherWbeT x = WbeT $ liftIO x >>= either throwError pure
 
 data WbeConfig = WbeConfig
   { socketPath :: FilePath
