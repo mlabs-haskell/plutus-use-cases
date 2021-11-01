@@ -32,8 +32,6 @@ common common-imports
     , prettyprinter
     , pretty-show
     , row-types
-    , record-dot-preprocessor
-    , record-hasfield
     , stm
     , lens
     , tasty
@@ -105,9 +103,7 @@ library
     -Wredundant-constraints
     -Wmissing-export-lists
     -Wmissing-deriving-strategies
---    -Werror
-    -fplugin=RecordDotPreprocessor
-    -Werror 
+    -Werror
     
   hs-source-dirs:
     src/
