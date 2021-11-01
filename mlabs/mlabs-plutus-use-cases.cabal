@@ -180,6 +180,7 @@ library
     Mlabs.WbeTest.CardanoAPI
     Mlabs.WbeTest.Checks
     Mlabs.WbeTest.TestCases
+    Mlabs.WbeTest.TestCase
 
 executable mlabs-plutus-use-cases
   import:  common-imports

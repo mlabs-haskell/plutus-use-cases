@@ -1,6 +1,7 @@
 module Mlabs.WbeTest.Checks (
-  Reportable,
-  report,
+  Reportable(..),
+  Check(..),
+  Balanced(..),
   mustBeBalanced,
   feeMustBeAdded,
   inputsMustBeAdded,
