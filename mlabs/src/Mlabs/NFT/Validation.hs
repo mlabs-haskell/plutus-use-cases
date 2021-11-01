@@ -256,7 +256,7 @@ mkTxPolicy datum act ctx =
           && traceIfFalse "Auction deadline reached" correctAuctionBidSlotInterval
           && traceIfFalse "(change) wrong input value" correctInputValue
           && traceIfFalse "Datum illegally altered" (auctionConsistentDatum act'bid)
-      -- && traceIfFalse "Auction bid value not supplied" (auctionBidValueCorrectInput act'bid)
+          && traceIfFalse "Auction bid value not supplied" (auctionBidValueSupplied act'bid)
       CloseAuctionAct {} ->
         traceIfFalse "Can't close auction: none in progress" (not noAuctionInProgress)
           && traceIfFalse "Auction deadline not yet reached" auctionDeadlineReached
@@ -323,6 +323,12 @@ mkTxPolicy datum act ctx =
                 Nothing -> traceError "getNextDatum: expected datum"
                 Just dt -> dt
         _ -> traceError "getNextDatum: expected exactly one cont. output"
+
+    auctionBidValueSupplied :: Integer -> Bool
+    auctionBidValueSupplied redeemerBid =
+      case getContinuingOutputs ctx of
+        [out] -> txOutValue out == tokenValue <> Ada.lovelaceValueOf redeemerBid
+        _ -> traceError "auctionBidValueSupplied: expected exactly one cont. output"
 
     tokenValue :: Value
     tokenValue = singleton (act'cs act) (nftTokenName datum) 1
