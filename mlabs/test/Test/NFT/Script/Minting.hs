@@ -81,7 +81,7 @@ nonMintingCtx =
     <> input (Input (PubKeyType TestValues.authorPkh) TestValues.oneAda)
 
 wrongAmountCtx = baseCtx <> mintingCtx <> paysDatumToScriptCtx <>
-  (paysOther NFT.txValHash (TestValues.oneNft PlutusPrelude.<> TestValues.oneNft) ())
+  paysOther NFT.txValHash (TestValues.oneNft PlutusPrelude.<> TestValues.oneNft) ()
 
 nftMintPolicy :: Ledger.MintingPolicy
 nftMintPolicy =

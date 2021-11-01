@@ -88,6 +88,7 @@ import Mlabs.NFT.Types
       getDatumPointer,
       nftTokenName,
       getAppInstance )
+import Data.Maybe (catMaybes)
 
 asRedeemer :: PlutusTx.ToData a => a -> Redeemer
 asRedeemer = Redeemer . PlutusTx.toBuiltinData
@@ -153,7 +154,7 @@ mkMintPolicy appInstance act ctx =
       let txs :: [TxOut] =
             fmap snd
               . mapMaybe (\(datum, tx) -> (,) <$> (PlutusTx.fromBuiltinData @DatumNft . getDatum $ datum) <*> pure tx)
-              . mapMaybe (\(hash, tx) -> (,) <$> (findDatum hash info) <*> pure tx)
+              . mapMaybe (\(hash, tx) -> (,) <$> findDatum hash info <*> pure tx)
               . mapMaybe (\tx -> (,) <$> txOutDatumHash tx <*> pure tx)
               . txInfoOutputs
               . scriptContextTxInfo
@@ -169,9 +170,10 @@ mkMintPolicy appInstance act ctx =
     checkSentAddress nftId =
       let currency = ownCurrencySymbol ctx
           tokenName = TokenName . nftId'contentHash $ nftId
-       in case find (\TxOut {..} -> valueOf txOutValue currency tokenName == 1) $ txInfoOutputs info of
-            Nothing -> False
-            Just tx -> sentToScript tx
+       in maybe
+          False sentToScript
+          (find (\ TxOut {..} -> valueOf txOutValue currency tokenName == 1)
+          $ txInfoOutputs info)
 
     -- Check if currency symbol is consistent
     checkCurrencySymbol =
@@ -182,7 +184,7 @@ mkMintPolicy appInstance act ctx =
     checkMintedAmount nftid =
       let currency = ownCurrencySymbol ctx
           tokenName = TokenName . nftId'contentHash $ nftid
-       in (valueOf (txInfoMint info) currency tokenName) == 1
+       in valueOf (txInfoMint info) currency tokenName == 1
 
     -- Check if only thing changed in first node is `next` pointer
     firstChangedOnlyPtr = case (first, newFirst) of
@@ -214,18 +216,18 @@ mkTxPolicy datum' act ctx =
       where
         -- proofPaidBack _ = True
         proofPaidBack _ =
-          let containsHead tx = fromMaybe False $ do
-                hash <- txOutDatumHash tx
-                datum <- findDatum hash $ scriptContextTxInfo ctx
-                decoded <- PlutusTx.fromBuiltinData . getDatum $ datum
-                case decoded of
-                  HeadDatum _ -> Just True
-                  _ -> Just False
+          let containsHead tx = (Just True ==
+               (do hash <- txOutDatumHash tx
+                   datum <- findDatum hash $ scriptContextTxInfo ctx
+                   decoded <- PlutusTx.fromBuiltinData . getDatum $ datum
+                   case decoded of
+                     HeadDatum _ -> Just True
+                     _ -> Just False))
            in case filter containsHead $ txInfoOutputs . scriptContextTxInfo $ ctx of
                 [tx] ->
                   let currency = ownCurrencySymbol ctx
                       tokenName = snd . unAssetClass . appInstance'AppAssetClass . head'appInstance $ headDat
-                   in (valueOf (txOutValue tx) currency tokenName) == 1
+                   in valueOf (txOutValue tx) currency tokenName == 1
                 _ -> True
     NodeDatum node ->
         traceIfFalse "Transaction cannot mint." noMint
@@ -347,13 +349,13 @@ mkTxPolicy datum' act ctx =
 
         -- Check if the NFT is sent to the correct address.
         tokenSentToCorrectAddress = case filter (containsNft . txOutValue) (txInfoOutputs . scriptContextTxInfo $ ctx) of
-          [tx] -> (txOutAddress tx) == (appInstance'Address . node'appInstance $ oldNode)
+          [tx] -> txOutAddress tx == (appInstance'Address . node'appInstance $ oldNode)
           _ -> False
 
 
 {-# INLINEABLE catMaybes' #-}
 catMaybes' :: [Maybe a] -> [a]
-catMaybes' = mapMaybe id
+catMaybes' = catMaybes
 
 {-# INLINEABLE priceNotNegative #-}
 priceNotNegative :: Maybe Integer -> Bool
