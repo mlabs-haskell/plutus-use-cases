@@ -42,6 +42,7 @@ import Ledger (
   ValidatorHash,
   Value,
   contains,
+  findDatum,
   findDatumHash,
   findOwnInput,
   from,
@@ -254,8 +255,8 @@ mkTxPolicy datum act ctx =
           && traceIfFalse "Auction bid is too low" (auctionBidHighEnough act'bid)
           && traceIfFalse "Auction deadline reached" correctAuctionBidSlotInterval
           && traceIfFalse "(change) wrong input value" correctInputValue
-          -- && traceIfFalse "Datum illegally altered" auctionConsistentDatum
-          -- && traceIfFalse "Auction bid value not supplied" (auctionBidValueCorrectInput act'bid)
+          && traceIfFalse "Datum illegally altered" (auctionConsistentDatum act'bid)
+      -- && traceIfFalse "Auction bid value not supplied" (auctionBidValueCorrectInput act'bid)
       CloseAuctionAct {} ->
         traceIfFalse "Can't close auction: none in progress" (not noAuctionInProgress)
           && traceIfFalse "Auction deadline not yet reached" auctionDeadlineReached
@@ -308,6 +309,21 @@ mkTxPolicy datum act ctx =
       withAuctionState $ \auctionState ->
         (from $ as'deadline auctionState) `contains` txInfoValidRange info
 
+    convDatum :: Datum -> Maybe DatumNft
+    convDatum (Datum d) = PlutusTx.fromBuiltinData d
+
+    getNextDatum :: DatumNft
+    getNextDatum =
+      case getContinuingOutputs ctx of
+        [out] ->
+          case txOutDatumHash out of
+            Nothing -> traceError "getNextDatum: expected datum hash"
+            Just dhash ->
+              case findDatum dhash info >>= convDatum of
+                Nothing -> traceError "getNextDatum: expected datum"
+                Just dt -> dt
+        _ -> traceError "getNextDatum: expected exactly one cont. output"
+
     tokenValue :: Value
     tokenValue = singleton (act'cs act) (nftTokenName datum) 1
 
@@ -322,21 +338,36 @@ mkTxPolicy datum act ctx =
               Nothing -> tokenValue == txOutValue out
               Just hb -> txOutValue out == (tokenValue <> Ada.lovelaceValueOf (ab'bid hb))
 
-    auctionConsistentDatum =
-      let prevDatum :: DatumNft = head . getCtxDatum $ ctx
-          -- TODO: remove?
-          -- checkHighestBid =
-          --   case (dNft'auctionState prevDatum, dNft'auctionState datum) of
-          --     (Just (AuctionState (Just prevBid) _ _), Just (AuctionState (Just bid) _ _)) ->
-          --       ab'bid prevBid < ab'bid bid
-          --     (_, _) -> True
+    auctionConsistentDatum :: Integer -> Bool
+    auctionConsistentDatum redeemerBid =
+      let nextDatum = getNextDatum
+          checkAuctionState =
+            case (dNft'auctionState nextDatum, dNft'auctionState datum) of
+              ( Just (AuctionState _ nextDeadline nextMinBid)
+                , Just (AuctionState _ deadline minBid)
+                ) ->
+                nextDeadline == deadline && nextMinBid == minBid
+              _ -> traceError "auctionConsistentDatum: expected auction state"
 
-       in dNft'id prevDatum == dNft'id datum
-            && dNft'share prevDatum == dNft'share datum
-            && dNft'author prevDatum == dNft'author datum
-            && dNft'owner prevDatum == dNft'owner datum
-            && dNft'price prevDatum == dNft'price datum
-            -- && checkHighestBid
+          checkHighestBid =
+            case (dNft'auctionState nextDatum, dNft'auctionState datum) of
+              ( Just (AuctionState (Just (AuctionBid nextBid _)) _ _)
+                , Just (AuctionState (Just (AuctionBid bid _)) _ _)
+                ) ->
+                nextBid > bid && nextBid == redeemerBid
+              ( Just (AuctionState (Just (AuctionBid nextBid _)) _ _)
+                , Just (AuctionState Nothing _ minBid)
+                ) ->
+                nextBid >= minBid && nextBid == redeemerBid
+              _ -> traceError "auctionConsistentDatum: expected auction state"
+       in
+          dNft'id nextDatum == dNft'id datum
+            && dNft'share nextDatum == dNft'share datum
+            && dNft'author nextDatum == dNft'author datum
+            && dNft'owner nextDatum == dNft'owner datum
+            && dNft'price nextDatum == dNft'price datum
+            && checkAuctionState
+            && checkHighestBid
 
     -- Check if the datum attached is also present in the is also in the transaction.
     correctDatum :: Bool

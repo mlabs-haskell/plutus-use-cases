@@ -267,8 +267,7 @@ bidAuction (AuctionBidParams nftId bidAmount) = do
             ]
         , mconcat
             ( [ Constraints.mustPayToTheScript newDatum' newValue
-            -- , Constraints.mustPayToTheScript
-              -- , Constraints.mustIncludeDatum newDatum
+              , Constraints.mustIncludeDatum newDatum
               , Constraints.mustSpendScriptOutput nftOref redeemer
               , Constraints.mustValidateIn (to $ as'deadline auctionState)
               ]
