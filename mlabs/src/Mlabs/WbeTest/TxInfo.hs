@@ -11,6 +11,7 @@ import Cardano.Ledger.Alonzo.TxBody qualified as C
 import Cardano.Ledger.Coin (Coin)
 
 import Control.Lens ((^.))
+import Control.Applicative (liftA2)
 import Control.Monad.Error.Class (liftEither)
 import Control.Monad.IO.Class (liftIO)
 
@@ -72,8 +73,6 @@ analyseBalanced utxosGetter (WbeExportTx (ExportTx apiTx lookups _)) wtx = do
   balanced <- liftEither $ parseTx wtx
 
   let fromWallet = addedByWallet balanced initial
-
-  utxoInputs <- liftEither =<< liftIO (utxosGetter fromWallet)
 
   pure $
     BalanceCheck
