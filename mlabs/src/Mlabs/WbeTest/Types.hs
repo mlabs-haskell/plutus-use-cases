@@ -24,6 +24,7 @@ import Prelude
 
 import Cardano.Api qualified as C
 
+import Control.Exception (Exception)
 import Control.Monad.Except (ExceptT, MonadError, runExceptT, throwError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader, ReaderT (runReaderT))
@@ -268,3 +269,5 @@ instance Show WbeError where
     CardanoError err -> show $ pretty err
     TxError err -> show $ pretty err
     NodeError err -> err
+
+instance Exception WbeError
