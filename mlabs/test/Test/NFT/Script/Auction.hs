@@ -65,10 +65,22 @@ openAuctionState = NFT.AuctionState
   , as'minBid = 100 * 1_000_000
   }
 
+bidAuctionState :: NFT.AuctionState
+bidAuctionState = NFT.AuctionState
+  { as'highestBid = Just (NFT.AuctionBid (300 * 1_000_000) (NFT.UserId TestValues.userTwoPkh))
+  , as'deadline = slotTenTime
+  , as'minBid = 100 * 1_000_000
+  }
+
 ownerUserOneAuctionOpenDatum :: NFT.DatumNft
 ownerUserOneAuctionOpenDatum =
   ownerUserOneDatum
     { NFT.dNft'auctionState = Just openAuctionState }
+
+ownerUserOneAuctionBidDatum :: NFT.DatumNft
+ownerUserOneAuctionBidDatum =
+  ownerUserOneDatum
+    { NFT.dNft'auctionState = Just bidAuctionState }
 
 -- case 1
 openAuctionData1 :: TestData 'ForSpending
@@ -147,7 +159,7 @@ validBidData = SpendingTest dtm redeemer val
 
     redeemer =
       NFT.BidAuctionAct
-        { act'bid = 200 * 1_000_000
+        { act'bid = 300 * 1_000_000
         , act'cs = TestValues.nftCurrencySymbol
         }
 
@@ -155,7 +167,7 @@ validBidData = SpendingTest dtm redeemer val
 
 validBidContext :: ContextBuilder 'ForSpending
 validBidContext =
-  paysSelf oneNft ownerUserOneAuctionOpenDatum
+  paysSelf (oneNft PlutusPrelude.<> TestValues.adaValue 300) ownerUserOneAuctionBidDatum
 
 dealingValidator :: Ledger.Validator
 dealingValidator =
