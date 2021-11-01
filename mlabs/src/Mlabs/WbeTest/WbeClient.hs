@@ -7,10 +7,10 @@ module Mlabs.WbeTest.WbeClient (
   submit,
 ) where
 
-import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Except (ExceptT, except, throwE)
 
-import Data.Aeson (FromJSON, ToJSON, eitherDecode, object, (.=))
+import Data.Aeson (FromJSON, ToJSON, eitherDecode, object, (.=), encode)
 import Data.Bifunctor (first)
 import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
@@ -65,7 +65,9 @@ postWallet ::
   Text ->
   a ->
   ExceptT WbeError m b
-postWallet WbeClientCfg {..} path reqBody = eitherDecodeLbs =<< mkReq
+postWallet WbeClientCfg {..} path reqBody = do
+  liftIO $ print $ encode reqBody
+  eitherDecodeLbs =<< mkReq
   where
     mkReq =
       Req.req Req.POST url (Req.ReqBodyJson reqBody) Req.lbsResponse (Req.port port)
