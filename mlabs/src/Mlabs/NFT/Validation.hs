@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Mlabs.NFT.Validation (
   DatumNft (..),
   NftTrade,
@@ -5,10 +7,13 @@ module Mlabs.NFT.Validation (
   UserAct (..),
   asRedeemer,
   txPolicy,
+  mkTxPolicy,
   txScrAddress,
+  txValHash,
   nftCurrency,
   nftAsset,
   mintPolicy,
+  mkMintPolicy,
   priceNotNegative,
   curSymbol,
 ) where
@@ -99,8 +104,8 @@ mkMintPolicy appInstance act ctx =
         && traceIfFalse "New node must point to second node." (newInserted `pointsTo'` second)
         && traceIfFalse "New price cannot be negative." priceNotNegative'
         && traceIfFalse "Currency symbol must match app instance" checkCurrencySymbol
-        && traceIfFalse "Minted tokens are sent to script address" (checkSentAddress nftid)
-        && traceIfFalse "Nodes are sent to script address" checkNodesAddresses
+        && traceIfFalse "Minted token must be sent to script address" (checkSentAddress nftid)
+        && traceIfFalse "Nodes must be sent to script address" checkNodesAddresses
     Initialise ->
       traceIfFalse "The token is not present." True -- todo
         && traceIfFalse "Only One Unique Token Can be Minted" True -- todo
@@ -192,11 +197,11 @@ mintPolicy appInstance =
     $$(PlutusTx.compile [||wrapMintingPolicy . mkMintPolicy||])
       `PlutusTx.applyCode` PlutusTx.liftCode appInstance
 
-{-# INLINEABLE mKTxPolicy #-}
+{-# INLINEABLE mkTxPolicy #-}
 
 -- | A validator script for the user actions.
-mKTxPolicy :: DatumNft -> UserAct -> ScriptContext -> Bool
-mKTxPolicy datum' act ctx =
+mkTxPolicy :: DatumNft -> UserAct -> ScriptContext -> Bool
+mkTxPolicy datum' act ctx =
   case datum' of
     HeadDatum head -> case act of
       MintAct {..} ->
@@ -222,7 +227,6 @@ mKTxPolicy datum' act ctx =
                 _ -> True
     NodeDatum node ->
         traceIfFalse "Transaction cannot mint." noMint
-        && traceIfFalse "Previous TX is not consumed." prevTxConsumed
         && traceIfFalse "NFT sent to wrong address." tokenSentToCorrectAddress
         && case act of
           MintAct {} ->
@@ -253,7 +257,6 @@ mKTxPolicy datum' act ctx =
         -- Utility functions.
 
         containsNft v = valueOf v (app'symbol . act'symbol $ act) (nftTokenName datum') == 1
-        -- containsNft _ = True
 
         getAda = flip assetClassValueOf $ assetClass Ada.adaSymbol Ada.adaToken
 
@@ -311,8 +314,8 @@ mKTxPolicy datum' act ctx =
 
         -- Check if buy bid is higher or equal than price
         bidHighEnough bid = case info'price . node'information $ oldNode of
-          Nothing -> traceError "NFT not for sale."
-          Just price -> price >= bid
+          Nothing -> False -- NFT not for sale.
+          Just price -> price <= bid
 
         -- Check if the datum attached is also present in the set price transaction.
         correctDatumSetPrice =
@@ -343,13 +346,8 @@ mKTxPolicy datum' act ctx =
         -- Check if the NFT is sent to the correct address.
         tokenSentToCorrectAddress = case filter (containsNft . txOutValue) (txInfoOutputs . scriptContextTxInfo $ ctx) of
           [tx] -> (txOutAddress tx) == (appInstance'Address . node'appInstance $ oldNode)
-          _ -> traceError "NFT not sent anywhere"
+          _ -> False
 
-        -- Check if the previous Tx containing the token is consumed.
-        prevTxConsumed =
-          case findOwnInput ctx of
-            Just (TxInInfo _ out) -> containsNft $ txOutValue out
-            Nothing -> False
 
 {-# INLINEABLE catMaybes' #-}
 catMaybes' :: [Maybe a] -> [a]
@@ -368,7 +366,7 @@ instance ValidatorTypes NftTrade where
 txPolicy :: TypedValidator NftTrade
 txPolicy =
   mkTypedValidator @NftTrade
-    $$(PlutusTx.compile [||mKTxPolicy||])
+    $$(PlutusTx.compile [||mkTxPolicy||])
     $$(PlutusTx.compile [||wrap||])
   where
     wrap = wrapValidator @DatumNft @UserAct

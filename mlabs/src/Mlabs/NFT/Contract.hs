@@ -11,7 +11,7 @@ import Prelude (mconcat, (<>))
 import Prelude qualified as Hask
 
 import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right)
-import Control.Monad (join, void)
+import Control.Monad (void)
 import Data.List qualified as L
 import Data.Map qualified as Map
 import Data.Monoid (Last (..))

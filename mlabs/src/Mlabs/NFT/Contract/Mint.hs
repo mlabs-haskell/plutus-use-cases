@@ -207,10 +207,6 @@ mint symbol params = do
           info = InformationNft nid mp'share author author mp'price
        in NftListNode info Nothing inst
 
--- | A hashing function to minimise the data to be attached to the NTFid.
-hashData :: Content -> BuiltinByteString
-hashData (Content b) = sha2_256 b
-
 lookupNext :: Maybe PointInfo -> Constraints.ScriptLookups a2
 lookupNext = \case
   Just (PointInfo _ oref toOut _) -> Constraints.unspentOutputs $ Map.fromList [(oref, toOut)]

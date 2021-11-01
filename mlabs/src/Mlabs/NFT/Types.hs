@@ -199,8 +199,8 @@ instance Eq BuyRequestUser where
 
 -- | A datatype used by the QueryContract to return a response
 data QueryResponse
-  = QueryCurrentOwner (Last UserId)
-  | QueryCurrentPrice (Last Integer)
+  = QueryCurrentOwner UserId
+  | QueryCurrentPrice (Maybe Integer)
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON)
 
@@ -426,7 +426,7 @@ data PointInfo = PointInfo
 instance Eq PointInfo where
   {-# INLINEABLE (==) #-}
   (PointInfo x y _ _) == (PointInfo a b _ _) =
-    x == a && y == b -- && z == c && k == d
+   x == a && y == b -- && z == c && k == d
 
 instance Ord PointInfo where
   x <= y = pi'datum x <= pi'datum y

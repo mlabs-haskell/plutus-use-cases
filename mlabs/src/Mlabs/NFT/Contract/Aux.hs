@@ -8,6 +8,7 @@ module Mlabs.NFT.Contract.Aux (
   serialiseDatum,
   getNftDatum,
   getsNftDatum,
+  hashData,
   findNft,
   fstUtxoAt,
   entryToPointInfo,
@@ -197,3 +198,7 @@ getDatumsTxsOrdered nftAS = do
     withDatum (oref, (out, tx)) = case readDatum' @DatumNft out of
       Nothing -> Contract.throwError "Datum not found"
       Just d -> pure $ PointInfo d oref out tx
+
+-- | A hashing function to minimise the data to be attached to the NTFid.
+hashData :: Content -> BuiltinByteString
+hashData (Content b) = sha2_256 b
