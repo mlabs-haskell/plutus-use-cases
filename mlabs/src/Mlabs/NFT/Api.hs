@@ -13,7 +13,6 @@ import Playground.Contract (mkSchemaDefinitions)
 import Plutus.Contract (Contract, Endpoint, endpoint, throwError, type (.\/))
 import Prelude as Hask
 
-import Mlabs.NFT.Contract qualified as NFTContract
 import Mlabs.NFT.Contract.Buy (buy)
 import Mlabs.NFT.Contract.Init (initApp)
 import Mlabs.NFT.Contract.Mint (mint)

@@ -33,7 +33,6 @@ import Prelude qualified as Hask
 import Plutus.Contract (Contract)
 
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Monoid (Last)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 

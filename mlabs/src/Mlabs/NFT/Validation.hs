@@ -19,10 +19,7 @@ module Mlabs.NFT.Validation (
 ) where
 
 import PlutusTx.Prelude
-import Prelude qualified as Hask
 
-import Data.Aeson (FromJSON, ToJSON)
-import GHC.Generics (Generic)
 import Plutus.V1.Ledger.Ada qualified as Ada (
   adaSymbol,
   adaToken,
@@ -31,35 +28,27 @@ import Plutus.V1.Ledger.Ada qualified as Ada (
 
 import Ledger (
   Address,
+  txInInfoResolved,
   AssetClass,
   CurrencySymbol,
   Datum (..),
   MintingPolicy,
   Redeemer (..),
   ScriptContext (..),
-  TxInInfo (..),
   TxOut (..),
-  TxOutRef,
   ValidatorHash,
   Value,
   findDatum,
-  findDatumHash,
-  findOwnInput,
-  getContinuingOutputs,
   mkMintingPolicyScript,
   ownCurrencySymbol,
   scriptContextTxInfo,
   scriptCurrencySymbol,
-  txInInfoOutRef,
-  txInfoData,
   txInfoInputs,
   txInfoMint,
   txInfoOutputs,
   txInfoSignatories,
   valuePaidTo,
  )
-
-import PlutusTx.Builtins.Class (stringToBuiltinByteString)
 
 import Ledger.Typed.Scripts (
   DatumType,
@@ -78,14 +67,27 @@ import Ledger.Value (
   TokenName (..),
   assetClass,
   flattenValue,
-  singleton,
   valueOf,
  )
 import Plutus.V1.Ledger.Value (AssetClass (..), assetClassValueOf, isZero)
 import PlutusTx qualified
-import Schema (ToSchema)
 
 import Mlabs.NFT.Types
+    ( NftId(nftId'contentHash),
+      NftAppSymbol(app'symbol),
+      UserId(getUserId),
+      MintAct(Initialise, Mint),
+      InformationNft(info'price, info'author, info'share, info'id,
+                     info'owner),
+      NftAppInstance(appInstance'AppAssetClass, appInstance'Address),
+      Pointer(pointer'assetClass),
+      NftListHead(head'appInstance),
+      NftListNode(node'next, node'information, node'appInstance),
+      DatumNft(..),
+      UserAct(..),
+      getDatumPointer,
+      nftTokenName,
+      getAppInstance )
 
 asRedeemer :: PlutusTx.ToData a => a -> Redeemer
 asRedeemer = Redeemer . PlutusTx.toBuiltinData
@@ -203,15 +205,15 @@ mintPolicy appInstance =
 mkTxPolicy :: DatumNft -> UserAct -> ScriptContext -> Bool
 mkTxPolicy datum' act ctx =
   case datum' of
-    HeadDatum head -> case act of
+    HeadDatum headDat -> case act of
       MintAct {..} ->
         traceIfFalse "Proof Token must be paid back when using Head" (proofPaidBack act'nftId)
       -- must always pay back the proof Token. This happens when the Head datum is
       -- updated as the utxo needs to be consumed
       _ -> traceError "Cannot buy or set price of Head."
       where
-        proofPaidBack _ = True
-        proofPaidBack nftId =
+        -- proofPaidBack _ = True
+        proofPaidBack _ =
           let containsHead tx = fromMaybe False $ do
                 hash <- txOutDatumHash tx
                 datum <- findDatum hash $ scriptContextTxInfo ctx
@@ -222,7 +224,7 @@ mkTxPolicy datum' act ctx =
            in case filter containsHead $ txInfoOutputs . scriptContextTxInfo $ ctx of
                 [tx] ->
                   let currency = ownCurrencySymbol ctx
-                      tokenName = snd . unAssetClass . appInstance'AppAssetClass . head'appInstance $ head
+                      tokenName = snd . unAssetClass . appInstance'AppAssetClass . head'appInstance $ headDat
                    in (valueOf (txOutValue tx) currency tokenName) == 1
                 _ -> True
     NodeDatum node ->
@@ -434,8 +436,7 @@ getInputDatums :: PlutusTx.FromData a => ScriptContext -> [a]
 getInputDatums ctx =
   mapMaybe (PlutusTx.fromBuiltinData . getDatum)
     . mapMaybe (\hash -> findDatum hash $ scriptContextTxInfo ctx)
-    . mapMaybe txOutDatumHash
-    . fmap txInInfoResolved
+    . mapMaybe (txOutDatumHash . txInInfoResolved)
     . txInfoInputs
     . scriptContextTxInfo
     $ ctx

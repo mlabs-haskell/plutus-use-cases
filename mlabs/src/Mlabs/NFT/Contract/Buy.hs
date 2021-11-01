@@ -5,38 +5,28 @@ module Mlabs.NFT.Contract.Buy (
 ) where
 
 import PlutusTx.Prelude hiding (mconcat, mempty, (<>))
-import Prelude (mconcat, mempty)
+import Prelude (mconcat)
 import Prelude qualified as Hask
 
 import Control.Lens ((^.))
 import Control.Monad (void)
-import Data.Function (on)
-import Data.List qualified as L
 import Data.Map qualified as Map
 import Data.Monoid (Last (..))
 import Data.Text (Text)
-import Text.Printf (printf)
 
-import Mlabs.Plutus.Contract (readDatum')
 import Plutus.Contract (Contract)
 import Plutus.Contract qualified as Contract
 import PlutusTx qualified
 
 import Ledger (
-  ChainIndexTxOut,
   Datum (..),
-  PubKeyHash (..),
   Redeemer (..),
-  TxOutRef,
   ciTxOutValue,
   pubKeyHash,
-  scriptCurrencySymbol,
  )
 
 import Ledger.Constraints qualified as Constraints
 import Ledger.Typed.Scripts (validatorScript)
-import Ledger.Value as Value (AssetClass (..), TokenName (..), singleton)
-import Plutus.ChainIndex.Tx (ChainIndexTx)
 
 import Mlabs.NFT.Contract.Aux
 import Mlabs.NFT.Types

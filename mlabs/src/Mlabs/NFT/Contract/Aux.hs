@@ -21,12 +21,11 @@ import Prelude (mconcat, (<>))
 import Prelude qualified as Hask
 
 import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right)
-import Data.Function (on)
 import Data.List qualified as L
 import Data.Map qualified as Map
 import Data.Text (Text, pack)
 
-import Plutus.ChainIndex.Tx (ChainIndexTx, citxData)
+import Plutus.ChainIndex.Tx (ChainIndexTx)
 import Plutus.Contract (Contract, utxosTxOutTxAt)
 import Plutus.Contract qualified as Contract
 import PlutusTx qualified
@@ -35,7 +34,6 @@ import Plutus.V1.Ledger.Value (symbols)
 
 import Ledger (
   Address,
-  AssetClass,
   ChainIndexTxOut,
   Datum (..),
   TxOutRef,
@@ -46,10 +44,8 @@ import Ledger (
   pubKeyHash,
  )
 
-import Ledger.Constraints qualified as Constraints
-import Ledger.Typed.Scripts (validatorScript)
-import Ledger.Value as Value (singleton, unAssetClass, valueOf)
-import Mlabs.Plutus.Contract (fromDatum, readDatum')
+import Ledger.Value as Value (unAssetClass, valueOf)
+import Mlabs.Plutus.Contract (readDatum')
 
 import Mlabs.NFT.Types
 import Mlabs.NFT.Validation
@@ -162,11 +158,11 @@ fstUtxoAt address = do
 -- | Get the Head of the List
 getHead :: NftAppSymbol -> GenericContract (Maybe PointInfo)
 getHead aSym = do
-  head <- filter (isHead . pi'datum) <$> getDatumsTxsOrdered aSym
-  case head of
+  headX <- filter (isHead . pi'datum) <$> getDatumsTxsOrdered aSym
+  case headX of
     [] -> pure Nothing
     [x] -> pure $ Just x
-    y -> do
+    _ -> do
       utxos <- getDatumsTxsOrdered aSym
       Contract.throwError $
         mconcat

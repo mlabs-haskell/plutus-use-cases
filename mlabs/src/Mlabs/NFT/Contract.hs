@@ -7,61 +7,50 @@ module Mlabs.NFT.Contract (
 ) where
 
 import PlutusTx.Prelude hiding (mconcat, (<>))
-import Prelude (mconcat, (<>))
-import Prelude qualified as Hask
+-- import Prelude (mconcat, (<>))
+-- import Prelude qualified as Hask
 
-import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right)
-import Control.Monad (void)
-import Data.List qualified as L
-import Data.Map qualified as Map
+-- import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right)
+-- import Control.Monad (void)
+-- import Data.List qualified as L
+-- import Data.Map qualified as Map
 import Data.Monoid (Last (..))
-import Data.Text (Text, pack)
-import Text.Printf (printf)
+import Data.Text (Text)
+-- import Text.Printf (printf)
 
-import Plutus.ChainIndex.Tx (ChainIndexTx)
-import Plutus.Contract (Contract, mapError, ownPubKey, utxosTxOutTxAt)
-import Plutus.Contract qualified as Contract
-import PlutusTx qualified
+-- import Plutus.ChainIndex.Tx (ChainIndexTx)
+import Plutus.Contract (Contract)
+-- import Plutus.Contract qualified as Contract
+-- import PlutusTx qualified
 
-import Plutus.Contracts.Currency (CurrencyError, mintContract, mintedValue)
-import Plutus.Contracts.Currency qualified as MC
-import Plutus.V1.Ledger.Value (TokenName (..), assetClass, currencySymbol, flattenValue, symbols)
+-- import Plutus.Contracts.Currency (CurrencyError, mintContract, mintedValue)
+-- import Plutus.Contracts.Currency qualified as MC
+-- import Plutus.V1.Ledger.Value (TokenName (..), assetClass, currencySymbol, flattenValue, symbols)
 
-import Ledger (
-  Address,
-  AssetClass,
-  ChainIndexTxOut,
-  Datum (..),
-  Redeemer (..),
-  TxOutRef,
-  Value,
-  ciTxOutDatum,
-  ciTxOutValue,
-  getDatum,
-  pubKeyAddress,
-  pubKeyHash,
-  scriptCurrencySymbol,
-  txId,
- )
+--import Ledger (
+--  Address,
+--  AssetClass,
+--  ChainIndexTxOut,
+--  Datum (..),
+--  Redeemer (..),
+--  TxOutRef,
+--  Value,
+--  ciTxOutDatum,
+--  ciTxOutValue,
+--  getDatum,
+--  pubKeyAddress,
+--  pubKeyHash,
+--  scriptCurrencySymbol,
+--  txId,
+-- )
 
-import Ledger.Constraints qualified as Constraints
-import Ledger.Typed.Scripts (validatorScript)
-import Ledger.Value as Value (singleton, unAssetClass, valueOf)
+-- import Ledger.Constraints qualified as Constraints
+-- import Ledger.Typed.Scripts (validatorScript)
+-- import Ledger.Value as Value (singleton, unAssetClass, valueOf)
 
-import Mlabs.NFT.Types {- (
-                        BuyRequestUser (..),
-                        Content (..),
-                        MintAct (..),
-                        MintParams (..),
-                        NftId (..),
-                        QueryResponse (..),
-                        SetPriceParams (..),
-                        UserId (..),
-                       ) -}
+import Mlabs.NFT.Types
+    ( NftId, NftAppSymbol, QueryResponse, GenericContract )
 
-import Mlabs.Plutus.Contract (readDatum')
-
-import Mlabs.NFT.Validation
 
 -- | A contract used exclusively for query actions.
 type QueryContract a = forall s. Contract QueryResponse s Text a
@@ -201,7 +190,7 @@ type UserContract a = forall s. Contract (Last NftId) s Text a
  and also returns it, to be used in other contracts.
 -}
 queryCurrentPrice :: NftId -> NftAppSymbol -> QueryContract QueryResponse
-queryCurrentPrice nftid cSymbol = error ()
+queryCurrentPrice _ _ = error ()
 
 --  price <- wrap <$> getsNftDatum dNft'price nftid
 --  Contract.tell price >> log price >> return price
@@ -215,7 +204,7 @@ queryCurrentPrice nftid cSymbol = error ()
  and also returns it, to be used in other contracts.
 -}
 queryCurrentOwner :: NftId -> NftAppSymbol -> QueryContract QueryResponse
-queryCurrentOwner nftid cSymbol = error ()
+queryCurrentOwner _ _ = error ()
 
 --   ownerResp <- wrap <$> getsNftDatum dNft'owner nftid
 --   Contract.tell ownerResp >> log ownerResp >> return ownerResp
