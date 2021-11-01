@@ -1,0 +1,9 @@
+socketPath: ""
+networkParamsPath: ./src/Mlabs/WbeTest/network_params.json
+epochSlots: 21600
+networkId: testnet-magic 8
+wbeClientCfg:
+  host: localhost
+  port: 8090
+  passphrase: "1234567891"
+  walletId: 01f9f1dda617eb8bff71468c702afceee5b1ccbf
