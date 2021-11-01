@@ -11,6 +11,7 @@ import Cardano.Ledger.Alonzo.TxBody qualified as C
 import Cardano.Ledger.Coin (Coin)
 
 import Control.Lens ((^.))
+import Control.Applicative (liftA2)
 import Control.Monad.Error.Class (liftEither)
 import Control.Monad.IO.Class (liftIO)
 
@@ -42,13 +43,17 @@ import Plutus.Contract.Wallet (ExportTx (..), ExportTxInput (..))
 
 import Prelude
 
+import Control.Monad.IO.Class (MonadIO (liftIO))
+
+
 data BalanceInfo = BalanceInfo
-  { utxoInputs :: Map TxIn TxOut
+  { fromWalletTotalValue :: Value
   , txInFromWallet :: Set TxIn
   , fee :: Maybe Coin
   , lookupsTotalValue :: Value
-  , utxosTotalValue :: Value
   , totalOutsValue :: Value
+  , unbalancedIsOuts :: (Set TxIn, ChainIndexTxOutputs)
+  , balancedIsOuts :: (Set TxIn, ChainIndexTxOutputs)
   }
   deriving stock (Show, Eq, Generic)
 
@@ -67,20 +72,40 @@ analyseBalanced ::
   WbeTx 'Balanced ->
   WbeT BalanceInfo
 analyseBalanced utxosGetter (WbeExportTx (ExportTx apiTx lookups _)) wtx = do
+  initial <- liftEither  $ toChainIndexTx apiTx
+  balanced <- liftEither  $ parseTx wtx
+  -- debug print
+  -- liftIO $ print "-------------------" 
+  -- liftIO $ print "init" 
+  -- liftIO $ print "-------------------" 
+  -- liftIO $ print (initial ^. citxInputs)
+  -- liftIO $ print "-------------------" 
+  -- liftIO $ print (initial ^. citxOutputs)
+  -- liftIO $ print "-------------------" 
+  -- liftIO $ print "balanced" 
+  -- liftIO $ print "-------------------" 
+  -- liftIO $ print (balanced ^. citxInputs)
+  -- liftIO $ print "-------------------" 
+  -- liftIO $ print (balanced ^. citxOutputs)
+  -- liftIO $ print "-------------------" 
+
+  let fromWallet = addedByWallet balanced initial
+
+  utxosFoundInWallet <- liftEither =<< liftIO (utxosGetter fromWallet)
   initial <- liftEither $ toChainIndexTx apiTx
   balanced <- liftEither $ parseTx wtx
 
   let fromWallet = addedByWallet balanced initial
 
-  utxoInputs <- liftEither =<< liftIO (utxosGetter fromWallet)
-
   pure $
     BalanceInfo
       { lookupsTotalValue = lookupsVal lookups
-      , utxosTotalValue = utxosVal utxoInputs
+      , fromWalletTotalValue = utxosVal utxosFoundInWallet
       , totalOutsValue = chainIndexTxVal balanced
       , txInFromWallet = fromWallet
       , fee = balancedTxFee balanced
+      , unbalancedIsOuts = getInsOuts initial
+      , balancedIsOuts = getInsOuts balanced
       , ..
       }
   where
@@ -122,3 +147,7 @@ balancedTxFee balanced = case balanced ^. citxCardanoTx of
   Just (SomeTx (C.Tx txBody _) C.AlonzoEraInCardanoMode) -> case txBody of
     C.ShelleyTxBody _ body _ _ _ _ -> Just $ C.txfee body
   _ -> Nothing
+
+
+getInsOuts :: ChainIndexTx -> (Set TxIn, ChainIndexTxOutputs)
+getInsOuts = liftA2 (,) (^. citxInputs) (^. citxOutputs)

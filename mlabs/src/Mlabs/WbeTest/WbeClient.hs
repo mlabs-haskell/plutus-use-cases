@@ -11,7 +11,7 @@ import Prelude
 import Control.Monad.Except (liftEither)
 import Control.Monad.Reader (asks)
 
-import Data.Aeson (FromJSON, ToJSON, eitherDecode, object, (.=))
+import Data.Aeson (FromJSON, ToJSON, eitherDecode, object, (.=), encode)
 import Data.Bifunctor (first)
 import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
