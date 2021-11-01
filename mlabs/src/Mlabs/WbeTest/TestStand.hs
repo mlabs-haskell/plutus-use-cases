@@ -4,31 +4,33 @@ module Mlabs.WbeTest.TestStand (
 
 import Prelude
 
-import Cardano.Api qualified as C
-import Cardano.Api.Shelley qualified as C
+
 
 import Control.Monad (forM_)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Trans.Except (ExceptT (ExceptT), except, runExceptT)
 
-import Data.Aeson
+import Data.Aeson (eitherDecodeFileStrict)
 import Data.Bifunctor (first)
-import Data.Maybe (fromJust)
-import Data.Void (Void)
 
-import Ledger hiding (value)
-import Ledger.Constraints qualified as Constraints
+import Data.Map qualified as Map
+
+
+
 
 import Mlabs.WbeTest.CardanoAPI
-import Mlabs.WbeTest.TxBuilder
+
 import Mlabs.WbeTest.TxInfo
 import Mlabs.WbeTest.Checks
 import Mlabs.WbeTest.TxRead
 import Mlabs.WbeTest.Types
+import Mlabs.WbeTest.TestCases
 import Mlabs.WbeTest.WbeClient as WbeClient
 
 import Plutus.Contract.Wallet (ExportTx (..))
-import Plutus.V1.Ledger.Ada (adaValueOf)
+
+import Cardano.Api qualified as C
+import Cardano.Api.Shelley qualified as C
 
 import System.Environment (lookupEnv)
 
@@ -48,17 +50,21 @@ run = runExceptT $ do
   (testTransactions :: [WbeExportTx]) <- getTestTxs params connInfo
   forM_ testTransactions $ \tx -> do
     balanced <- testBalance cfg connInfo tx
-    signed <- testSign cfg balanced
+    -- signed <- testSign cfg balanced
     pure ()
   where
     testBalance cfg connInfo exportTx = do
       balanced <- WbeClient.balance cfg exportTx
       info <- analyseBalanced (getUTXOs connInfo) exportTx balanced
       liftIO $ do
+        -- print $ let (WbeExportTx (ExportTx apiTx _ _)) = exportTx in apiTx
+        -- print $ encode exportTx
         putStrLn "\nCheck for Tx [id]:" --todo probably some Tx id should be here
         mapM_ putStrLn 
           [ report $ mustBeBalanced info
           , report $ feeMustBeAdded info
+          , report $ cNot $ inputsMustBeAdded info
+          , report $ unbalancedInsOutsShouldNotChange info
           ]
       return balanced
 

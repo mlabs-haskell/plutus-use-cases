@@ -70,11 +70,12 @@ buildTx netId protoParams lookups = buildTxFrom netId protoParams . mkTx @a look
 
 -- | Attempts to construct an 'ExportTx' from a 'MintBuilder'
 buildMintTx ::
-  C.NetworkId ->
   C.ProtocolParameters ->
+  C.LocalNodeConnectInfo  C.CardanoMode ->
   MintBuilder ->
   Either WbeError ExportTx
-buildMintTx netId pparams = buildTxFrom netId pparams . unbalancedMint
+buildMintTx pparams connInfo = 
+  buildTxFrom (C.localNodeNetworkId connInfo) pparams . unbalancedMint
   where
     unbalancedMint MintBuilder {..} = case Map.toList utxos of
       [] -> Left CannotSatisfyAny
