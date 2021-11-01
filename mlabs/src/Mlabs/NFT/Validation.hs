@@ -223,25 +223,10 @@ mkTxPolicy datum' act ctx =
       -- updated as the utxo needs to be consumed
       _ -> traceError "Cannot buy or set price of Head."
       where
-        -- proofPaidBack _ = True
         proofPaidBack _ =
-          let containsHead tx =
-                ( Just True
-                    == ( do
-                          hash <- txOutDatumHash tx
-                          datum <- findDatum hash $ scriptContextTxInfo ctx
-                          decoded <- PlutusTx.fromBuiltinData . getDatum $ datum
-                          case decoded of
-                            HeadDatum _ -> Just True
-                            _ -> Just False
-                       )
-                )
-           in case filter containsHead $ txInfoOutputs . scriptContextTxInfo $ ctx of
-                [tx] ->
-                  let currency = ownCurrencySymbol ctx
-                      tokenName = snd . unAssetClass . appInstance'AppAssetClass . head'appInstance $ headDat
-                   in valueOf (txOutValue tx) currency tokenName == 1
-                _ -> True
+          let (currency, tokenName) = unAssetClass . appInstance'AppAssetClass . head'appInstance $ headDat
+              paysBack tx = valueOf (txOutValue tx) currency tokenName == 1
+           in any paysBack . txInfoOutputs . scriptContextTxInfo $ ctx
     NodeDatum node ->
       traceIfFalse "Transaction cannot mint." noMint
         && traceIfFalse "NFT sent to wrong address." tokenSentToCorrectAddress
