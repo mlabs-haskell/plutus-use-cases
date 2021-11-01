@@ -38,6 +38,7 @@ initialAuthorDatum =
     , dNft'author = NFT.UserId TestValues.authorPkh
     , dNft'owner = NFT.UserId TestValues.authorPkh
     , dNft'price = Just (100 * 1_000_000)
+    , dNft'auctionState = Nothing
     }
 
 ownerUserOneDatum :: NFT.DatumNft

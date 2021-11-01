@@ -347,7 +347,7 @@ mkTxPolicy datum act ctx =
                 , Just (AuctionState _ deadline minBid)
                 ) ->
                 nextDeadline == deadline && nextMinBid == minBid
-              _ -> traceError "auctionConsistentDatum: expected auction state"
+              _ -> traceError "auctionConsistentDatum (checkAS): expected auction state"
 
           checkHighestBid =
             case (dNft'auctionState nextDatum, dNft'auctionState datum) of

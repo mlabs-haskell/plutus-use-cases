@@ -308,7 +308,7 @@ closeAuction (AuctionCloseParams nftId) = do
           { dNft'id = dNft'id oldDatum
           , dNft'share = dNft'share oldDatum
           , dNft'author = dNft'author oldDatum
-          , dNft'owner = newOwner --
+          , dNft'owner = newOwner
           , dNft'price = dNft'price oldDatum
           , dNft'auctionState = Nothing
           }
@@ -319,7 +319,7 @@ closeAuction (AuctionCloseParams nftId) = do
       bidDependentTxConstraints =
         case as'highestBid auctionState of
           Nothing -> []
-          Just (AuctionBid bid bidder) ->
+          Just (AuctionBid bid _bidder) ->
             let (amountPaidToOwner, amountPaidToAuthor) = calculateShares bid $ dNft'share oldDatum
              in [ Constraints.mustPayToPubKey (getUserId . dNft'owner $ oldDatum) amountPaidToOwner
                 , Constraints.mustPayToPubKey (getUserId . dNft'author $ oldDatum) amountPaidToAuthor
