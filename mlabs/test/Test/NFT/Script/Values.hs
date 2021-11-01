@@ -8,7 +8,7 @@ import Ledger.Value (TokenName (..))
 import Ledger.Value qualified as Value
 import Mlabs.NFT.Contract qualified as NFT
 import Mlabs.NFT.Contract.Aux qualified as NFT
-import Mlabs.NFT.Types (Content (..), NftId (..), Title (..), NftAppInstance (..), NftAppSymbol (..))
+import Mlabs.NFT.Types (Content (..), NftAppInstance (..), NftAppSymbol (..), NftId (..), Title (..))
 import Mlabs.NFT.Validation qualified as NFT
 import Plutus.V1.Ledger.Ada qualified as Ada
 import PlutusTx.Prelude hiding ((<>))
@@ -72,7 +72,6 @@ testStateAddr = NFT.txScrAddress
 
 -- FIXME
 appInstance :: NftAppInstance
-appInstance = NftAppInstance testStateAddr (Value.AssetClass  ("00a6b45b792d07aa2a778d84c49c6a0d0c0b2bf80d6c1c16accdbe01","Unique App Token"))
+appInstance = NftAppInstance testStateAddr (Value.AssetClass ("00a6b45b792d07aa2a778d84c49c6a0d0c0b2bf80d6c1c16accdbe01", "Unique App Token"))
 
 appSymbol = NftAppSymbol . NFT.curSymbol $ appInstance
-

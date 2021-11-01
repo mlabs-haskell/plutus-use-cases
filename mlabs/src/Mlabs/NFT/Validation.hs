@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE UndecidableInstances #-}
+
 module Mlabs.NFT.Validation (
   DatumNft (..),
   NftTrade,
@@ -28,7 +29,6 @@ import Plutus.V1.Ledger.Ada qualified as Ada (
 
 import Ledger (
   Address,
-  txInInfoResolved,
   AssetClass,
   CurrencySymbol,
   Datum (..),
@@ -43,6 +43,7 @@ import Ledger (
   ownCurrencySymbol,
   scriptContextTxInfo,
   scriptCurrencySymbol,
+  txInInfoResolved,
   txInfoInputs,
   txInfoMint,
   txInfoOutputs,
@@ -72,23 +73,29 @@ import Ledger.Value (
 import Plutus.V1.Ledger.Value (AssetClass (..), assetClassValueOf, isZero)
 import PlutusTx qualified
 
-import Mlabs.NFT.Types
-    ( NftId(nftId'contentHash),
-      NftAppSymbol(app'symbol),
-      UserId(getUserId),
-      MintAct(Initialise, Mint),
-      InformationNft(info'price, info'author, info'share, info'id,
-                     info'owner),
-      NftAppInstance(appInstance'AppAssetClass, appInstance'Address),
-      Pointer(pointer'assetClass),
-      NftListHead(head'appInstance),
-      NftListNode(node'next, node'information, node'appInstance),
-      DatumNft(..),
-      UserAct(..),
-      getDatumPointer,
-      nftTokenName,
-      getAppInstance )
 import Data.Maybe (catMaybes)
+import Mlabs.NFT.Types (
+  DatumNft (..),
+  InformationNft (
+    info'author,
+    info'id,
+    info'owner,
+    info'price,
+    info'share
+  ),
+  MintAct (Initialise, Mint),
+  NftAppInstance (appInstance'Address, appInstance'AppAssetClass),
+  NftAppSymbol (app'symbol),
+  NftId (nftId'contentHash),
+  NftListHead (head'appInstance),
+  NftListNode (node'appInstance, node'information, node'next),
+  Pointer (pointer'assetClass),
+  UserAct (..),
+  UserId (getUserId),
+  getAppInstance,
+  getDatumPointer,
+  nftTokenName,
+ )
 
 asRedeemer :: PlutusTx.ToData a => a -> Redeemer
 asRedeemer = Redeemer . PlutusTx.toBuiltinData
@@ -171,9 +178,11 @@ mkMintPolicy appInstance act ctx =
       let currency = ownCurrencySymbol ctx
           tokenName = TokenName . nftId'contentHash $ nftId
        in maybe
-          False sentToScript
-          (find (\ TxOut {..} -> valueOf txOutValue currency tokenName == 1)
-          $ txInfoOutputs info)
+            False
+            sentToScript
+            ( find (\TxOut {..} -> valueOf txOutValue currency tokenName == 1) $
+                txInfoOutputs info
+            )
 
     -- Check if currency symbol is consistent
     checkCurrencySymbol =
@@ -216,13 +225,17 @@ mkTxPolicy datum' act ctx =
       where
         -- proofPaidBack _ = True
         proofPaidBack _ =
-          let containsHead tx = (Just True ==
-               (do hash <- txOutDatumHash tx
-                   datum <- findDatum hash $ scriptContextTxInfo ctx
-                   decoded <- PlutusTx.fromBuiltinData . getDatum $ datum
-                   case decoded of
-                     HeadDatum _ -> Just True
-                     _ -> Just False))
+          let containsHead tx =
+                ( Just True
+                    == ( do
+                          hash <- txOutDatumHash tx
+                          datum <- findDatum hash $ scriptContextTxInfo ctx
+                          decoded <- PlutusTx.fromBuiltinData . getDatum $ datum
+                          case decoded of
+                            HeadDatum _ -> Just True
+                            _ -> Just False
+                       )
+                )
            in case filter containsHead $ txInfoOutputs . scriptContextTxInfo $ ctx of
                 [tx] ->
                   let currency = ownCurrencySymbol ctx
@@ -230,22 +243,23 @@ mkTxPolicy datum' act ctx =
                    in valueOf (txOutValue tx) currency tokenName == 1
                 _ -> True
     NodeDatum node ->
-        traceIfFalse "Transaction cannot mint." noMint
+      traceIfFalse "Transaction cannot mint." noMint
         && traceIfFalse "NFT sent to wrong address." tokenSentToCorrectAddress
         && case act of
           MintAct {} ->
             traceIfFalse "Only one token can be minted" checkMintedAmount
           BuyAct {..} ->
-                 traceIfFalse "NFT not for sale." nftForSale
+            traceIfFalse "NFT not for sale." nftForSale
               && traceIfFalse "New Price cannot be negative." (priceNotNegative act'newPrice)
               && traceIfFalse "Act'Bid is too low for the NFT price." (bidHighEnough act'bid)
               && traceIfFalse "Datum is not consistent, illegaly altered." consistentDatumBuy
               && if ownerIsAuthor
-                 then traceIfFalse "Amount paid to author/owner does not match act'bid." (correctPaymentOnlyAuthor act'bid)
-                 else traceIfFalse "Current owner is not paid their share." (correctPaymentOwner act'bid)
-                        && traceIfFalse "Author is not paid their share." (correctPaymentAuthor act'bid)
+                then traceIfFalse "Amount paid to author/owner does not match act'bid." (correctPaymentOnlyAuthor act'bid)
+                else
+                  traceIfFalse "Current owner is not paid their share." (correctPaymentOwner act'bid)
+                    && traceIfFalse "Author is not paid their share." (correctPaymentAuthor act'bid)
           SetPriceAct {..} ->
-              traceIfFalse "Datum does not correspond to NFTId, no datum is present, or more than one suitable datums are present." correctDatumSetPrice
+            traceIfFalse "Datum does not correspond to NFTId, no datum is present, or more than one suitable datums are present." correctDatumSetPrice
               && traceIfFalse "New Price cannot be negative." (priceNotNegative act'newPrice)
               && traceIfFalse "Only owner exclusively can set NFT price." ownerSetsPrice
               && traceIfFalse "Datum is not consistent, illegaly altered." consistentDatumSetPrice
@@ -352,7 +366,6 @@ mkTxPolicy datum' act ctx =
           [tx] -> txOutAddress tx == (appInstance'Address . node'appInstance $ oldNode)
           _ -> False
 
-
 {-# INLINEABLE catMaybes' #-}
 catMaybes' :: [Maybe a] -> [a]
 catMaybes' = catMaybes
@@ -454,4 +467,3 @@ getOutputDatums ctx =
     . txInfoOutputs
     . scriptContextTxInfo
     $ ctx
-

@@ -24,10 +24,10 @@ import Prelude (Applicative (..), String, foldMap)
 
 import Mlabs.Emulator.Scene (Scene, owns)
 import Mlabs.Emulator.Types (adaCoin)
+import Mlabs.NFT.Api
 import Mlabs.NFT.Contract
 import Mlabs.NFT.Types
 import Mlabs.NFT.Validation
-import Mlabs.NFT.Api
 import Mlabs.Utils.Wallet (walletFromNumber)
 
 -- | Calls initialisation of state for Nft pool
@@ -87,7 +87,7 @@ userSetPrice wal sp = do
     hdl <- activateContractWallet wal (endpoints symbol)
     callEndpoint @"set-price" hdl sp
     next
-    
+
 userBuy :: Wallet -> BuyRequestUser -> Script
 userBuy wal br = do
   symbol <- ask
@@ -95,7 +95,6 @@ userBuy wal br = do
     hdl <- activateContractWallet wal (endpoints symbol)
     callEndpoint @"buy" hdl br
     next
-
 
 {- | Initial distribution of wallets for testing.
  We have 3 users. All of them get 1000 lovelace at the start.

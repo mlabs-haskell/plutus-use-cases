@@ -16,7 +16,6 @@ import Data.Monoid (Last (..), (<>))
 import Data.Text (Text)
 import Text.Printf (printf)
 
-
 import Plutus.Contract (Contract)
 import Plutus.Contract qualified as Contract
 
@@ -24,11 +23,11 @@ import Ledger (MintingPolicy)
 
 import Ledger.Constraints qualified as Constraints
 import Ledger.Typed.Scripts (validatorScript)
-import Ledger.Value as Value ( TokenName (..), assetClass, assetClassValue, singleton)
+import Ledger.Value as Value (TokenName (..), assetClass, assetClassValue, singleton)
 
-import Mlabs.NFT.Types
-import Mlabs.NFT.Validation 
 import Mlabs.NFT.Contract.Aux
+import Mlabs.NFT.Types
+import Mlabs.NFT.Validation
 
 --------------------------------------------------------------------------------
 -- MINT --

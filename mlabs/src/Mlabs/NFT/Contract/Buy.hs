@@ -81,7 +81,7 @@ buy symbol BuyRequestUser {..} = do
                   ]
           void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
           Contract.tell . Last . Just $ ur'nftId
-          Contract.logInfo  @Hask.String "buy successful!"
+          Contract.logInfo @Hask.String "buy successful!"
   where
     updateDatum newOwner node =
       node

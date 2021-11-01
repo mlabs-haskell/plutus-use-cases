@@ -7,6 +7,7 @@ module Mlabs.NFT.Contract (
 ) where
 
 import PlutusTx.Prelude hiding (mconcat, (<>))
+
 -- import Prelude (mconcat, (<>))
 -- import Prelude qualified as Hask
 
@@ -16,10 +17,12 @@ import PlutusTx.Prelude hiding (mconcat, (<>))
 -- import Data.Map qualified as Map
 import Data.Monoid (Last (..))
 import Data.Text (Text)
+
 -- import Text.Printf (printf)
 
 -- import Plutus.ChainIndex.Tx (ChainIndexTx)
 import Plutus.Contract (Contract)
+
 -- import Plutus.Contract qualified as Contract
 -- import PlutusTx qualified
 
@@ -48,9 +51,12 @@ import Plutus.Contract (Contract)
 -- import Ledger.Typed.Scripts (validatorScript)
 -- import Ledger.Value as Value (singleton, unAssetClass, valueOf)
 
-import Mlabs.NFT.Types
-    ( NftId, NftAppSymbol, QueryResponse, GenericContract )
-
+import Mlabs.NFT.Types (
+  GenericContract,
+  NftAppSymbol,
+  NftId,
+  QueryResponse,
+ )
 
 -- | A contract used exclusively for query actions.
 type QueryContract a = forall s. Contract QueryResponse s Text a

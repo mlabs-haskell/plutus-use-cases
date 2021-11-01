@@ -19,9 +19,9 @@ import Test.Tasty.QuickCheck (testProperty)
 import Prelude (div, fmap, (<$>), (<*>), (==))
 import Prelude qualified as Hask
 
+import Mlabs.NFT.Api
 import Mlabs.NFT.Contract
 import Mlabs.NFT.Types
-import Mlabs.NFT.Api
 import Test.NFT.Init
 
 -- data NftModel = NftModel

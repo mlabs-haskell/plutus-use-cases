@@ -30,48 +30,55 @@ testDealing = withValidator "Test NFT dealing validator" dealingValidator $ do
 -- TODO: bring back this test if `tasty-plutus` would allow to change datum order
 -- shouldn'tValidate "Can't buy with inconsistent datum" validBuyData inconsistentDatumContext
 
-initialNode = 
+initialNode =
   NFT.NftListNode
-    { node'information = NFT.InformationNft
-      { info'id = TestValues.testNftId
-      , info'share = 1 % 2
-      , info'author = NFT.UserId TestValues.authorPkh
-      , info'owner = NFT.UserId TestValues.authorPkh
-      , info'price = Just (100 * 1_000_000)
-      }
+    { node'information =
+        NFT.InformationNft
+          { info'id = TestValues.testNftId
+          , info'share = 1 % 2
+          , info'author = NFT.UserId TestValues.authorPkh
+          , info'owner = NFT.UserId TestValues.authorPkh
+          , info'price = Just (100 * 1_000_000)
+          }
     , node'next = Nothing
     , node'appInstance = TestValues.appInstance
     }
-  
+
 initialAuthorDatum :: NFT.DatumNft
 initialAuthorDatum = NFT.NodeDatum initialNode
 
 ownerUserOneDatum :: NFT.DatumNft
 ownerUserOneDatum =
-  NFT.NodeDatum $ initialNode
-    { NFT.node'information = (NFT.node'information initialNode)
-      { NFT.info'owner = NFT.UserId TestValues.userOnePkh
+  NFT.NodeDatum $
+    initialNode
+      { NFT.node'information =
+          (NFT.node'information initialNode)
+            { NFT.info'owner = NFT.UserId TestValues.userOnePkh
+            }
       }
-    }
 
 notForSaleDatum :: NFT.DatumNft
 notForSaleDatum =
-  NFT.NodeDatum $ initialNode
-    { NFT.node'information = (NFT.node'information initialNode)
-      { NFT.info'price = Nothing
+  NFT.NodeDatum $
+    initialNode
+      { NFT.node'information =
+          (NFT.node'information initialNode)
+            { NFT.info'price = Nothing
+            }
       }
-    }
-  
+
 ownerNotPaidDatum :: NFT.DatumNft
 ownerNotPaidDatum = ownerUserOneDatum
 
 inconsistentDatum :: NFT.DatumNft
-inconsistentDatum = 
-  NFT.NodeDatum $ initialNode
-    { NFT.node'information = (NFT.node'information initialNode)
-      { NFT.info'share = 1 % 10
+inconsistentDatum =
+  NFT.NodeDatum $
+    initialNode
+      { NFT.node'information =
+          (NFT.node'information initialNode)
+            { NFT.info'share = 1 % 10
+            }
       }
-    }
 
 -- Buy test cases
 
@@ -97,7 +104,7 @@ notForSaleData = SpendingTest dtm redeemer val
       NFT.BuyAct
         { act'bid = 100 * 1_000_000
         , act'newPrice = Just 150
-        , act'symbol = TestValues.appSymbol        
+        , act'symbol = TestValues.appSymbol
         }
     val = TestValues.adaValue 100 <> TestValues.oneNft
 
@@ -110,7 +117,7 @@ bidNotHighEnoughData = SpendingTest dtm redeemer val
       NFT.BuyAct
         { act'bid = 90 * 1_000_000
         , act'newPrice = Nothing
-        , act'symbol = TestValues.appSymbol        
+        , act'symbol = TestValues.appSymbol
         }
     val = TestValues.adaValue 90 <> TestValues.oneNft
 
@@ -142,12 +149,12 @@ inconsistentDatumData = SpendingTest dtm redeemer val
 
 validBuyContext :: ContextBuilder 'ForSpending
 validBuyContext =
-    paysToWallet TestValues.authorWallet (TestValues.adaValue 100)
+  paysToWallet TestValues.authorWallet (TestValues.adaValue 100)
     <> paysOther NFT.txValHash oneNft initialAuthorDatum
 
 bidNotHighEnoughContext :: ContextBuilder 'ForSpending
 bidNotHighEnoughContext =
-    paysToWallet TestValues.authorWallet (TestValues.adaValue 90)
+  paysToWallet TestValues.authorWallet (TestValues.adaValue 90)
     <> paysOther NFT.txValHash oneNft initialAuthorDatum
 
 notForSaleContext :: ContextBuilder 'ForSpending
@@ -158,12 +165,12 @@ notForSaleContext =
 
 authorNotPaidContext :: ContextBuilder 'ForSpending
 authorNotPaidContext =
-    paysToWallet TestValues.authorWallet (TestValues.adaValue 5)
+  paysToWallet TestValues.authorWallet (TestValues.adaValue 5)
     <> paysOther NFT.txValHash oneNft initialAuthorDatum
 
 ownerNotPaidContext :: ContextBuilder 'ForSpending
 ownerNotPaidContext =
-    paysToWallet TestValues.authorWallet (TestValues.adaValue 50)
+  paysToWallet TestValues.authorWallet (TestValues.adaValue 50)
     <> paysOther NFT.txValHash oneNft ownerNotPaidDatum
 
 inconsistentDatumContext :: ContextBuilder 'ForSpending
@@ -202,7 +209,7 @@ validSetPriceContext :: ContextBuilder 'ForSpending
 validSetPriceContext =
   signedWith authorPkh
     -- TODO: choose between `paysOther NFT.txValHash` and `output` (see below)
-    <>  paysOther NFT.txValHash oneNft initialAuthorDatum
+    <> paysOther NFT.txValHash oneNft initialAuthorDatum
 
 -- <> (output $ Output (OwnType $ toBuiltinData initialAuthorDatum) TestValues.oneNft)
 

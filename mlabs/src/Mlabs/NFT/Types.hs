@@ -425,7 +425,7 @@ data PointInfo = PointInfo
 instance Eq PointInfo where
   {-# INLINEABLE (==) #-}
   (PointInfo x y _ _) == (PointInfo a b _ _) =
-   x == a && y == b -- && z == c && k == d
+    x == a && y == b -- && z == c && k == d
 
 instance Ord PointInfo where
   x <= y = pi'datum x <= pi'datum y

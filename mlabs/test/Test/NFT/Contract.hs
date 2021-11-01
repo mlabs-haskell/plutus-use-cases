@@ -13,9 +13,9 @@ import Wallet.Emulator.Wallet (walletPubKey)
 import Prelude (mconcat)
 
 import Mlabs.Emulator.Scene (checkScene)
+import Mlabs.NFT.Api
 import Mlabs.NFT.Contract
 import Mlabs.NFT.Types
-import Mlabs.NFT.Api
 import Mlabs.NFT.Validation
 import Test.NFT.Init
 
@@ -80,7 +80,7 @@ testChangePriceWithoutOwnership = check "Sets price without ownership" (checkSce
       mconcat
         [ w1 `ownsAda` 1_000_000
         , w2 `ownsAda` (-1_000_000)
-        ]      
+        ]
 
 -- | User 2 tries to buy NFT which is locked (no price is set)
 testBuyLockedScript :: TestTree
@@ -97,7 +97,7 @@ testBuyNotEnoughPriceScript = check "Buy not enough price" (checkScene noChanges
     script = do
       nft1 <- userMint w1 artwork1
       userSetPrice w1 $ SetPriceParams nft1 (Just 1_000_000)
-      userBuy w2 $ BuyRequestUser nft1 500_000 Nothing      
+      userBuy w2 $ BuyRequestUser nft1 500_000 Nothing
 
 -- testQueryPrice :: TestTree
 -- testQueryPrice =
