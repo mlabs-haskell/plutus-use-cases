@@ -2,21 +2,12 @@ module Test.NFT.Contract (
   test,
 ) where
 
-import Control.Monad.Reader (void)
-import Data.Monoid (Last (..))
-import Ledger.Crypto (pubKeyHash)
-import Plutus.Contract.Test (assertAccumState, checkPredicateOptions)
-import Plutus.Trace.Emulator (activateContractWallet, callEndpoint, waitNSlots, walletInstanceTag)
 import PlutusTx.Prelude hiding (check, mconcat)
 import Test.Tasty (TestTree, testGroup)
-import Wallet.Emulator.Wallet (walletPubKey)
 import Prelude (mconcat)
 
 import Mlabs.Emulator.Scene (checkScene)
-import Mlabs.NFT.Api
-import Mlabs.NFT.Contract
 import Mlabs.NFT.Types
-import Mlabs.NFT.Validation
 import Test.NFT.Init
 
 test :: TestTree

@@ -6,11 +6,11 @@ import Data.Semigroup ((<>))
 import Ledger qualified
 import Mlabs.NFT.Types qualified as NFT
 import Mlabs.NFT.Validation qualified as NFT
-import Plutus.V1.Ledger.Ada qualified as Ada
+
 import PlutusTx qualified
-import PlutusTx.IsData.Class (ToData (toBuiltinData))
+
 import PlutusTx.Prelude hiding ((<>))
-import PlutusTx.Prelude qualified as PlutusPrelude
+
 import Test.NFT.Script.Values as TestValues
 import Test.Tasty (TestTree)
 import Test.Tasty.Plutus.Context
@@ -30,6 +30,7 @@ testDealing = withValidator "Test NFT dealing validator" dealingValidator $ do
 -- TODO: bring back this test if `tasty-plutus` would allow to change datum order
 -- shouldn'tValidate "Can't buy with inconsistent datum" validBuyData inconsistentDatumContext
 
+initialNode :: NFT.NftListNode
 initialNode =
   NFT.NftListNode
     { node'information =

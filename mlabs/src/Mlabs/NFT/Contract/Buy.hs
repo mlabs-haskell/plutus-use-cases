@@ -44,14 +44,14 @@ buy symbol BuyRequestUser {..} = do
   node <- case pi'datum of
     NodeDatum n -> Hask.pure n
     _ -> Contract.throwError "NFT not found"
-  case node.node'information.info'price of
+  case info'price . node'information $ node of
     Nothing -> Contract.logError @Hask.String "NFT not for sale."
     Just price ->
       if ur'price < price
         then Contract.logError @Hask.String "Bid price is too low."
         else do
           userUtxos <- getUserUtxos
-          let (paidToOwner, paidToAuthor) = calculateShares ur'price node.node'information.info'share
+          let (paidToOwner, paidToAuthor) = calculateShares ur'price . info'share . node'information $ node
               nftDatum = NodeDatum $ updateDatum ownPkh node
               nftVal = pi'CITxO ^. ciTxOutValue
               action =
@@ -72,8 +72,8 @@ buy symbol BuyRequestUser {..} = do
                 mconcat
                   [ Constraints.mustPayToTheScript nftDatum nftVal
                   , Constraints.mustIncludeDatum (Datum . PlutusTx.toBuiltinData $ nftDatum)
-                  , Constraints.mustPayToPubKey (getUserId node.node'information.info'author) paidToAuthor
-                  , Constraints.mustPayToPubKey (getUserId node.node'information.info'owner) paidToOwner
+                  , Constraints.mustPayToPubKey (getUserId . info'author . node'information $ node) paidToAuthor
+                  , Constraints.mustPayToPubKey (getUserId . info'owner . node'information $ node) paidToOwner
                   , Constraints.mustSpendPubKeyOutput (fst ownOrefTxOut)
                   , Constraints.mustSpendScriptOutput
                       pi'TOR
@@ -86,7 +86,7 @@ buy symbol BuyRequestUser {..} = do
     updateDatum newOwner node =
       node
         { node'information =
-            node.node'information
+            (node'information node)
               { info'price = ur'newPrice
               , info'owner = UserId newOwner
               }

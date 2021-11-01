@@ -2,16 +2,7 @@
 
 module Test.NFT.QuickCheck where
 
-import Control.Lens hiding (elements)
-import Control.Monad (unless, void, when)
-import Data.Map (Map)
-import Data.Map qualified as Map
-import Data.Monoid (Last (..))
 import Data.String (IsString (..))
-import Data.Text (Text)
-import Plutus.Contract.Test (Wallet (..))
-import Plutus.Contract.Test.ContractModel (Action, Actions, ContractInstanceSpec (..), ContractModel (..), contractState, getModelState, propRunActionsWithOptions, wait, ($=), ($~))
-import Plutus.Trace.Emulator (EmulatorRuntimeError (..), activateContractWallet, callEndpoint, observableState, throwError, waitNSlots)
 import PlutusTx.Prelude hiding (fmap, length, mconcat, unless, (<$>), (<*>), (==))
 import Test.QuickCheck qualified as QC
 import Test.Tasty (TestTree, testGroup)

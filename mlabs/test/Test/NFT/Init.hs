@@ -17,7 +17,7 @@ import Plutus.Trace.Emulator (EmulatorRuntimeError (GenericError), EmulatorTrace
 import Plutus.V1.Ledger.Ada (adaSymbol, adaToken)
 import Plutus.V1.Ledger.Value (Value, singleton)
 import PlutusTx.Prelude hiding (foldMap, pure)
-import PlutusTx.Ratio qualified as R
+
 import Test.Tasty (TestTree)
 import Test.Utils (next)
 import Prelude (Applicative (..), String, foldMap)
@@ -25,9 +25,16 @@ import Prelude (Applicative (..), String, foldMap)
 import Mlabs.Emulator.Scene (Scene, owns)
 import Mlabs.Emulator.Types (adaCoin)
 import Mlabs.NFT.Api
-import Mlabs.NFT.Contract
-import Mlabs.NFT.Types
-import Mlabs.NFT.Validation
+import Mlabs.NFT.Types (
+  BuyRequestUser (..),
+  Content (..),
+  MintParams (..),
+  NftAppSymbol (..),
+  NftId (..),
+  SetPriceParams (..),
+  Title (..),
+  UserId (..),
+ )
 import Mlabs.Utils.Wallet (walletFromNumber)
 
 -- | Calls initialisation of state for Nft pool
@@ -120,6 +127,7 @@ check msg assertions wal script = checkPredicateOptions checkOptions msg asserti
 noChangesScene :: Scene
 noChangesScene = foldMap (`ownsAda` 0) [w1, w2, w3]
 
+artwork1 :: MintParams
 artwork1 =
   MintParams
     { mp'content = Content "A painting."

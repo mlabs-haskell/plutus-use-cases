@@ -83,6 +83,7 @@ nonMintingCtx =
   paysOther NFT.txValHash TestValues.oneNft TestValues.testNftId
     <> input (Input (PubKeyType TestValues.authorPkh) TestValues.oneAda)
 
+wrongAmountCtx :: ContextBuilder 'ForMinting
 wrongAmountCtx =
   baseCtx <> mintingCtx <> paysDatumToScriptCtx
     <> paysOther NFT.txValHash (TestValues.oneNft PlutusPrelude.<> TestValues.oneNft) ()

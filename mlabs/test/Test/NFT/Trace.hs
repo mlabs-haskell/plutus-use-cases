@@ -1,4 +1,4 @@
-module Test.NFT.Trace where
+module Test.NFT.Trace (testMint, testMint2, testAny) where
 
 import PlutusTx.Prelude
 import Prelude qualified as Hask
@@ -149,14 +149,6 @@ setPriceTrace = do
   void $ Trace.waitNSlots 1
   callEndpoint @"set-price" userUseH (SetPriceParams nftId (Just 30))
   void $ Trace.waitNSlots 1
-  where
-    artwork =
-      MintParams
-        { mp'content = Content "A painting."
-        , mp'title = Title "Fiona Lisa"
-        , mp'share = 1 % 10
-        , mp'price = Just 100
-        }
 
 -- queryPriceTrace :: EmulatorTrace ()
 -- queryPriceTrace = do
@@ -211,7 +203,7 @@ setPriceTrace = do
 eTrace2 :: EmulatorTrace ()
 eTrace2 = do
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
-  authMintH <- activateContractWallet wallet1 $ endpoints (error ()) --FIXME
+  _ <- activateContractWallet wallet1 $ endpoints (error ()) --FIXME
   void $ Trace.waitNSlots 1
 
 -- | Test for initialising the App

@@ -4,6 +4,7 @@ module Mlabs.NFT.Contract.Mint (
   mint,
   getDatumsTxsOrdered,
   hashData,
+  InsertPoint (..),
 ) where
 
 import PlutusTx.Prelude hiding (mconcat, mempty, (<>))

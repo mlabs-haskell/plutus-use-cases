@@ -48,7 +48,7 @@ setPrice symbol SetPriceParams {..} = do
   oldNode <- case pi'datum of
     NodeDatum n -> Hask.pure n
     _ -> Contract.throwError "NFT not found"
-  when (getUserId oldNode.node'information.info'owner /= ownPkh) $
+  when (getUserId ((info'owner . node'information) oldNode) /= ownPkh) $
     Contract.throwError "Only owner can set price"
   let nftDatum = NodeDatum $ updateDatum oldNode
       nftVal = pi'CITxO ^. ciTxOutValue
@@ -73,7 +73,7 @@ setPrice symbol SetPriceParams {..} = do
   Contract.tell . Last . Just $ sp'nftId
   Contract.logInfo @Hask.String "set-price successful!"
   where
-    updateDatum node = node {node'information = node.node'information {info'price = sp'price}}
+    updateDatum node = node {node'information = (node'information node) {info'price = sp'price}}
 
     negativePrice = case sp'price of
       Nothing -> False
