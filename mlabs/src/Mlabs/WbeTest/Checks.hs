@@ -166,7 +166,7 @@ instance Reportable (Check Inputs) where
       mconcat [
         "Wallet inputs check is Ok\n"
       , "+ result expected to ", say asIs c
-      , " and inputs are: " ++ show res
+      , " and those inputs are: " ++ show res
       ]
     Fail -> mconcat [
         "Wallet inputs check FAILED\n"

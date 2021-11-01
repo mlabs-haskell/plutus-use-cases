@@ -1,4 +1,5 @@
 module Mlabs.WbeTest.TestStand (
+  run,
   runAll,
 ) where
 
@@ -33,6 +34,8 @@ import Plutus.Contract.Wallet (ExportTx (..))
 import Cardano.Api qualified as C
 import Cardano.Api.Shelley qualified as C
 
+run = runAll Nothing
+
 -- Main entry point
 runAll :: Maybe FilePath -> IO ()
 runAll mpath = do
@@ -43,14 +46,15 @@ runAll mpath = do
     Left e -> throw e
     Right (connInfo, params) ->
       for_ (getTestCases connInfo params) $ \TestCase {..} -> do
-        TextIO.putStrLn $ "Running test: " <> description
+        TextIO.putStr $ "\nRunning test: " <> description
         runWbeT cfg test >>= \case
           Left e -> putStrLn $ "Test failed with: " <> show e
           -- TODO get the tx ID
-          Right (Test (WbeExportTx ExportTx {}) checks) -> for_ checks $
-            \(AnyCheck check) -> do
-              putStrLn "\nCheck for Tx [id]:"
-              putStrLn $ report check
+          Right (Test (WbeExportTx ExportTx {}) checks) -> do
+            putStrLn "\nCheck for Tx [id]:"
+            for_ checks $
+              \(AnyCheck check) -> do
+                putStrLn $ report check
   where
     setupTests ::
       WbeT (C.LocalNodeConnectInfo C.CardanoMode, C.ProtocolParameters)
