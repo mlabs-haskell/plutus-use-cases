@@ -42,6 +42,12 @@ userOnePkh = Ledger.pubKeyHash userOnePk
 userTwoWallet :: Emu.Wallet
 userTwoWallet = Emu.fromWalletNumber (Emu.WalletNumber 3)
 
+userTwoPk :: Ledger.PubKey
+userTwoPk = Emu.walletPubKey userTwoWallet
+
+userTwoPkh :: Ledger.PubKeyHash
+userTwoPkh = Ledger.pubKeyHash userTwoPk
+
 testTxId :: Ledger.TxId
 testTxId = fromJust $ Aeson.decode "{\"getTxId\" : \"61626364\"}"
 
