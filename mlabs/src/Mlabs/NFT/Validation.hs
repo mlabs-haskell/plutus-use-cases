@@ -257,6 +257,7 @@ mkTxPolicy datum act ctx =
           && traceIfFalse "(change) wrong input value" correctInputValue
           && traceIfFalse "Datum illegally altered" (auctionConsistentDatum act'bid)
           && traceIfFalse "Auction bid value not supplied" (auctionBidValueSupplied act'bid)
+          && traceIfFalse "Incorrect bid refund" correctBidRefund
       CloseAuctionAct {} ->
         traceIfFalse "Can't close auction: none in progress" (not noAuctionInProgress)
           && traceIfFalse "Auction deadline not yet reached" auctionDeadlineReached
@@ -277,6 +278,7 @@ mkTxPolicy datum act ctx =
     ownerIsAuthor :: Bool
     ownerIsAuthor = dNft'owner datum == dNft'author datum
 
+    getAda :: Value -> Integer
     getAda = flip assetClassValueOf $ assetClass Ada.adaSymbol Ada.adaToken
 
     info = scriptContextTxInfo ctx
@@ -332,6 +334,14 @@ mkTxPolicy datum act ctx =
 
     tokenValue :: Value
     tokenValue = singleton (act'cs act) (nftTokenName datum) 1
+
+    correctBidRefund :: Bool
+    correctBidRefund =
+      withAuctionState $ \auctionState ->
+        case as'highestBid auctionState of
+          Nothing -> True
+          Just (AuctionBid bid bidder) ->
+            valuePaidTo info (getUserId bidder) == Ada.lovelaceValueOf bid
 
     correctInputValue :: Bool
     correctInputValue =
