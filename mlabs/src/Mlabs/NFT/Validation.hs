@@ -255,14 +255,20 @@ mkTxPolicy datum act ctx =
           && traceIfFalse "Auction bid is too low" (auctionBidHighEnough act'bid)
           && traceIfFalse "Auction deadline reached" correctAuctionBidSlotInterval
           && traceIfFalse "(change) wrong input value" correctInputValue
-          && traceIfFalse "Datum illegally altered" (auctionConsistentDatum act'bid)
+          && traceIfFalse "Auction: datum illegally altered" (auctionConsistentDatum act'bid)
           && traceIfFalse "Auction bid value not supplied" (auctionBidValueSupplied act'bid)
           && traceIfFalse "Incorrect bid refund" correctBidRefund
       CloseAuctionAct {} ->
         traceIfFalse "Can't close auction: none in progress" (not noAuctionInProgress)
           && traceIfFalse "Auction deadline not yet reached" auctionDeadlineReached
           && traceIfFalse "Only owner can close auction" signedByOwner
-          -- TODO: check amounts paid to owner & author
+          && traceIfFalse "Auction: new owner set correctly" auctionCorrectNewOwner
+          && traceIfFalse "Auction: datum illegally altered" auctionConsistentCloseDatum
+          && if ownerIsAuthor
+            then traceIfFalse "Auction: amount paid to author/owner does not match bid" auctionCorrectPaymentOnlyAuthor
+            else
+              traceIfFalse "Auction: owner not paid their share" auctionCorrectPaymentOwner
+                && traceIfFalse "Auction: author not paid their share" auctionCorrectPaymentAuthor
   where
     ------------------------------------------------------------------------------
     -- Utility functions.
@@ -335,6 +341,38 @@ mkTxPolicy datum act ctx =
     tokenValue :: Value
     tokenValue = singleton (act'cs act) (nftTokenName datum) 1
 
+    auctionCorrectNewOwner :: Bool
+    auctionCorrectNewOwner =
+      withAuctionState $ \auctionState ->
+        case as'highestBid auctionState of
+          Nothing -> True
+          Just (AuctionBid _ bidder) ->
+            bidder == newOwner
+      where
+        newOwner = dNft'owner getNextDatum
+
+    auctionCorrectPayment :: (Integer -> Bool) -> Bool
+    auctionCorrectPayment correctPaymentCheck =
+      withAuctionState $ \auctionState ->
+        case as'highestBid auctionState of
+          Nothing -> True
+          Just (AuctionBid bid _bidder) ->
+            correctPaymentCheck bid
+
+    auctionCorrectPaymentOwner :: Bool
+    auctionCorrectPaymentOwner = auctionCorrectPayment correctPaymentOwner
+
+    auctionCorrectPaymentAuthor :: Bool
+    auctionCorrectPaymentAuthor = auctionCorrectPayment correctPaymentAuthor
+
+    auctionCorrectPaymentOnlyAuthor :: Bool
+    auctionCorrectPaymentOnlyAuthor =
+      withAuctionState $ \auctionState ->
+        case as'highestBid auctionState of
+          Nothing -> True
+          Just (AuctionBid bid _) ->
+            correctPaymentOnlyAuthor bid
+
     correctBidRefund :: Bool
     correctBidRefund =
       withAuctionState $ \auctionState ->
@@ -384,6 +422,23 @@ mkTxPolicy datum act ctx =
             && dNft'price nextDatum == dNft'price datum
             && checkAuctionState
             && checkHighestBid
+
+    auctionConsistentCloseDatum :: Bool
+    auctionConsistentCloseDatum =
+      -- Checking all fields except owner
+      dNft'id nextDatum == dNft'id datum
+        && dNft'share nextDatum == dNft'share datum
+        && dNft'author nextDatum == dNft'author datum
+        && dNft'price nextDatum == dNft'price datum
+        && checkOwner
+
+      where
+        nextDatum = getNextDatum
+
+        checkOwner = withAuctionState $ \auctionState ->
+          case as'highestBid auctionState of
+            Nothing -> dNft'owner nextDatum == dNft'owner datum
+            _ -> True
 
     -- Check if the datum attached is also present in the is also in the transaction.
     correctDatum :: Bool
