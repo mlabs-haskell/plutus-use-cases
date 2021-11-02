@@ -30,13 +30,15 @@ slotElevenTime :: Ledger.POSIXTime
 slotElevenTime = slotToBeginPOSIXTime def 11
 
 testAuctionBeforeDeadline :: TestTree
-testAuctionBeforeDeadline = localOption (TimeRange $ Interval.to slotFiveTime) $
-  withValidator "Test NFT dealing validator (for auction)" dealingValidator $ do
-    shouldn'tValidate "Author can't start auction if not owner" openAuctionData1 openAuctionContext1
-    shouldn'tValidate "Author can't close auction if not owner" closeAuctionData1 closeAuctionContext1
-    shouldValidate "Owner can start auction" validOpenAuctionData validOpenAuctionContext
-    shouldn'tValidate "Owner can't close auction before deadline" validCloseAuctionData validCloseAuctionContext
-    shouldValidate "Can bid before deadline" validBidData validBidContext
+testAuctionBeforeDeadline = localOption (TestTxId TestValues.testTxId) $
+  localOption (TimeRange $ Interval.to slotFiveTime) $
+    withValidator "Test NFT dealing validator (for auction)" dealingValidator $ do
+      shouldn'tValidate "Author can't start auction if not owner" openAuctionData1 openAuctionContext1
+      shouldn'tValidate "Author can't close auction if not owner" closeAuctionData1 closeAuctionContext1
+      shouldValidate "Owner can start auction" validOpenAuctionData validOpenAuctionContext
+      shouldn'tValidate "Owner can't close auction before deadline" validCloseAuctionData validCloseAuctionContext
+      shouldValidate "Can bid before deadline" validBidData validBidContext
+      shouldValidate "Can make higher bid" validSecondBidData validSecondBidContext
 
 testAuctionAfterDeadline :: TestTree
 testAuctionAfterDeadline = localOption (TimeRange $ Interval.from slotElevenTime) $
@@ -72,6 +74,13 @@ bidAuctionState = NFT.AuctionState
   , as'minBid = 100 * 1_000_000
   }
 
+secondBidAuctionState :: NFT.AuctionState
+secondBidAuctionState = NFT.AuctionState
+  { as'highestBid = Just (NFT.AuctionBid (500 * 1_000_000) (NFT.UserId TestValues.userThreePkh))
+  , as'deadline = slotTenTime
+  , as'minBid = 100 * 1_000_000
+  }
+
 ownerUserOneAuctionOpenDatum :: NFT.DatumNft
 ownerUserOneAuctionOpenDatum =
   ownerUserOneDatum
@@ -81,6 +90,11 @@ ownerUserOneAuctionBidDatum :: NFT.DatumNft
 ownerUserOneAuctionBidDatum =
   ownerUserOneDatum
     { NFT.dNft'auctionState = Just bidAuctionState }
+
+ownerUserOneAuctionSecondBidDatum :: NFT.DatumNft
+ownerUserOneAuctionSecondBidDatum =
+  ownerUserOneDatum
+    { NFT.dNft'auctionState = Just secondBidAuctionState }
 
 -- case 1
 openAuctionData1 :: TestData 'ForSpending
@@ -168,6 +182,23 @@ validBidData = SpendingTest dtm redeemer val
 validBidContext :: ContextBuilder 'ForSpending
 validBidContext =
   paysSelf (oneNft PlutusPrelude.<> TestValues.adaValue 300) ownerUserOneAuctionBidDatum
+
+validSecondBidData :: TestData 'ForSpending
+validSecondBidData = SpendingTest dtm redeemer val
+  where
+    dtm = ownerUserOneAuctionBidDatum
+
+    redeemer =
+      NFT.BidAuctionAct
+        { act'bid = 500 * 1_000_000
+        , act'cs = TestValues.nftCurrencySymbol
+        }
+
+    val = TestValues.oneNft <> (TestValues.adaValue 300)
+
+validSecondBidContext :: ContextBuilder 'ForSpending
+validSecondBidContext =
+  paysSelf (oneNft PlutusPrelude.<> TestValues.adaValue 500) ownerUserOneAuctionSecondBidDatum
 
 dealingValidator :: Ledger.Validator
 dealingValidator =
