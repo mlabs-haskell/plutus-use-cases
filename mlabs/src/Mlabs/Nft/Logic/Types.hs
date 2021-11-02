@@ -10,7 +10,6 @@
 {-# OPTIONS_GHC -fno-omit-interface-pragmas #-}
 {-# OPTIONS_GHC -fno-specialize #-}
 {-# OPTIONS_GHC -fno-strictness #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_GHC -fobject-code #-}
 
 -- | Datatypes for NFT state machine.
@@ -26,10 +25,10 @@ module Mlabs.Nft.Logic.Types (
 import PlutusTx.Prelude
 
 import Data.Aeson (FromJSON, ToJSON)
+import Data.OpenApi.Schema qualified as OpenApi
 import GHC.Generics (Generic)
 import Playground.Contract (ToSchema, TxOutRef)
-import Plutus.V1.Ledger.TxId (TxId (TxId))
-import Plutus.V1.Ledger.Value (TokenName (..), tokenName)
+import Plutus.V1.Ledger.Value (TokenName (..))
 import PlutusTx qualified
 import Prelude qualified as Hask (Eq, Show)
 
@@ -62,10 +61,7 @@ data NftId = NftId
     nftId'outRef :: TxOutRef
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
-  deriving anyclass (FromJSON, ToJSON, ToSchema)
-
--- deriving newtype instance ToSchema TxId
--- deriving instance ToSchema TxOutRef
+  deriving anyclass (FromJSON, ToJSON, ToSchema, OpenApi.ToSchema)
 
 instance Eq NftId where
   {-# INLINEABLE (==) #-}

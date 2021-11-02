@@ -1,3 +1,5 @@
+{-# LANGUAGE NamedFieldPuns #-}
+
 -- | Server for lendex application
 module Mlabs.Lending.Contract.Server (
   -- * Contract monads
@@ -15,8 +17,8 @@ module Mlabs.Lending.Contract.Server (
   StateMachine.LendexError,
 ) where
 
-import Control.Lens ((^.), (^?))
-import Control.Monad (forever, guard)
+import Control.Lens ((^.))
+import Control.Monad (guard)
 import Control.Monad.State.Strict (runStateT)
 
 import Data.Bifunctor (second)
@@ -26,7 +28,7 @@ import Data.Semigroup (Last (..))
 
 import Ledger.Constraints (mintingPolicy, mustIncludeDatum, ownPubKeyHash)
 import Ledger.Crypto (pubKeyHash)
-import Ledger.Tx (ChainIndexTxOut, ciTxOutAddress, ciTxOutDatum, txOutAddress)
+import Ledger.Tx (ChainIndexTxOut, ciTxOutAddress)
 
 import Plutus.Contract ()
 import Plutus.Contract qualified as Contract
@@ -43,12 +45,9 @@ import Mlabs.Lending.Contract.Forge (currencyPolicy, currencySymbol)
 import Mlabs.Lending.Contract.StateMachine qualified as StateMachine
 import Mlabs.Lending.Logic.React qualified as React
 import Mlabs.Lending.Logic.Types qualified as Types
-import Mlabs.Plutus.Contract (getEndpoint, readChainIndexTxDatum, readDatum, readDatum', selectForever)
+import Mlabs.Plutus.Contract (getEndpoint, readChainIndexTxDatum, readDatum', selectForever)
 import Plutus.Contract.Request qualified as Request
-import Plutus.Contract.Types (Promise (..), promiseMap, selectList)
 
-import Extra (firstJust)
-import Playground.Types (PlaygroundError (input))
 import PlutusTx.Prelude
 import Prelude qualified as Hask
 
@@ -186,10 +185,12 @@ querySupportedCurrencies lid = do
   tellResult . getSupportedCurrencies $ pool
   where
     getSupportedCurrencies :: Types.LendingPool -> [Types.SupportedCurrency]
-    getSupportedCurrencies lp =
-      fmap
-        (\(coin, rsrv) -> Types.SupportedCurrency coin rsrv.reserve'aToken rsrv.reserve'rate)
-        (M.toList lp.lp'reserves)
+    getSupportedCurrencies Types.LendingPool {lp'reserves} =
+      fmap toSupportedCurrency (M.toList lp'reserves)
+
+    toSupportedCurrency (coin, Types.Reserve {reserve'aToken, reserve'rate}) =
+      Types.SupportedCurrency coin reserve'aToken reserve'rate
+
     tellResult = Contract.tell . Just . Last . Types.QueryResSupportedCurrencies
 
 ----------------------------------------------------------
