@@ -1,22 +1,23 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Mlabs.WbeTest.Types (
-  WbeT(..),
+  WbeT (..),
   runWbeT,
-  WbeConfig(..),
+  WbeConfig (..),
   loadWbeConfig,
-  WbeClientCfg(..),
+  WbeClientCfg (..),
   defaultWbeClientCfg,
-  WbeNetworkId(..),
-  WbeExportTx(..),
-  WalletId(..),
-  Passphrase(..),
-  WbeStage(..),
-  WbeTx(..),
-  WbeTxSubmitted(..),
-  MintBuilder(..),
-  WbeError(..),
+  WbeNetworkId (..),
+  WbeExportTx (..),
+  WalletId (..),
+  Passphrase (..),
+  WbeStage (..),
+  WbeTx (..),
+  WbeTxSubmitted (..),
+  MintBuilder (..),
+  WbeError (..),
   connectionInfoFromConfig,
+  decodePkh,
 ) where
 
 import Prelude
@@ -32,6 +33,7 @@ import Data.Aeson (
   FromJSON (..),
   Options (fieldLabelModifier),
   ToJSON (..),
+  decode,
   defaultOptions,
   genericParseJSON,
   genericToJSON,
@@ -41,6 +43,7 @@ import Data.Aeson (
  )
 import Data.Bifunctor (first)
 import Data.ByteString.Base16 qualified as Base16
+import Data.ByteString.Lazy.Char8 (ByteString)
 import Data.Map (Map)
 import Data.String (IsString)
 import Data.Text (Text)
@@ -53,6 +56,7 @@ import GHC.Generics (Generic)
 
 import Ledger (ChainIndexTxOut, TxOutRef)
 import Ledger.Constraints (MkTxError)
+import Ledger.Crypto (PubKeyHash)
 import Ledger.Value qualified as Value
 
 import Mlabs.NFT.Types (MintParams (..), UserId (..))
@@ -61,6 +65,7 @@ import Network.HTTP.Req qualified as Req
 
 import Plutus.Contract.CardanoAPI qualified as C
 import Plutus.Contract.Wallet (ExportTx (..), ExportTxInput (..))
+import PlutusPrelude (fromMaybe)
 
 import Prettyprinter (pretty)
 
@@ -178,20 +183,6 @@ instance ToJSON WbeExportTx where
                   ]
             ]
 
-
--- data WbeExportTx  = WbeExportTx -- placeholder for real one
-
--- data ReqRedeemer = 
---   ReqRedeemer
---   deriving stock (Show, Generic)
---   deriving anyclass (ToJSON, FromJSON)
-  
--- data ReqInput =
---   ReqInput
---   deriving stock (Show, Generic)
---   deriving anyclass (ToJSON, FromJSON)
--- -- WbeExportTx types - END
-
 newtype WalletId = WalletId
   { unWalletId :: Text
   }
@@ -220,16 +211,18 @@ newtype WbeTxSubmitted = WbeTxSubmitted
   deriving stock (Show, Eq, Generic)
 
 instance FromJSON WbeTxSubmitted where
-  parseJSON = genericParseJSON
-    defaultOptions
-    { fieldLabelModifier = wbeTxSubmittedModifier
-    }
+  parseJSON =
+    genericParseJSON
+      defaultOptions
+        { fieldLabelModifier = wbeTxSubmittedModifier
+        }
 
 instance ToJSON WbeTxSubmitted where
-  toJSON = genericToJSON
-    defaultOptions
-    { fieldLabelModifier = wbeTxSubmittedModifier
-    }
+  toJSON =
+    genericToJSON
+      defaultOptions
+        { fieldLabelModifier = wbeTxSubmittedModifier
+        }
 
 wbeTxSubmittedModifier :: String -> String
 wbeTxSubmittedModifier = \case
@@ -251,9 +244,9 @@ data WbeError
   | ConfigurationError String
   | CardanoError C.ToCardanoError
   | TxError MkTxError
-  -- HACK these errors come from @queryNodeLocalState@ and friends
-  -- Should find a better way to represent them
-  | NodeError String
+  | -- HACK these errors come from @queryNodeLocalState@ and friends
+    -- Should find a better way to represent them
+    NodeError String
   deriving stock (Generic)
 
 instance Show WbeError where
@@ -267,3 +260,8 @@ instance Show WbeError where
     NodeError err -> err
 
 instance Exception WbeError
+
+decodePkh :: ByteString -> PubKeyHash
+decodePkh = fromMaybe theImpossible . decode
+  where
+    theImpossible = error "The impossible happened: failed to decode PKH"
