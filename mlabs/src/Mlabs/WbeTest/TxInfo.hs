@@ -11,7 +11,6 @@ import Cardano.Ledger.Alonzo.TxBody qualified as C
 import Cardano.Ledger.Coin (Coin)
 
 import Control.Lens ((^.))
-import Control.Applicative (liftA2)
 import Control.Monad.Error.Class (liftEither)
 import Control.Monad.IO.Class (liftIO)
 
@@ -43,9 +42,6 @@ import Plutus.Contract.Wallet (ExportTx (..), ExportTxInput (..))
 
 import Prelude
 
-import Control.Monad.IO.Class (MonadIO (liftIO))
-
-
 data BalanceInfo = BalanceInfo
   { fromWalletTotalValue :: Value
   , txInFromWallet :: Set TxIn
@@ -72,30 +68,26 @@ analyseBalanced ::
   WbeTx 'Balanced ->
   WbeT BalanceInfo
 analyseBalanced utxosGetter (WbeExportTx (ExportTx apiTx lookups _)) wtx = do
-  initial <- liftEither  $ toChainIndexTx apiTx
-  balanced <- liftEither  $ parseTx wtx
+  initial <- liftEither $ toChainIndexTx apiTx
+  balanced <- liftEither $ parseTx wtx
   -- debug print
-  -- liftIO $ print "-------------------" 
-  -- liftIO $ print "init" 
-  -- liftIO $ print "-------------------" 
+  -- liftIO $ print "-------------------"
+  -- liftIO $ print "init"
+  -- liftIO $ print "-------------------"
   -- liftIO $ print (initial ^. citxInputs)
-  -- liftIO $ print "-------------------" 
+  -- liftIO $ print "-------------------"
   -- liftIO $ print (initial ^. citxOutputs)
-  -- liftIO $ print "-------------------" 
-  -- liftIO $ print "balanced" 
-  -- liftIO $ print "-------------------" 
+  -- liftIO $ print "-------------------"
+  -- liftIO $ print "balanced"
+  -- liftIO $ print "-------------------"
   -- liftIO $ print (balanced ^. citxInputs)
-  -- liftIO $ print "-------------------" 
+  -- liftIO $ print "-------------------"
   -- liftIO $ print (balanced ^. citxOutputs)
-  -- liftIO $ print "-------------------" 
+  -- liftIO $ print "-------------------"
 
   let fromWallet = addedByWallet balanced initial
 
   utxosFoundInWallet <- liftEither =<< liftIO (utxosGetter fromWallet)
-  initial <- liftEither $ toChainIndexTx apiTx
-  balanced <- liftEither $ parseTx wtx
-
-  let fromWallet = addedByWallet balanced initial
 
   pure $
     BalanceInfo
@@ -127,8 +119,8 @@ analyseBalanced utxosGetter (WbeExportTx (ExportTx apiTx lookups _)) wtx = do
         . rights
         . fmap (C.fromCardanoTxOut . txOut)
 
-analyseSigned  :: WbeTx 'Balanced -> WbeTx 'Signed -> Either WbeError SignInfo
-analyseSigned  btx stx =
+analyseSigned :: WbeTx 'Balanced -> WbeTx 'Signed -> Either WbeError SignInfo
+analyseSigned btx stx =
   second (uncurry mkSignInfo) $
     (,) <$> parseApiTx btx <*> parseApiTx stx
   where
@@ -148,6 +140,5 @@ balancedTxFee balanced = case balanced ^. citxCardanoTx of
     C.ShelleyTxBody _ body _ _ _ _ -> Just $ C.txfee body
   _ -> Nothing
 
-
 getInsOuts :: ChainIndexTx -> (Set TxIn, ChainIndexTxOutputs)
-getInsOuts = liftA2 (,) (^. citxInputs) (^. citxOutputs)
+getInsOuts = (,) <$> (^. citxInputs) <*> (^. citxOutputs)
