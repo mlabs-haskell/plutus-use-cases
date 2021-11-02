@@ -32,7 +32,7 @@ slotElevenTime = slotToBeginPOSIXTime def 11
 testAuctionBeforeDeadline :: TestTree
 testAuctionBeforeDeadline = localOption (TestTxId TestValues.testTxId) $
   localOption (TimeRange $ Interval.to slotFiveTime) $
-    withValidator "Test NFT dealing validator (for auction)" dealingValidator $ do
+    withValidator "Test NFT dealing validator (auction before deadline)" dealingValidator $ do
       shouldn'tValidate "Author can't start auction if not owner" openAuctionData1 openAuctionContext1
       shouldn'tValidate "Author can't close auction if not owner" closeAuctionData1 closeAuctionContext1
       shouldValidate "Owner can start auction" validOpenAuctionData validOpenAuctionContext
@@ -42,13 +42,15 @@ testAuctionBeforeDeadline = localOption (TestTxId TestValues.testTxId) $
 
 testAuctionAfterDeadline :: TestTree
 testAuctionAfterDeadline = localOption (TimeRange $ Interval.from slotElevenTime) $
-  withValidator "Test NFT dealing validator (for auction, time dependent)" dealingValidator $ do
+  withValidator "Test NFT dealing validator (auction after deadline)" dealingValidator $ do
     shouldValidate "Owner can close auction" validCloseAuctionData validCloseAuctionContext
     shouldn'tValidate "Can't bid after deadline" validBidData validBidContext
     shouldValidate "Can close auction with a bid" closeAuctionWithBidData closeAuctionWithBidContext
     shouldn'tValidate "Can't close auction if author not paid" closeAuctionWithBidData closeAuctionWithBidNoAuthorContext
     shouldn'tValidate "Can't close auction if owner not paid" closeAuctionWithBidData closeAuctionWithBidNoOwnerContext
     shouldn'tValidate "Can't close auction if owner=author not paid" closeAuctionWithBidAuthorData closeAuctionWithBidAuthorContext
+    -- TODO
+    -- shouldn'tValidate "Can't close auction if datum illegaly altered" ...
 
 initialAuthorDatum :: NFT.DatumNft
 initialAuthorDatum =
