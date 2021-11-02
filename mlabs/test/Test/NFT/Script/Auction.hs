@@ -199,6 +199,7 @@ validSecondBidData = SpendingTest dtm redeemer val
 validSecondBidContext :: ContextBuilder 'ForSpending
 validSecondBidContext =
   paysSelf (oneNft PlutusPrelude.<> TestValues.adaValue 500) ownerUserOneAuctionSecondBidDatum
+  <> paysToWallet TestValues.userTwoWallet (TestValues.adaValue 300)
 
 dealingValidator :: Ledger.Validator
 dealingValidator =
