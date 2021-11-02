@@ -45,6 +45,10 @@ testAuctionAfterDeadline = localOption (TimeRange $ Interval.from slotElevenTime
   withValidator "Test NFT dealing validator (for auction, time dependent)" dealingValidator $ do
     shouldValidate "Owner can close auction" validCloseAuctionData validCloseAuctionContext
     shouldn'tValidate "Can't bid after deadline" validBidData validBidContext
+    shouldValidate "Can close auction with a bid" closeAuctionWithBidData closeAuctionWithBidContext
+    shouldn'tValidate "Can't close auction if author not paid" closeAuctionWithBidData closeAuctionWithBidNoAuthorContext
+    shouldn'tValidate "Can't close auction if owner not paid" closeAuctionWithBidData closeAuctionWithBidNoOwnerContext
+    shouldn'tValidate "Can't close auction if owner=author not paid" closeAuctionWithBidAuthorData closeAuctionWithBidAuthorContext
 
 initialAuthorDatum :: NFT.DatumNft
 initialAuthorDatum =
@@ -95,6 +99,15 @@ ownerUserOneAuctionSecondBidDatum :: NFT.DatumNft
 ownerUserOneAuctionSecondBidDatum =
   ownerUserOneDatum
     { NFT.dNft'auctionState = Just secondBidAuctionState }
+
+auctionWithBidCloseDatum :: NFT.DatumNft
+auctionWithBidCloseDatum =
+  ownerUserOneDatum
+    { NFT.dNft'owner = NFT.UserId TestValues.userTwoPkh }
+
+auctionWithBidAuthorDatum :: NFT.DatumNft
+auctionWithBidAuthorDatum =
+  initialAuthorDatum { NFT.dNft'auctionState = Just bidAuctionState }
 
 -- case 1
 openAuctionData1 :: TestData 'ForSpending
@@ -200,6 +213,56 @@ validSecondBidContext :: ContextBuilder 'ForSpending
 validSecondBidContext =
   paysSelf (oneNft PlutusPrelude.<> TestValues.adaValue 500) ownerUserOneAuctionSecondBidDatum
   <> paysToWallet TestValues.userTwoWallet (TestValues.adaValue 300)
+
+closeAuctionWithBidData :: TestData 'ForSpending
+closeAuctionWithBidData = SpendingTest dtm redeemer val
+  where
+    dtm = ownerUserOneAuctionBidDatum
+
+    redeemer =
+      NFT.CloseAuctionAct
+        { act'cs = TestValues.nftCurrencySymbol
+        }
+
+    -- TODO: correctInputValue check for all redeemers?
+    val = TestValues.oneNft -- <> (TestValues.adaValue 300)
+
+closeAuctionWithBidContext :: ContextBuilder 'ForSpending
+closeAuctionWithBidContext =
+  paysSelf oneNft auctionWithBidCloseDatum
+  <> signedWith userOnePkh
+  <> paysToWallet TestValues.authorWallet (TestValues.adaValue 150)
+  <> paysToWallet TestValues.userOneWallet (TestValues.adaValue 150)
+
+closeAuctionWithBidNoAuthorContext :: ContextBuilder 'ForSpending
+closeAuctionWithBidNoAuthorContext =
+  paysSelf oneNft auctionWithBidCloseDatum
+  <> signedWith userOnePkh
+  <> paysToWallet TestValues.userOneWallet (TestValues.adaValue 150)
+
+closeAuctionWithBidNoOwnerContext :: ContextBuilder 'ForSpending
+closeAuctionWithBidNoOwnerContext =
+  paysSelf oneNft auctionWithBidCloseDatum
+  <> signedWith userOnePkh
+  <> paysToWallet TestValues.authorWallet (TestValues.adaValue 150)
+
+closeAuctionWithBidAuthorData :: TestData 'ForSpending
+closeAuctionWithBidAuthorData = SpendingTest dtm redeemer val
+  where
+    dtm = auctionWithBidAuthorDatum
+
+    redeemer =
+      NFT.CloseAuctionAct
+        { act'cs = TestValues.nftCurrencySymbol
+        }
+
+    val = TestValues.oneNft
+
+closeAuctionWithBidAuthorContext :: ContextBuilder 'ForSpending
+closeAuctionWithBidAuthorContext =
+  paysSelf oneNft auctionWithBidCloseDatum
+  <> signedWith authorPkh
+  <> paysToWallet TestValues.authorWallet (TestValues.adaValue 150)
 
 dealingValidator :: Ledger.Validator
 dealingValidator =
