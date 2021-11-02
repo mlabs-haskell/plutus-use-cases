@@ -1,20 +1,25 @@
-module Mlabs.WbeTest.TxRead (parseTx, parseApiTx, toChainIndexTx) where
+module Mlabs.WbeTest.TxRead (
+  parseTx,
+  parseApiTx,
+  toChainIndexTx,
+) where
 
-import Prelude qualified as Hask
-import PlutusTx.Prelude
-import Plutus.ChainIndex (ChainIndexTx)
-import Plutus.Contract.CardanoAPI ( fromCardanoTx) 
+import Cardano.Api qualified as C
 
+import Data.Bifunctor (first)
 import Data.ByteArray.Encoding (Base (Base64), convertFromBase)
 import Data.ByteString (ByteString)
-import           Data.Proxy                  (Proxy (..))
-import Data.Text.Encoding as TE (encodeUtf8 )
-
-import qualified Cardano.Api                 as C
+import Data.Proxy (Proxy (..))
+import Data.Text.Encoding as TE (encodeUtf8)
 
 import Mlabs.WbeTest.Types
-import Data.Bifunctor (first)
 
+import Plutus.ChainIndex (ChainIndexTx)
+import Plutus.Contract.CardanoAPI (fromCardanoTx)
+
+import PlutusTx.Prelude
+
+import Prelude qualified as Hask
 
 -- runCompare :: Hask.FilePath -> Hask.FilePath -> Hask.IO ()
 -- runCompare exportedTx wbeTx = do
@@ -24,11 +29,11 @@ import Data.Bifunctor (first)
 -- readExported exportFile =
 --   LB.readFile exportFile >>= return . decode
 
-parseTx  :: WbeTx a -> Either WbeError ChainIndexTx
+parseTx :: WbeTx a -> Either WbeError ChainIndexTx
 parseTx wbeTx = parseApiTx wbeTx >>= toChainIndexTx
 
 parseApiTx :: WbeTx a -> Either WbeError (C.Tx C.AlonzoEra)
-parseApiTx WbeTx{..} = base64ToBinary transaction >>= parse
+parseApiTx WbeTx {..} = base64ToBinary transaction >>= parse
   where
     parse =
       first (DecoderError . Hask.show)

@@ -11,7 +11,6 @@ import Cardano.Ledger.Alonzo.TxBody qualified as C
 import Cardano.Ledger.Coin (Coin)
 
 import Control.Lens ((^.))
-import Control.Applicative (liftA2)
 import Control.Monad.Error.Class (liftEither)
 import Control.Monad.IO.Class (liftIO)
 
@@ -71,8 +70,24 @@ analyseBalanced ::
 analyseBalanced utxosGetter (WbeExportTx (ExportTx apiTx lookups _)) wtx = do
   initial <- liftEither $ toChainIndexTx apiTx
   balanced <- liftEither $ parseTx wtx
+  -- debug print
+  -- liftIO $ print "-------------------"
+  -- liftIO $ print "init"
+  -- liftIO $ print "-------------------"
+  -- liftIO $ print (initial ^. citxInputs)
+  -- liftIO $ print "-------------------"
+  -- liftIO $ print (initial ^. citxOutputs)
+  -- liftIO $ print "-------------------"
+  -- liftIO $ print "balanced"
+  -- liftIO $ print "-------------------"
+  -- liftIO $ print (balanced ^. citxInputs)
+  -- liftIO $ print "-------------------"
+  -- liftIO $ print (balanced ^. citxOutputs)
+  -- liftIO $ print "-------------------"
 
   let fromWallet = addedByWallet balanced initial
+
+  utxosFoundInWallet <- liftEither =<< liftIO (utxosGetter fromWallet)
 
   pure $
     BalanceCheck
@@ -104,9 +119,9 @@ analyseBalanced utxosGetter (WbeExportTx (ExportTx apiTx lookups _)) wtx = do
         . rights
         . fmap (C.fromCardanoTxOut . txOut)
 
-checkSigned :: WbeTx 'Balanced -> WbeTx 'Signed -> Either WbeError SignCheck
-checkSigned btx stx =
-  second (uncurry mkSignCheck) $
+analyseSigned :: WbeTx 'Balanced -> WbeTx 'Signed -> Either WbeError SignInfo
+analyseSigned btx stx =
+  second (uncurry mkSignInfo) $
     (,) <$> parseApiTx btx <*> parseApiTx stx
   where
     mkSignInfo :: C.Tx C.AlonzoEra -> C.Tx C.AlonzoEra -> SignInfo
@@ -125,6 +140,5 @@ balancedTxFee balanced = case balanced ^. citxCardanoTx of
     C.ShelleyTxBody _ body _ _ _ _ -> Just $ C.txfee body
   _ -> Nothing
 
-
 getInsOuts :: ChainIndexTx -> (Set TxIn, ChainIndexTxOutputs)
-getInsOuts = liftA2 (,) (^. citxInputs) (^. citxOutputs)
+getInsOuts = (,) <$> (^. citxInputs) <*> (^. citxOutputs)
