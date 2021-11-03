@@ -262,7 +262,7 @@ mkTxPolicy datum act ctx =
         traceIfFalse "Can't close auction: none in progress" (not noAuctionInProgress)
           && traceIfFalse "Auction deadline not yet reached" auctionDeadlineReached
           && traceIfFalse "Only owner can close auction" signedByOwner
-          && traceIfFalse "Auction: new owner set correctly" auctionCorrectNewOwner
+          && traceIfFalse "Auction: new owner set incorrectly" auctionCorrectNewOwner
           && traceIfFalse "Auction: datum illegally altered" auctionConsistentCloseDatum
           && if ownerIsAuthor
             then traceIfFalse "Auction: amount paid to author/owner does not match bid" auctionCorrectPaymentOnlyAuthor

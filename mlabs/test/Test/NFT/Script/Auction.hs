@@ -49,8 +49,7 @@ testAuctionAfterDeadline = localOption (TimeRange $ Interval.from slotElevenTime
     shouldn'tValidate "Can't close auction if author not paid" closeAuctionWithBidData closeAuctionWithBidNoAuthorContext
     shouldn'tValidate "Can't close auction if owner not paid" closeAuctionWithBidData closeAuctionWithBidNoOwnerContext
     shouldn'tValidate "Can't close auction if owner=author not paid" closeAuctionWithBidAuthorData closeAuctionWithBidAuthorContext
-    -- TODO
-    -- shouldn'tValidate "Can't close auction if datum illegaly altered" ...
+    shouldn'tValidate "Can't close auction if datum illegaly altered" closeAuctionInconsistentData closeAuctionInconsistentContext
 
 initialAuthorDatum :: NFT.DatumNft
 initialAuthorDatum =
@@ -110,6 +109,14 @@ auctionWithBidCloseDatum =
 auctionWithBidAuthorDatum :: NFT.DatumNft
 auctionWithBidAuthorDatum =
   initialAuthorDatum { NFT.dNft'auctionState = Just bidAuctionState }
+
+auctionCloseInconsistentDatum :: NFT.DatumNft
+auctionCloseInconsistentDatum =
+  auctionWithBidAuthorDatum
+    { NFT.dNft'auctionState = Nothing
+    , NFT.dNft'author = NFT.UserId TestValues.userOnePkh
+    , NFT.dNft'owner = NFT.UserId TestValues.userTwoPkh
+    }
 
 -- case 1
 openAuctionData1 :: TestData 'ForSpending
@@ -265,6 +272,23 @@ closeAuctionWithBidAuthorContext =
   paysSelf oneNft auctionWithBidCloseDatum
   <> signedWith authorPkh
   <> paysToWallet TestValues.authorWallet (TestValues.adaValue 150)
+
+closeAuctionInconsistentData :: TestData 'ForSpending
+closeAuctionInconsistentData = SpendingTest dtm redeemer val
+  where
+    dtm = auctionWithBidAuthorDatum
+
+    redeemer =
+      NFT.CloseAuctionAct
+        { act'cs = TestValues.nftCurrencySymbol
+        }
+
+    val = TestValues.oneNft
+
+closeAuctionInconsistentContext :: ContextBuilder 'ForSpending
+closeAuctionInconsistentContext =
+  paysSelf oneNft auctionCloseInconsistentDatum
+  <> signedWith authorPkh
 
 dealingValidator :: Ledger.Validator
 dealingValidator =
