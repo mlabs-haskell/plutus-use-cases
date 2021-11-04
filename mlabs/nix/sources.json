@@ -69,10 +69,10 @@
         "homepage": "https://cardano.org",
         "owner": "input-output-hk",
         "repo": "cardano-node",
-        "rev": "191b91eec3c7d845a55347781329d50bf36871d7",
-        "sha256": "1y0a80fmrqf7561yqp4p2vx36yrhh83222b01sall2rk791y4yf0",
+        "rev": "ed7fdbf65f40f8e194850b87dd8c631fe26154e6",
+        "sha256": "0ivvqnw6fflfbzywychfsyyjd6jn3pg1r0vv63m1rdwp04v59kh5",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/cardano-node/archive/191b91eec3c7d845a55347781329d50bf36871d7.tar.gz",
+        "url": "https://github.com/input-output-hk/cardano-node/archive/ed7fdbf65f40f8e194850b87dd8c631fe26154e6.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "version": "f3ef4ed72894499160f2330b91572a159005c148"
     },
@@ -125,19 +125,6 @@
         "url": "https://github.com/input-output-hk/goblins/archive/cde90a2b27f79187ca8310b6549331e59595e7ba.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "version": "cde90a2b27f79187ca8310b6549331e59595e7ba"
-    },
-    "hedgehog-extras": {
-        "branch": "master",
-        "description": null,
-        "homepage": null,
-        "owner": "input-output-hk",
-        "repo": "hedgehog-extras",
-        "rev": "edf6945007177a638fbeb8802397f3a6f4e47c14",
-        "sha256": "0wc7qzkc7j4ns2rz562h6qrx2f8xyq7yjcb7zidnj7f6j0pcd0i9",
-        "type": "tarball",
-        "url": "https://github.com/input-output-hk/hedgehog-extras/archive/edf6945007177a638fbeb8802397f3a6f4e47c14.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "version": "8bcd3c9dc22cc44f9fcfe161f4638a384fc7a187"
     },
     "iohk-monitoring-framework": {
         "branch": "master",
@@ -220,23 +207,35 @@
         "homepage": "",
         "owner": "input-output-hk",
         "repo": "plutus",
-        "rev": "58c093a49eb7a369865e361179d649264fc817a4",
-        "sha256": "156lprrnz4hivagzsbsw3dfqsdpdrvkf2qijf7n0jh9xx2g21pz4",
+        "rev": "0cb5c00add3809d9f247e9ec3f069d9ac3becd95",
+        "sha256": "065y755an7a66jm0pj5ib87scs1sqqssnpla5ks1103s3mfn13is",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/plutus/archive/58c093a49eb7a369865e361179d649264fc817a4.tar.gz",
+        "url": "https://github.com/input-output-hk/plutus/archive/0cb5c00add3809d9f247e9ec3f069d9ac3becd95.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "version": "926a49d16439b693648b68b7e6eb7877a5e622e4"
     },
+    "plutus-apps": {
+        "branch": "main",
+        "description": "The Plutus application platform",
+        "homepage": null,
+        "owner": "input-output-hk",
+        "repo": "plutus-apps",
+        "rev": "d0fd9d49e6e862dc5abed41f0f07f56aafb652cf",
+        "sha256": "1mac64zm7mp5cf17lh2a7zh3lplz05k06pkklvkzsdd4w9bpa0dz",
+        "type": "tarball",
+        "url": "https://github.com/input-output-hk/plutus-apps/archive/d0fd9d49e6e862dc5abed41f0f07f56aafb652cf.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "plutus-extra": {
         "branch": "master",
-        "description": "Helper library of Plutus functions.",
+        "description": "Helper libraries for Plutus.",
         "homepage": "",
-        "owner": "Liqwid-Labs",
+        "owner": "ngua",
         "repo": "plutus-extra",
-        "rev": "b34f7ac0813aaf982ad8c65bcc3c2a54a601e601",
-        "sha256": "1fs67ilfg2aghnz3ry4k08292dhya0wwwhpyqf9frx7ps11vadwr",
+        "rev": "28fecba88304eb33704d4864ce481f498d765b2f",
+        "sha256": "1c97sm0c6bmnsyyf77p25ap8dbvqn5yaddq4v0md01swfky5446p",
         "type": "tarball",
-        "url": "https://github.com/Liqwid-Labs/plutus-extra/archive/b34f7ac0813aaf982ad8c65bcc3c2a54a601e601.tar.gz",
+        "url": "https://github.com/ngua/plutus-extra/archive/28fecba88304eb33704d4864ce481f498d765b2f.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "plutus-latest": {
@@ -255,26 +254,24 @@
         "branch": "master",
         "description": "Create PureScript datatypes from Haskell datatypes",
         "homepage": null,
-        "owner": "shmish111",
+        "owner": "input-output-hk",
         "repo": "purescript-bridge",
         "rev": "6a92d7853ea514be8b70bab5e72077bf5a510596",
         "sha256": "13j64vv116in3c204qsl1v0ajphac9fqvsjp7x3zzfr7n7g61drb",
         "type": "tarball",
-        "url": "https://github.com/shmish111/purescript-bridge/archive/6a92d7853ea514be8b70bab5e72077bf5a510596.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "version": "6a92d7853ea514be8b70bab5e72077bf5a510596"
+        "url": "https://github.com/input-output-hk/purescript-bridge/archive/6a92d7853ea514be8b70bab5e72077bf5a510596.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "servant-purescript": {
         "branch": "master",
         "description": "Translate servant API to purescript code, with the help of purescript-bridge.",
         "homepage": null,
-        "owner": "shmish111",
+        "owner": "input-output-hk",
         "repo": "servant-purescript",
-        "rev": "a76104490499aa72d40c2790d10e9383e0dbde63",
-        "sha256": "11nxxmi5bw66va7psvrgrw7b7n85fvqgfp58yva99w3v9q3a50v9",
+        "rev": "a0c7c7e37c95564061247461aef4be505a853538",
+        "sha256": "177na04jf6wf18kandzsah40lw3xswmmccpr3hkb8wb4hypcffnf",
         "type": "tarball",
-        "url": "https://github.com/shmish111/servant-purescript/archive/a76104490499aa72d40c2790d10e9383e0dbde63.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "version": "a76104490499aa72d40c2790d10e9383e0dbde63"
+        "url": "https://github.com/input-output-hk/servant-purescript/archive/a0c7c7e37c95564061247461aef4be505a853538.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }

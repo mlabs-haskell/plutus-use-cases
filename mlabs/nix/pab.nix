@@ -1,7 +1,7 @@
-{ plutus, pkgs ? plutus.pkgs }: rec {
+{ plutus-apps, pkgs ? plutus-apps.pkgs }: rec {
   # PAB setup
-  plutus_pab_exes = plutus.plutus-pab.pab-exes;
-  plutus_pab_client = plutus.plutus-pab.client;
+  plutus_pab_exes = plutus-apps.plutus-pab.pab-exes;
+  plutus_pab_client = plutus-apps.plutus-pab.client;
 
   plutus_pab_db_path = "/tmp";
   plutus_pab_confs = import ./pab_conf.nix {
@@ -10,22 +10,22 @@
   };
 
   # Annoyingly, the mkConf from Pab has a fixed name...
-  # The plutus build by default misses this
+  # The plutus-apps build by default misses this
   plutus_pab_conf_dir = with plutus_pab_confs;
     pkgs.linkFarm "plutus_pab_envs" [
       {
         inherit (pab_env1) name;
-        path = plutus.plutus-pab.mkConf pab_env1;
+        path = plutus-apps.plutus-pab.mkConf pab_env1;
       }
 
       {
         inherit (pab_env2) name;
-        path = plutus.plutus-pab.mkConf pab_env2;
+        path = plutus-apps.plutus-pab.mkConf pab_env2;
       }
     ];
 
   plutus_ledger_with_docs =
-    plutus.plutus.haskell.packages.plutus-ledger.components.library.override {
+    plutus-apps.plutus-apps.haskell.packages.plutus-ledger.components.library.override {
       doHaddock = true;
       configureFlags = [ "-f defer-plugin-errors" ];
     };
