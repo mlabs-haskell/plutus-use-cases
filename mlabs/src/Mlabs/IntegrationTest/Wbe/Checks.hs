@@ -1,4 +1,4 @@
-module Mlabs.WbeTest.Checks (
+module Mlabs.IntegrationTest.Wbe.Checks (
   Reportable (..),
   Check (..),
   Balanced (..),
@@ -25,7 +25,7 @@ import Data.Text qualified as Text
 
 import Ledger (TxIn, Value)
 
-import Mlabs.WbeTest.TxInfo
+import Mlabs.IntegrationTest.Wbe.TxInfo
 
 import Plutus.ChainIndex (ChainIndexTxOutputs (..))
 import Plutus.V1.Ledger.Ada (fromValue, lovelaceValueOf)

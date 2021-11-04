@@ -1,4 +1,4 @@
-module Mlabs.WbeTest.Types (
+module Mlabs.IntegrationTest.Wbe.Types (
   WbeT (..),
   runWbeT,
   WbeConfig (..),
@@ -35,18 +35,14 @@ import Data.Aeson (
   defaultOptions,
   genericParseJSON,
   genericToJSON,
-  object,
   withText,
-  (.=),
  )
 import Data.Bifunctor (first)
-import Data.ByteString.Base16 qualified as Base16
 import Data.ByteString.Lazy.Char8 (ByteString)
 import Data.Map (Map)
 import Data.String (IsString)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Text.Encoding qualified as Text
 import Data.Word (Word32, Word64)
 import Data.Yaml (ParseException, decodeFileEither)
 
@@ -55,14 +51,13 @@ import GHC.Generics (Generic)
 import Ledger (ChainIndexTxOut, TxOutRef)
 import Ledger.Constraints (MkTxError)
 import Ledger.Crypto (PubKeyHash)
-import Ledger.Value qualified as Value
 
 import Mlabs.NFT.Types (MintParams (..), UserId (..))
 
 import Network.HTTP.Req qualified as Req
 
 import Plutus.Contract.CardanoAPI qualified as C
-import Plutus.Contract.Wallet (ExportTx (..), ExportTxInput (..))
+import Plutus.Contract.Wallet (ExportTx (..))
 import PlutusPrelude (fromMaybe)
 
 import Prettyprinter (pretty)

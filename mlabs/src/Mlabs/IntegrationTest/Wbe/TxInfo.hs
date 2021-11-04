@@ -1,4 +1,4 @@
-module Mlabs.WbeTest.TxInfo (
+module Mlabs.IntegrationTest.Wbe.TxInfo (
   BalanceInfo (..),
   SignInfo (..),
   UTXOGetter,
@@ -24,8 +24,8 @@ import Data.Set qualified as Set
 
 import GHC.Generics (Generic)
 
-import Mlabs.WbeTest.TxRead
-import Mlabs.WbeTest.Types
+import Mlabs.IntegrationTest.Wbe.TxRead
+import Mlabs.IntegrationTest.Wbe.Types
 
 import Ledger (SomeCardanoApiTx (SomeTx), TxIn, TxOut, Value, outValue)
 

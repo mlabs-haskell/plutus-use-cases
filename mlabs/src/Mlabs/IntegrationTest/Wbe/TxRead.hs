@@ -1,4 +1,4 @@
-module Mlabs.WbeTest.TxRead (
+module Mlabs.IntegrationTest.Wbe.TxRead (
   parseTx,
   parseApiTx,
   toChainIndexTx,
@@ -12,7 +12,7 @@ import Data.ByteString (ByteString)
 import Data.Proxy (Proxy (..))
 import Data.Text.Encoding as TE (encodeUtf8)
 
-import Mlabs.WbeTest.Types
+import Mlabs.IntegrationTest.Wbe.Types
 
 import Plutus.ChainIndex (ChainIndexTx)
 import Plutus.Contract.CardanoAPI (fromCardanoTx)

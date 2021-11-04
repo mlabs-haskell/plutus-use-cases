@@ -1,6 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Mlabs.WbeTest.WbeClient (
+module Mlabs.IntegrationTest.Wbe.WbeClient (
   balance,
   sign,
   submit,
@@ -16,7 +16,7 @@ import Data.Bifunctor (first)
 import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
 
-import Mlabs.WbeTest.Types
+import Mlabs.IntegrationTest.Wbe.Types
 
 import Network.HTTP.Req ((/:))
 import Network.HTTP.Req qualified as Req
