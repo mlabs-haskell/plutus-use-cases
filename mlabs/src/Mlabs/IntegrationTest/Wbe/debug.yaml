@@ -1,5 +1,5 @@
 socketPath: ""
-networkParamsPath: ./src/Mlabs/WbeTest/network_params.json
+networkParamsPath: ./src/Mlabs/IntegrationTest/Wbe/network_params.json
 epochSlots: 21600
 networkId: testnet-magic 8
 wbeClientCfg:
