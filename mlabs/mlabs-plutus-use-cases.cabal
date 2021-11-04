@@ -169,7 +169,6 @@ library
     Mlabs.NFT.Types
     Mlabs.NFT.Contract
     Mlabs.NFT.Validation
-    Mlabs.WbeTest.NftTrace
     Mlabs.WbeTest.TxRead
     Mlabs.WbeTest.WbeClient
     Mlabs.WbeTest.TestStand

@@ -15,7 +15,6 @@ import Control.Monad.Error.Class (liftEither)
 import Control.Monad.IO.Class (liftIO)
 
 import Data.Bifunctor (second)
-import Data.Either (rights)
 import Data.Function (on)
 import Data.List ((\\))
 import Data.Map (Map)
@@ -37,8 +36,7 @@ import Plutus.ChainIndex (
   citxInputs,
   citxOutputs,
  )
-import Plutus.Contract.CardanoAPI qualified as C
-import Plutus.Contract.Wallet (ExportTx (..), ExportTxInput (..))
+import Plutus.Contract.Wallet (ExportTx (..))
 
 import Prelude
 
@@ -46,7 +44,6 @@ data BalanceInfo = BalanceInfo
   { fromWalletTotalValue :: Value
   , txInFromWallet :: Set TxIn
   , fee :: Maybe Coin
-  , lookupsTotalValue :: Value
   , totalOutsValue :: Value
   , unbalancedIsOuts :: (Set TxIn, ChainIndexTxOutputs)
   , balancedIsOuts :: (Set TxIn, ChainIndexTxOutputs)
@@ -67,7 +64,7 @@ analyseBalanced ::
   WbeExportTx ->
   WbeTx 'Balanced ->
   WbeT BalanceInfo
-analyseBalanced utxosGetter (WbeExportTx (ExportTx apiTx lookups _)) wtx = do
+analyseBalanced utxosGetter (WbeExportTx (ExportTx apiTx _ _)) wtx = do
   initial <- liftEither $ toChainIndexTx apiTx
   balanced <- liftEither $ parseTx wtx
   -- debug print
@@ -91,8 +88,7 @@ analyseBalanced utxosGetter (WbeExportTx (ExportTx apiTx lookups _)) wtx = do
 
   pure $
     BalanceInfo
-      { lookupsTotalValue = lookupsVal lookups
-      , fromWalletTotalValue = utxosVal utxosFoundInWallet
+      { fromWalletTotalValue = utxosVal utxosFoundInWallet
       , totalOutsValue = chainIndexTxVal balanced
       , txInFromWallet = fromWallet
       , fee = balancedTxFee balanced
@@ -111,13 +107,6 @@ analyseBalanced utxosGetter (WbeExportTx (ExportTx apiTx lookups _)) wtx = do
 
     utxosVal :: Map TxIn TxOut -> Value
     utxosVal = mconcat . fmap (^. outValue) . Map.elems
-
-    lookupsVal :: [ExportTxInput] -> Value
-    lookupsVal =
-      mconcat
-        . fmap (^. outValue)
-        . rights
-        . fmap (C.fromCardanoTxOut . txOut)
 
 analyseSigned :: WbeTx 'Balanced -> WbeTx 'Signed -> Either WbeError SignInfo
 analyseSigned btx stx =

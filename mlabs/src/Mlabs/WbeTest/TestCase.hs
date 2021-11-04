@@ -21,7 +21,6 @@ import Data.Void (Void)
 import Ledger hiding (value)
 import Ledger.Constraints qualified as Constraints
 
-import Mlabs.NFT.Types (Content (..), MintParams (..), Title (..), UserId (..))
 import Mlabs.WbeTest.CardanoAPI
 import Mlabs.WbeTest.Checks hiding (Balanced)
 import Mlabs.WbeTest.TxBuilder
@@ -30,8 +29,6 @@ import Mlabs.WbeTest.Types
 import Mlabs.WbeTest.WbeClient qualified as WbeClient
 
 import Plutus.V1.Ledger.Ada (adaValueOf)
-
-import PlutusTx.Prelude ((%))
 
 import Prelude
 
@@ -64,7 +61,6 @@ getTestCases connInfo params =
     <$> [ testWallet2Wallet
         , testWallet2WalletEnoughInputs
         , testWallet2WalletNotEnoughInputs
-        , testMintNftTx
         ]
 
 getWbeResults ::
@@ -196,51 +192,3 @@ testWallet2WalletNotEnoughInputs connInfo params =
         , Constraints.mustPayToPubKey pkhTo (adaValueOf 15)
         ]
     withInputL = Constraints.unspentOutputs utxos
-
-testMintNftTx ::
-  C.LocalNodeConnectInfo C.CardanoMode ->
-  C.ProtocolParameters ->
-  TestCase
-testMintNftTx connInfo params =
-  TestCase
-    "Transaction from wallet to wallet with some inputs, but not enough to cover outputs"
-    $ do
-      tx <- liftEither mkTx
-      WbeResults {..} <- getWbeResults connInfo tx
-      pure . Test tx $
-        [ AnyCheck . mustBeMintBalanced $ balancedInfo
-        , AnyCheck . feeMustBeAdded $ balancedInfo
-        , AnyCheck . witnessesMustBeAdded $ signedInfo
-        , AnyCheck . cNot . inputsMustBeAdded $ balancedInfo
-        , AnyCheck . unbalancedInsOutsShouldNotChange $ balancedInfo
-        ]
-  where
-    mkTx = WbeExportTx <$> buildMintTx params connInfo mintBuilder
-
-    pkh =
-      decodePkh
-          "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d2\"}"
-
-    refId =
-      fromJust . decode $
-        "{\"getTxId\" : \"206e4a7e1b8a8004d41546ae28089cc4c00853d4f285c45ca62ba8a81b271f41\"}"
-
-    oref = TxOutRef refId 2
-    txOut =
-      PublicKeyChainIndexTxOut
-        (pubKeyHashAddress pkh)
-        (adaValueOf 3)
-    utxos = Map.singleton oref txOut
-
-    mintBuilder =
-      MintBuilder
-        { params =
-            MintParams
-              { mp'content = Content "A painting."
-              , mp'title = Title "Fiona Lisa"
-              , mp'share = 1 % 10
-              , mp'price = Just 5
-              }
-        , user = UserId pkh
-        , ..
-        }
