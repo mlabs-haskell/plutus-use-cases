@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs #-}
 
-module Mlabs.WbeTest.TestCase (
+module Mlabs.IntegrationTest.Wbe.TestCase (
   TestCase (..),
   Test (..),
   AnyCheck (..),
@@ -21,12 +21,12 @@ import Data.Void (Void)
 import Ledger hiding (value)
 import Ledger.Constraints qualified as Constraints
 
-import Mlabs.WbeTest.CardanoAPI
-import Mlabs.WbeTest.Checks hiding (Balanced)
-import Mlabs.WbeTest.TxBuilder
-import Mlabs.WbeTest.TxInfo
-import Mlabs.WbeTest.Types
-import Mlabs.WbeTest.WbeClient qualified as WbeClient
+import Mlabs.IntegrationTest.Wbe.CardanoAPI
+import Mlabs.IntegrationTest.Wbe.Checks hiding (Balanced)
+import Mlabs.IntegrationTest.Wbe.TxBuilder
+import Mlabs.IntegrationTest.Wbe.TxInfo
+import Mlabs.IntegrationTest.Wbe.Types
+import Mlabs.IntegrationTest.Wbe.WbeClient qualified as WbeClient
 
 import Plutus.V1.Ledger.Ada (adaValueOf)
 

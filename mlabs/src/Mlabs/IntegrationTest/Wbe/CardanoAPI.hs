@@ -1,4 +1,4 @@
-module Mlabs.WbeTest.CardanoAPI (getUTXOs) where
+module Mlabs.IntegrationTest.Wbe.CardanoAPI (getUTXOs) where
 
 import Cardano.Api qualified as C
 
@@ -12,7 +12,7 @@ import Ledger (TxIn (..), TxOut)
 
 import Prelude
 
-import Mlabs.WbeTest.Types
+import Mlabs.IntegrationTest.Wbe.Types
 import Plutus.Contract.CardanoAPI (
   fromCardanoTxIn,
   fromCardanoTxOut,

@@ -169,15 +169,15 @@ library
     Mlabs.NFT.Types
     Mlabs.NFT.Contract
     Mlabs.NFT.Validation
-    Mlabs.WbeTest.TxRead
-    Mlabs.WbeTest.WbeClient
-    Mlabs.WbeTest.TestStand
-    Mlabs.WbeTest.Types
-    Mlabs.WbeTest.TxBuilder
-    Mlabs.WbeTest.TxInfo
-    Mlabs.WbeTest.CardanoAPI
-    Mlabs.WbeTest.Checks
-    Mlabs.WbeTest.TestCase
+    Mlabs.IntegrationTest.Wbe.TxRead
+    Mlabs.IntegrationTest.Wbe.WbeClient
+    Mlabs.IntegrationTest.Wbe.TestStand
+    Mlabs.IntegrationTest.Wbe.Types
+    Mlabs.IntegrationTest.Wbe.TxBuilder
+    Mlabs.IntegrationTest.Wbe.TxInfo
+    Mlabs.IntegrationTest.Wbe.CardanoAPI
+    Mlabs.IntegrationTest.Wbe.Checks
+    Mlabs.IntegrationTest.Wbe.TestCase
     Mlabs.NFT.Api
     Mlabs.NFT.Contract.Init
     Mlabs.NFT.Contract.Mint

@@ -1,4 +1,4 @@
-module Mlabs.WbeTest.TestStand (
+module Mlabs.IntegrationTest.Wbe.TestStand (
   run,
   runAll,
 ) where
@@ -17,9 +17,9 @@ import Data.Foldable (for_)
 import Data.Maybe (fromMaybe)
 import Data.Text.IO qualified as TextIO
 
-import Mlabs.WbeTest.Checks hiding (Balanced)
-import Mlabs.WbeTest.TestCase
-import Mlabs.WbeTest.Types
+import Mlabs.IntegrationTest.Wbe.Checks hiding (Balanced)
+import Mlabs.IntegrationTest.Wbe.TestCase
+import Mlabs.IntegrationTest.Wbe.Types
 
 import Plutus.Contract.Wallet (ExportTx (..))
 
@@ -33,7 +33,7 @@ runAll :: Maybe FilePath -> IO ()
 runAll mpath = do
   cfg <-
     either throw id
-      <$> loadWbeConfig (fromMaybe "./src/Mlabs/WbeTest/debug.yaml" mpath)
+      <$> loadWbeConfig (fromMaybe "./src/Mlabs/IntegrationTest/Wbe/debug.yaml" mpath)
   runWbeT cfg setupTests >>= \case
     Left e -> throw e
     Right (connInfo, params) ->

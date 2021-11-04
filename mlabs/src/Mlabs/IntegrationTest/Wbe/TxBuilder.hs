@@ -1,4 +1,4 @@
-module Mlabs.WbeTest.TxBuilder (
+module Mlabs.IntegrationTest.Wbe.TxBuilder (
   buildTx,
   buildWbeTx,
   simpleAdaToWallet,
@@ -13,7 +13,7 @@ import Data.Fixed (Micro)
 import Data.Maybe (fromJust)
 import Data.Void (Void)
 
-import Mlabs.WbeTest.Types (WbeError (..), WbeExportTx (..))
+import Mlabs.IntegrationTest.Wbe.Types (WbeError (..), WbeExportTx (..))
 
 import Ledger.Constraints qualified as Constraints
 import Ledger.Constraints.OffChain (MkTxError (..), UnbalancedTx, mkTx)
