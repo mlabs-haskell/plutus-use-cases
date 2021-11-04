@@ -201,6 +201,8 @@ library
     Mlabs.IntegrationTest.Wbe.CardanoAPI
     Mlabs.IntegrationTest.Wbe.Checks
     Mlabs.IntegrationTest.Wbe.TestCase
+    Mlabs.IntegrationTest.PabWbe.Run
+    Mlabs.IntegrationTest.PabWbe.TestContracts
 
 executable mlabs-plutus-use-cases
   import:  common-imports
