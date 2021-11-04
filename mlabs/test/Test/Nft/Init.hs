@@ -29,6 +29,7 @@ import Plutus.Trace.Effects.EmulatedWalletAPI (EmulatedWalletAPI)
 import Plutus.Trace.Effects.EmulatorControl (EmulatorControl)
 import Plutus.Trace.Effects.RunContract (RunContract)
 import Plutus.Trace.Effects.Waiting (Waiting)
+import Plutus.Trace.Effects.Assert (Assert)
 import Plutus.Trace.Emulator (EmulatorRuntimeError, EmulatorTrace, initialChainState)
 import Plutus.V1.Ledger.Ada (adaSymbol, adaToken)
 import Plutus.V1.Ledger.Value (Value, singleton)
@@ -55,7 +56,7 @@ toUserId :: Wallet -> UserId
 toUserId = UserId . walletPubKeyHash
 
 -- | Helper to run the scripts for NFT-contract
-type ScriptM a = ReaderT NftId (Eff '[RunContract, Waiting, EmulatorControl, EmulatedWalletAPI, LogMsg String, Error EmulatorRuntimeError]) a
+type ScriptM a = ReaderT NftId (Eff '[RunContract, Assert, Waiting, EmulatorControl, EmulatedWalletAPI, LogMsg String, Error EmulatorRuntimeError]) a
 
 type Script = ScriptM ()
 

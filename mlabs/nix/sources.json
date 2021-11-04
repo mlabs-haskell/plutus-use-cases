@@ -126,19 +126,6 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "version": "cde90a2b27f79187ca8310b6549331e59595e7ba"
     },
-    "hedgehog-extras": {
-        "branch": "master",
-        "description": null,
-        "homepage": null,
-        "owner": "input-output-hk",
-        "repo": "hedgehog-extras",
-        "rev": "edf6945007177a638fbeb8802397f3a6f4e47c14",
-        "sha256": "0wc7qzkc7j4ns2rz562h6qrx2f8xyq7yjcb7zidnj7f6j0pcd0i9",
-        "type": "tarball",
-        "url": "https://github.com/input-output-hk/hedgehog-extras/archive/edf6945007177a638fbeb8802397f3a6f4e47c14.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "version": "8bcd3c9dc22cc44f9fcfe161f4638a384fc7a187"
-    },
     "iohk-monitoring-framework": {
         "branch": "master",
         "description": "This framework provides logging, benchmarking and monitoring.",
@@ -151,18 +138,6 @@
         "url": "https://github.com/input-output-hk/iohk-monitoring-framework/archive/46f994e216a1f8b36fe4669b47b2a7011b0e153c.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "version": "34abfb7f4f5610cabb45396e0496472446a0b2ca"
-    },
-    "marlowe-cardano": {
-        "branch": "main",
-        "description": "Marlowe smart contract language Cardano implementation",
-        "homepage": null,
-        "owner": "input-output-hk",
-        "repo": "marlowe-cardano",
-        "rev": "b1a11fc1d177ff2c0fefe3c3d1684530377eb983",
-        "sha256": "1dxi7qz30z18qla623zfl518cc80lfl5nqch1qqp4jn0p7hhcafl",
-        "type": "tarball",
-        "url": "https://github.com/input-output-hk/marlowe-cardano/archive/b1a11fc1d177ff2c0fefe3c3d1684530377eb983.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "niv": {
         "branch": "master",
@@ -245,10 +220,10 @@
         "homepage": null,
         "owner": "input-output-hk",
         "repo": "plutus-apps",
-        "rev": "055c214d744a57eb77f263c88f27376aa9efba86",
-        "sha256": "19q9k7h73kxyl47hx9qcq3xid505jhxqzvpjn402say4pjwxw4i6",
+        "rev": "d0fd9d49e6e862dc5abed41f0f07f56aafb652cf",
+        "sha256": "1mac64zm7mp5cf17lh2a7zh3lplz05k06pkklvkzsdd4w9bpa0dz",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/plutus-apps/archive/055c214d744a57eb77f263c88f27376aa9efba86.tar.gz",
+        "url": "https://github.com/input-output-hk/plutus-apps/archive/d0fd9d49e6e862dc5abed41f0f07f56aafb652cf.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "plutus-extra": {
@@ -257,10 +232,10 @@
         "homepage": "",
         "owner": "ngua",
         "repo": "plutus-extra",
-        "rev": "93e18122d94f11ae8c3e7faa6e774e699d78c2a6",
-        "sha256": "0w45ps5shy1xyig9c08rm4nsih0gyawzqk45c80jyzij4g3wznnp",
+        "rev": "28fecba88304eb33704d4864ce481f498d765b2f",
+        "sha256": "1c97sm0c6bmnsyyf77p25ap8dbvqn5yaddq4v0md01swfky5446p",
         "type": "tarball",
-        "url": "https://github.com/ngua/plutus-extra/archive/93e18122d94f11ae8c3e7faa6e774e699d78c2a6.tar.gz",
+        "url": "https://github.com/ngua/plutus-extra/archive/28fecba88304eb33704d4864ce481f498d765b2f.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "plutus-latest": {

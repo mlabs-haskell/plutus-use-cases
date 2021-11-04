@@ -12,6 +12,7 @@ import Plutus.Trace.Effects.EmulatedWalletAPI (EmulatedWalletAPI)
 import Plutus.Trace.Effects.EmulatorControl (EmulatorControl)
 import Plutus.Trace.Effects.RunContract (RunContract)
 import Plutus.Trace.Effects.Waiting (Waiting)
+import Plutus.Trace.Effects.Assert (Assert)
 import Plutus.Trace.Emulator (EmulatorRuntimeError (GenericError), EmulatorTrace, activateContractWallet, callEndpoint, initialChainState, observableState, throwError, waitNSlots)
 import Plutus.V1.Ledger.Ada (adaSymbol, adaToken)
 import Plutus.V1.Ledger.Value (Value, singleton)
@@ -49,7 +50,7 @@ callStartNft wal = do
   void $ waitNSlots 1
   pure aSymbol
 
-type ScriptM a = ReaderT NftAppSymbol (Eff '[RunContract, Waiting, EmulatorControl, EmulatedWalletAPI, LogMsg String, Error EmulatorRuntimeError]) a
+type ScriptM a = ReaderT NftAppSymbol (Eff '[RunContract, Assert, Waiting, EmulatorControl, EmulatedWalletAPI, LogMsg String, Error EmulatorRuntimeError]) a
 
 type Script = ScriptM ()
 

@@ -28,8 +28,6 @@ in pkgs.haskell-nix.cabalProject rec {
       eventful-sql-common.ghcOptions = [''
         -XDerivingStrategies -XStandaloneDeriving -XUndecidableInstances
                 -XDataKinds -XFlexibleInstances -XMultiParamTypeClasses''];
-      marlowe.doHaddock = deferPluginErrors;
-      marlowe.flags.defer-plugin-errors = deferPluginErrors;
 
       plutus-use-cases.doHaddock = deferPluginErrors;
       plutus-use-cases.flags.defer-plugin-errors = deferPluginErrors;
@@ -60,10 +58,6 @@ in pkgs.haskell-nix.cabalProject rec {
       sources.plutus.sha256;
     "https://github.com/input-output-hk/plutus-apps.git"."${sources.plutus-apps.rev}" =
       sources.plutus-apps.sha256;
-    "https://github.com/input-output-hk/marlowe-cardano.git"."${sources.marlowe-cardano.rev}" =
-      sources.marlowe-cardano.sha256;
-    "https://github.com/input-output-hk/hedgehog-extras"."${sources.hedgehog-extras.rev}" =
-      sources.hedgehog-extras.sha256;
     "https://github.com/Quid2/flat.git"."${sources.flat.rev}" =
       sources.flat.sha256;
     "https://github.com/input-output-hk/purescript-bridge.git"."${sources.purescript-bridge.rev}" =

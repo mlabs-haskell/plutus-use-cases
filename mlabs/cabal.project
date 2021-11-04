@@ -8,7 +8,7 @@ packages: ./.
 source-repository-package
   type: git
   location: https://github.com/ngua/plutus-extra.git
-  tag: 93e18122d94f11ae8c3e7faa6e774e699d78c2a6
+  tag: 28fecba88304eb33704d4864ce481f498d765b2f
   subdir: plutus-extra
           tasty-plutus
           plutus-pretty
@@ -45,25 +45,13 @@ source-repository-package
     plutus-use-cases
     quickcheck-dynamic
     web-ghc
-  tag: 055c214d744a57eb77f263c88f27376aa9efba86
+  tag: d0fd9d49e6e862dc5abed41f0f07f56aafb652cf
 
-source-repository-package
-  type: git
-  location: https://github.com/input-output-hk/marlowe-cardano.git
-  subdir:
-    doc
-    marlowe
-    marlowe-actus
-    marlowe-playground-server
-    marlowe-dashboard-server
-    marlowe-symbolic
-  tag: b1a11fc1d177ff2c0fefe3c3d1684530377eb983
-
--- The following sections are copied from the combined 'plutus', 'plutus-apps', and 'marlowe-cardano'
--- repositories' 'cabal.project's at the revisions given above.
+-- The following sections are copied from the combined 'plutus' and 'plutus-apps' repositories'
+-- 'cabal.project's at the revisions given above.
 --
--- This is necessary because these three libraries depend on a number of other libraries which are
--- not on Hackage, and so need to be pulled in as `source-repository-package`s themselves. Make sure to
+-- This is necessary because these libraries depend on a number of other libraries which are not
+-- on Hackage, and so need to be pulled in as `source-repository-package`s themselves. Make sure to
 -- re-update this section from the template when you do an upgrade.
 
 ---------- *replace here* ----------------------------------------------------------------------
@@ -271,8 +259,3 @@ source-repository-package
     lib/core
     lib/test-utils
     lib/numeric
-
-source-repository-package
-  type: git
-  location: https://github.com/input-output-hk/hedgehog-extras
-  tag: edf6945007177a638fbeb8802397f3a6f4e47c14
