@@ -1,9 +1,6 @@
-{-# LANGUAGE NamedFieldPuns #-}
-
 module Mlabs.WbeTest.TxBuilder (
   buildTx,
   buildWbeTx,
-  buildMintTx,
   simpleAdaToWallet,
 ) where
 
@@ -13,26 +10,15 @@ import Cardano.Api.Shelley qualified as C
 import Data.Aeson (decode)
 import Data.Bifunctor (first)
 import Data.Fixed (Micro)
-import Data.Map qualified as Map
 import Data.Maybe (fromJust)
 import Data.Void (Void)
 
-import Mlabs.NFT.Types (Content (..), MintParams (..), NftId (..), UserId (..))
-import Mlabs.NFT.Validation (
-  DatumNft (..),
-  NftTrade,
-  mintPolicy,
-  txPolicy,
-  txScrAddress,
- )
-import Mlabs.WbeTest.Types (MintBuilder (..), WbeError (..), WbeExportTx (..))
+import Mlabs.WbeTest.Types (WbeError (..), WbeExportTx (..))
 
-import Ledger (TxOutRef, scriptCurrencySymbol)
 import Ledger.Constraints qualified as Constraints
 import Ledger.Constraints.OffChain (MkTxError (..), UnbalancedTx, mkTx)
 import Ledger.Crypto (PubKeyHash (..))
-import Ledger.Typed.Scripts.Validators (ValidatorTypes (..), validatorScript)
-import Ledger.Value qualified as Value
+import Ledger.Typed.Scripts.Validators (ValidatorTypes (..))
 
 import Plutus.V1.Ledger.Ada (adaValueOf)
 import Plutus.Contract.Wallet (ExportTx (..), export)
@@ -89,40 +75,6 @@ buildTx ::
   Either WbeError ExportTx
 buildTx netId protoParams lookups = buildTxFrom netId protoParams . mkTx @a lookups
 
--- | Attempts to construct an 'ExportTx' from a 'MintBuilder'
-buildMintTx ::
-  C.ProtocolParameters ->
-  C.LocalNodeConnectInfo C.CardanoMode ->
-  MintBuilder ->
-  Either WbeError ExportTx
-buildMintTx pparams connInfo =
-  buildTxFrom (C.localNodeNetworkId connInfo) pparams . unbalancedMint
-  where
-    unbalancedMint MintBuilder {..} = case Map.toList utxos of
-      [] -> Left CannotSatisfyAny
-      (oref, _) : _ -> mkTx @NftTrade lookups tx
-        where
-          lookups =
-            Hask.mconcat
-              [ Constraints.unspentOutputs utxos
-              , Constraints.mintingPolicy nftPolicy
-              , Constraints.typedValidatorLookups txPolicy
-              , Constraints.otherScript $ validatorScript txPolicy
-              ]
-
-          tx =
-            Hask.mconcat
-              [ Constraints.mustMintValue val
-              , Constraints.mustSpendPubKeyOutput oref
-              , Constraints.mustPayToTheScript nft val
-              ]
-
-          val = Value.singleton (scriptCurrencySymbol nftPolicy) nftId'token 1
-
-          nftPolicy = mintPolicy txScrAddress oref nftId
-
-          nft@DatumNft {dNft'id = nftId@NftId {..}} = nftInit params user oref
-
 buildTxFrom ::
   C.NetworkId ->
   C.ProtocolParameters ->
@@ -132,25 +84,3 @@ buildTxFrom netId protoParams =
   either (Left . TxError) (first CardanoError . exp)
   where
     exp = export protoParams netId
-
-nftInit :: MintParams -> UserId -> TxOutRef -> DatumNft
-nftInit mps@MintParams {mp'share} user oref =
-  DatumNft
-    { dNft'id = nftId
-    , dNft'share = mp'share
-    , dNft'author = user
-    , dNft'owner = user
-    , dNft'price = mp'price mps
-    }
-  where
-    nftId = nftIdInit mps oref
-
-nftIdInit :: MintParams -> TxOutRef -> NftId
-nftIdInit MintParams {mp'content, mp'title} oref =
-  NftId
-    { nftId'title = mp'title
-    , nftId'token = Value.TokenName $ hashData mp'content
-    , nftId'outRef = oref
-    }
-  where
-    hashData (Content b) = sha2_256 b

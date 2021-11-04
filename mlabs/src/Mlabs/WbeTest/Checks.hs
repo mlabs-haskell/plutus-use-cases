@@ -84,7 +84,7 @@ mustBeBalanced BalanceInfo {..}
   | otherwise = Check Fail (Unbalanced totalInputsValue totalOutsValue)
   where
     valueIsBalanced = totalInputsValue PP.== totalOutsValue PP.+ feeLovelaces
-    totalInputsValue = lookupsTotalValue PP.+ fromWalletTotalValue
+    totalInputsValue = fromWalletTotalValue
     feeLovelaces = maybe mempty (lovelaceValueOf . unCoin) fee
 
 mustBeMintBalanced :: BalanceInfo -> Check Balanced
@@ -96,7 +96,7 @@ mustBeMintBalanced BalanceInfo {..}
     outsAda = fromValue totalBalancedValue
     balancedOnAda = insAda PP.== outsAda
     totalBalancedValue = totalOutsValue PP.+ feeLovelaces
-    totalInputsValue = lookupsTotalValue PP.+ fromWalletTotalValue
+    totalInputsValue = fromWalletTotalValue
     feeLovelaces = maybe mempty (lovelaceValueOf . unCoin) fee
     valueMinted = any (`L.notElem` symbols totalInputsValue) (symbols totalBalancedValue)
 
