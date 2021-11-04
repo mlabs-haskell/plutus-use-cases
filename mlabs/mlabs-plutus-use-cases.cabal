@@ -178,6 +178,8 @@ library
     Mlabs.IntegrationTest.Wbe.CardanoAPI
     Mlabs.IntegrationTest.Wbe.Checks
     Mlabs.IntegrationTest.Wbe.TestCase
+    Mlabs.IntegrationTest.PabWbe.Run
+    Mlabs.IntegrationTest.PabWbe.TestContracts
     Mlabs.NFT.Api
     Mlabs.NFT.Contract.Init
     Mlabs.NFT.Contract.Mint
