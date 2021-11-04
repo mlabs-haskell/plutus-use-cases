@@ -99,7 +99,6 @@ common common-ghc-options
     -fno-strictness
     -fno-warn-orphans
     -fobject-code
---    -fplugin-opt PlutusTx.Plugin:defer-errors -- do not use for build 
 
 library
   import:  common-imports
@@ -170,7 +169,6 @@ library
     Mlabs.NFT.Types
     Mlabs.NFT.Contract
     Mlabs.NFT.Validation
-    Mlabs.WbeTest.NftTrace
     Mlabs.WbeTest.TxRead
     Mlabs.WbeTest.WbeClient
     Mlabs.WbeTest.TestStand
@@ -180,6 +178,12 @@ library
     Mlabs.WbeTest.CardanoAPI
     Mlabs.WbeTest.Checks
     Mlabs.WbeTest.TestCase
+    Mlabs.NFT.Api
+    Mlabs.NFT.Contract.Init
+    Mlabs.NFT.Contract.Mint
+    Mlabs.NFT.Contract.Aux
+    Mlabs.NFT.Contract.SetPrice
+    Mlabs.NFT.Contract.Buy
 
 executable mlabs-plutus-use-cases
   import:  common-imports

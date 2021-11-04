@@ -1,5 +1,3 @@
-{-# LANGUAGE NamedFieldPuns #-}
-
 module Mlabs.WbeTest.Types (
   WbeT (..),
   runWbeT,
@@ -141,47 +139,13 @@ defaultWbeClientCfg = WbeClientCfg "localhost" 8090
 {- | Wrapper around 'ExportTx', whose 'ToJSON' instance does not match the format
  expected by the WBE (this should be unecessary after upgrading Plutus to the next
 version, where the serialization mismatch is fixed)
+
+FIXME After plutus upgrade, this can safely be removed
+
 -}
 newtype WbeExportTx = WbeExportTx ExportTx
   deriving stock (Generic)
-
-instance ToJSON WbeExportTx where
-  toJSON (WbeExportTx ExportTx {..}) =
-    object
-      [ "transaction" .= Text.decodeUtf8 (Base16.encode teRawCBOR)
-      , "inputs" .= (inputsForWbe <$> lookups)
-      , "signatories" .= signatories
-      , "redeemers" .= signatories
-      ]
-    where
-      C.TextEnvelope {teRawCBOR} = C.serialiseToTextEnvelope Nothing partialTx
-
-      inputsForWbe (ExportTxInput (C.TxIn txId txIx) (C.TxOut addr val dat)) =
-        object $
-          mconcat
-            [
-              [ "id" .= txId
-              , "index" .= txIx
-              , "address" .= addr
-              , "assets" .= mempty @[Value.Value] -- Hard-coded for UTxO with only Ada
-              ]
-            , case val of
-                C.TxOutAdaOnly _ ll -> mkAmt ll
-                C.TxOutValue _ v -> case C.valueToList v of
-                  [(C.AdaAssetId, qt)] -> mkAmt qt
-                  _ -> mempty
-            , case dat of
-                C.TxOutDatumHash _ h -> ["datum" .= h]
-                C.TxOutDatumHashNone -> mempty
-            ]
-        where
-          mkAmt v =
-            [ "amount"
-                .= object
-                  [ "unit" .= ("lovelace" :: Text)
-                  , "quantity" .= v
-                  ]
-            ]
+  deriving newtype (ToJSON)
 
 newtype WalletId = WalletId
   { unWalletId :: Text
