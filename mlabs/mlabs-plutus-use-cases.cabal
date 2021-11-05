@@ -53,6 +53,7 @@ common common-imports
     , ouroboros-consensus-shelley
     , cardano-ledger-core
     , yaml
+    , purescript-bridge
 
 common common-language
     default-extensions:
@@ -180,6 +181,7 @@ library
     Mlabs.IntegrationTest.Wbe.TestCase
     Mlabs.IntegrationTest.PabWbe.Run
     Mlabs.IntegrationTest.PabWbe.TestContracts
+    Mlabs.IntegrationTest.PabWbe.TestContracts.Balance
     Mlabs.NFT.Api
     Mlabs.NFT.Contract.Init
     Mlabs.NFT.Contract.Mint
