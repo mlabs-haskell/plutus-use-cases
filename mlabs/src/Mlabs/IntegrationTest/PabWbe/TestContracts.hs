@@ -1,65 +1,53 @@
 module Mlabs.IntegrationTest.PabWbe.TestContracts (
-  
+  TestContracts (..),
 ) where
-
-
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE DeriveAnyClass      #-}
-{-# LANGUAGE DeriveGeneric       #-}
-{-# LANGUAGE DerivingStrategies  #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications    #-}
-{-# LANGUAGE TypeFamilies        #-}
 
 import PlutusTx.Prelude
 import Prelude qualified as Hask
 
-import           Control.Monad.Freer
-import           Data.Aeson                                (FromJSON, ToJSON)
-import           Data.Default                              (Default (def))
-import           Data.Text.Prettyprint.Doc
-import           GHC.Generics                              (Generic)
+import Data.Aeson (
+  FromJSON (parseJSON),
+  Options (sumEncoding),
+  SumEncoding (TaggedObject),
+  ToJSON,
+  defaultOptions,
+  genericParseJSON,
+ )
+import Data.OpenApi.Schema qualified as OpenApi
+import Data.Text.Prettyprint.Doc (Pretty (pretty), viaShow)
 
-import           Data.Data                                 (Proxy (Proxy))
-import qualified Data.OpenApi.Schema                       as OpenApi
-import           Data.Row
-import           Language.PureScript.Bridge                (equal, genericShow, mkSumType)
-import           Language.PureScript.Bridge.TypeParameters (A)
-import           Ledger                                    (TxId)
-import           Playground.Types                          (FunctionSchema)
-import           Plutus.PAB.Effects.Contract.Builtin       (Builtin, BuiltinHandler (..), HasDefinitions (..),
-                                                            SomeBuiltin (..))
-import qualified Plutus.PAB.Effects.Contract.Builtin       as Builtin
-import           Plutus.PAB.Run.PSGenerator                (HasPSTypes (..))
-import           Plutus.PAB.Simulator                      (SimulatorEffectHandlers)
-import qualified Plutus.PAB.Simulator                      as Simulator
-import qualified SandboxContracts.SimpleContract           as Contracts.Simple
-import           Schema                                    (FormSchema)
+import GHC.Generics (Generic)
+
+import Language.PureScript.Bridge (equal, genericShow, mkSumType)
 
 import Mlabs.IntegrationTest.PabWbe.TestContracts.Balance qualified as Contract.Balance
 
+import Plutus.PAB.Effects.Contract.Builtin (HasDefinitions (..), SomeBuiltin (..))
+import Plutus.PAB.Effects.Contract.Builtin qualified as Builtin
+import Plutus.PAB.Run.PSGenerator (HasPSTypes (..))
 
-data TestContracts 
-  = ToJsonFix Int -- FIXME: added to make correct aeson instance
-  | BalanceContract
+data TestContracts = BalanceContract
   deriving stock (Hask.Eq, Hask.Ord, Hask.Show, Generic)
-  deriving anyclass (FromJSON, ToJSON, OpenApi.ToSchema)
+  deriving anyclass (ToJSON, OpenApi.ToSchema)
 
-instance Pretty SandboxContracts where
+instance FromJSON TestContracts where
+  parseJSON x =
+    genericParseJSON
+      defaultOptions {sumEncoding = TaggedObject "tag" (Hask.show x)}
+      x
+
+instance Pretty TestContracts where
   pretty = viaShow
 
-instance HasPSTypes SandboxContracts where
+instance HasPSTypes TestContracts where
   psTypes p =
-    [ (equal <*> (genericShow <*> mkSumType)) p
+    [ equal p (genericShow p $ mkSumType p)
     ]
 
-instance HasDefinitions SandboxContracts where
-  getDefinitions = [ BalanceContract
-                   ]
+instance HasDefinitions TestContracts where
+  getDefinitions =
+    [ BalanceContract
+    ]
 
   getContract = \case
     BalanceContract -> SomeBuiltin Contract.Balance.endpoints

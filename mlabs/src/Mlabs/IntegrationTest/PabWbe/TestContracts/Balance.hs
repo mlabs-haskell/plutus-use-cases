@@ -1,74 +1,32 @@
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE DerivingStrategies    #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns        #-}
-{-# LANGUAGE NoImplicitPrelude     #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE ViewPatterns          #-}
-{-# OPTIONS_GHC -fno-ignore-interface-pragmas #-}
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:debug-context #-}
 
 module Mlabs.IntegrationTest.PabWbe.TestContracts.Balance (
-    SimpleSchema
-  , endpoints
+  BalanceSchema,
+  endpoints,
 ) where
 
-import           Control.Lens
-import           Control.Monad                       (forever)
-import           PlutusTx.Prelude                    hiding (Applicative (..), check)
+import Control.Monad (forever)
 
+import Data.Text (Text)
 
-import           Data.Aeson                          (FromJSON, ToJSON, decode)
-import qualified Data.Map                            as Map
-import           Data.Text                           (Text, pack, unpack)
-import           GHC.Generics                        (Generic)
-import qualified Ledger.Ada                          as Ada
-import qualified Ledger.Constraints                  as Constraints
-import           Ledger.Constraints.OffChain         (mkTx)
-import           Ledger.Scripts                      (Datum (..), Redeemer (..), unitRedeemer)
-import           Ledger.Tx                           (getCardanoTxId)
-import           Ledger.Typed.Scripts                as Scripts
-import           Plutus.Contract
+import Plutus.Contract
 
-import qualified Data.OpenApi.Schema                 as OpenApi
-import           Data.Text.Prettyprint.Doc           (Pretty, pretty, viaShow)
-import           Plutus.PAB.Effects.Contract.Builtin (Builtin, BuiltinHandler (..), HasDefinitions (..),
-                                                      SomeBuiltin (..))
-import qualified Plutus.PAB.Effects.Contract.Builtin as Builtin
-import           Plutus.PAB.Run.PSGenerator          (HasPSTypes (..))
--- import           Data.Row
-import           Language.PureScript.Bridge          (equal, genericShow, mkSumType)
+import PlutusTx.Prelude hiding (Applicative (..), check)
 
-import           Plutus.Contract.Request             as R
+import Prelude qualified as Hask
 
-import           Data.ByteString.Lazy.Char8          (ByteString)
-import           Data.Void                           (Void (..))
-import           Ledger                              (PubKeyHash)
-import qualified Plutus.Contracts.PubKey             as PubKey
-import           Plutus.V1.Ledger.Ada                (adaValueOf)
-import qualified Prelude                             as Hask
+type BalanceSchema = Endpoint "run-balance" ()
 
-type BalanceSchema =
-  Endpoint "run-balance" ()
+endpoints :: Contract () BalanceSchema Text ()
+endpoints =
+  forever . selectList $
+    [ runBalance
+    ]
 
-
-endpoints :: Contract () SimpleSchema Text ()
-endpoints = forever . selectList $
-  [ runBalance
-  ]
-
-runBalance :: Promise () SimpleSchema Text ()
+runBalance :: Promise () BalanceSchema Text ()
 runBalance = endpoint @"run-balance" $ \() -> do
   ownPkh <- ownPubKeyHash
-  logInfo @Hask.String $ "Running balance with wallet PKH " ++ (Hask.show ownPkh)
+  logInfo @Hask.String $ "Running balance with wallet PKH " ++ Hask.show ownPkh
   
   -- (flip handleError)
   --   getOwnPkh
