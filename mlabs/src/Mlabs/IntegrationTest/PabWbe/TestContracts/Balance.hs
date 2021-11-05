@@ -1,55 +1,62 @@
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:debug-context #-}
 
 module Mlabs.IntegrationTest.PabWbe.TestContracts.Balance (
-  BalanceSchema,
+  BalanceAndSignSchema,
   endpoints,
 ) where
 
 import Control.Monad (forever)
 
 import Data.Text (Text)
+import Data.Text qualified as Text
+import Data.Void (Void)
 
-import Plutus.Contract
+import Ledger.Constraints (mkTx)
+import Ledger.Constraints qualified as Constraints
 
-import PlutusTx.Prelude hiding (Applicative (..), check)
+import Mlabs.IntegrationTest.PabWbe.Types
+import Mlabs.IntegrationTest.Types
+
+import Plutus.Contract (
+  Contract,
+  Endpoint,
+  Promise,
+  balanceTx,
+  endpoint,
+  logInfo,
+  ownPubKeyHash,
+  selectList,
+  submitBalancedTx,
+  throwError,
+ )
+import Plutus.V1.Ledger.Ada qualified as Ada
+
+import PlutusTx.Prelude
 
 import Prelude qualified as Hask
 
-type BalanceSchema = Endpoint "run-balance" ()
+type BalanceAndSignSchema = Endpoint "run-balance" ()
 
-endpoints :: Contract () BalanceSchema Text ()
-endpoints =
-  forever . selectList $
-    [ runBalance
-    ]
+endpoints :: Contract () BalanceAndSignSchema Text ()
+endpoints = forever . selectList $ [balanceAndSign]
 
-runBalance :: Promise () BalanceSchema Text ()
-runBalance = endpoint @"run-balance" $ \() -> do
+balanceAndSign :: Promise () BalanceAndSignSchema Text PabWbeResult
+balanceAndSign = endpoint @"run-balance" $ \() -> do
   ownPkh <- ownPubKeyHash
-  logInfo @Hask.String $ "Running balance with wallet PKH " ++ Hask.show ownPkh
-  
-  -- (flip handleError)
-  --   getOwnPkh
-  --   (\(e :: PubKey.PubKeyError) -> logInfo @Haskell.String $ "Failed to get own PKH")
-  -- let to_pkh = decodePkh
-  --         "{\"getPubKeyHash\" : \"d19278d36a31eec98aca5d1cc226fcf5aee6451bb9d0123bb60c1b5b\"}"
-  --     txC = Constraints.mustPayToPubKey to_pkh (adaValueOf 5)
-  --     etx = mkTx @Void Haskell.mempty txC
-  -- case etx of
-  --   Left e -> logInfo @Haskell.String (Haskell.show e)
-  --   Right unbTx -> do
-  --     logInfo @Haskell.String (Haskell.show unbTx)
-  --     bcd <- R.balanceTx unbTx
-  --     logInfo @Haskell.String (Haskell.show bcd)
-  --     submitted <- submitBalancedTx bcd
-  --     logInfo @Haskell.String (Haskell.show submitted)
-  -- where
-  --   getOwnPkh = do
-  --     pkh <- ownPubKeyHash
-  --     logInfo @Haskell.String $ "Own PKH: " <> Haskell.show pkh
+  logInfo @Hask.String $ "Running balance with wallet PKH " <> Hask.show ownPkh
 
+  let toPkh =
+        decodePkh
+          "{\"getPubKeyHash\" : \"d19278d36a31eec98aca5d1cc226fcf5aee6451bb9d0123bb60c1b5b\"}"
+      txC = Constraints.mustPayToPubKey toPkh $ Ada.adaValueOf 5
+      etx = mkTx @Void Hask.mempty txC
 
--- decodePkh :: ByteString -> PubKeyHash
--- decodePkh = fromMaybe theImpossible . decode
---   where
---     theImpossible = Haskell.error "The impossible happened: failed to decode PKH"
+  case etx of
+    Left e -> throwError . Text.pack $ Hask.show e
+    Right unbTx -> do
+      balanced <- balanceTx unbTx
+      logInfo @Hask.String $ Hask.show balanced
+      submitted <- submitBalancedTx balanced
+      logInfo @Hask.String $ Hask.show submitted
+      -- FIXME
+      error ()

@@ -193,6 +193,7 @@ library
     Mlabs.Plutus.Contracts.Currency
     Mlabs.NFT.Contract
     Mlabs.NFT.Validation
+    Mlabs.IntegrationTest.Types
     Mlabs.IntegrationTest.Wbe.TxRead
     Mlabs.IntegrationTest.Wbe.WbeClient
     Mlabs.IntegrationTest.Wbe.TestStand
@@ -205,6 +206,7 @@ library
     Mlabs.IntegrationTest.PabWbe.Run
     Mlabs.IntegrationTest.PabWbe.TestContracts
     Mlabs.IntegrationTest.PabWbe.TestContracts.Balance
+    Mlabs.IntegrationTest.PabWbe.Types
 
 executable mlabs-plutus-use-cases
   import:  common-imports

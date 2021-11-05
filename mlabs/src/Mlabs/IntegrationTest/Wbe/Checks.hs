@@ -25,7 +25,7 @@ import Data.Text qualified as Text
 
 import Ledger (TxIn, Value)
 
-import Mlabs.IntegrationTest.Wbe.TxInfo
+import Mlabs.IntegrationTest.Types
 
 import Plutus.ChainIndex (ChainIndexTxOutputs (..))
 import Plutus.V1.Ledger.Ada (fromValue, lovelaceValueOf)
