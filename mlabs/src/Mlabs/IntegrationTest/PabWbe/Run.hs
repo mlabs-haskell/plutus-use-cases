@@ -1,9 +1,12 @@
-module Mlabs.IntegrationTest.PabWbe.Run where
+module Mlabs.IntegrationTest.PabWbe.Run (
+  runIntegrationTestPAB,
+) where
 
-import           Mlabs.IntegrationTest.PabWbe.TestContracts (TestContracts)
-import qualified Plutus.PAB.Effects.Contract.Builtin as Builtin
-import           Plutus.PAB.Run                      (runWith)
+import Mlabs.IntegrationTest.PabWbe.TestContracts (TestContracts)
+import Plutus.PAB.Effects.Contract.Builtin qualified as Builtin
+import Plutus.PAB.Run (runWith)
+import Prelude qualified as Hask
 
-runIntegrationTestPAB :: IO ()
+runIntegrationTestPAB :: Hask.IO ()
 runIntegrationTestPAB = do
-    runWith (Builtin.handleBuiltin @TestContracts)
+  runWith (Builtin.handleBuiltin @TestContracts)
