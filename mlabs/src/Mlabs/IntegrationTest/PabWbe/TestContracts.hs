@@ -3,6 +3,7 @@ module Mlabs.IntegrationTest.PabWbe.TestContracts (
 ) where
 
 import PlutusTx.Prelude
+
 import Prelude qualified as Hask
 
 import Data.Aeson (
@@ -26,7 +27,7 @@ import Plutus.PAB.Effects.Contract.Builtin (HasDefinitions (..), SomeBuiltin (..
 import Plutus.PAB.Effects.Contract.Builtin qualified as Builtin
 import Plutus.PAB.Run.PSGenerator (HasPSTypes (..))
 
-data TestContracts = BalanceContract
+data TestContracts = BalanceAndSignContract
   deriving stock (Hask.Eq, Hask.Ord, Hask.Show, Generic)
   deriving anyclass (ToJSON, OpenApi.ToSchema)
 
@@ -46,11 +47,12 @@ instance HasPSTypes TestContracts where
 
 instance HasDefinitions TestContracts where
   getDefinitions =
-    [ BalanceContract
+    [ BalanceAndSignContract
     ]
 
-  getContract = \case
-    BalanceContract -> SomeBuiltin Contract.Balance.endpoints
+  getContract BalanceAndSignContract =
+    SomeBuiltin Contract.Balance.endpoints
 
-  getSchema = \case
-    BalanceContract -> Builtin.endpointsToSchemas @Contract.Balance.BalanceSchema
+  getSchema BalanceAndSignContract =
+    Builtin.endpointsToSchemas
+      @Contract.Balance.BalanceAndSignSchema

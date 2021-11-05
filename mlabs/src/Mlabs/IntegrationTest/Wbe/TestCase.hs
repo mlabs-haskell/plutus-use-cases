@@ -21,6 +21,7 @@ import Data.Void (Void)
 import Ledger hiding (value)
 import Ledger.Constraints qualified as Constraints
 
+import Mlabs.IntegrationTest.Types
 import Mlabs.IntegrationTest.Wbe.CardanoAPI
 import Mlabs.IntegrationTest.Wbe.Checks hiding (Balanced)
 import Mlabs.IntegrationTest.Wbe.TxBuilder

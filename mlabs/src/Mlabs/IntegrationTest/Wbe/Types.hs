@@ -15,7 +15,6 @@ module Mlabs.IntegrationTest.Wbe.Types (
   MintBuilder (..),
   WbeError (..),
   connectionInfoFromConfig,
-  decodePkh,
 ) where
 
 import Prelude
@@ -31,14 +30,12 @@ import Data.Aeson (
   FromJSON (..),
   Options (fieldLabelModifier),
   ToJSON (..),
-  decode,
   defaultOptions,
   genericParseJSON,
   genericToJSON,
   withText,
  )
 import Data.Bifunctor (first)
-import Data.ByteString.Lazy.Char8 (ByteString)
 import Data.Map (Map)
 import Data.String (IsString)
 import Data.Text (Text)
@@ -50,7 +47,6 @@ import GHC.Generics (Generic)
 
 import Ledger (ChainIndexTxOut, TxOutRef)
 import Ledger.Constraints (MkTxError)
-import Ledger.Crypto (PubKeyHash)
 
 import Mlabs.NFT.Types (MintParams (..), UserId (..))
 
@@ -58,7 +54,6 @@ import Network.HTTP.Req qualified as Req
 
 import Plutus.Contract.CardanoAPI qualified as C
 import Plutus.Contract.Wallet (ExportTx (..))
-import PlutusPrelude (fromMaybe)
 
 import Prettyprinter (pretty)
 
@@ -219,8 +214,3 @@ instance Show WbeError where
     NodeError err -> err
 
 instance Exception WbeError
-
-decodePkh :: ByteString -> PubKeyHash
-decodePkh = fromMaybe theImpossible . decode
-  where
-    theImpossible = error "The impossible happened: failed to decode PKH"
