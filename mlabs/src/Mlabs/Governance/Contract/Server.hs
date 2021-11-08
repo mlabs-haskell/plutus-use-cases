@@ -39,13 +39,15 @@ import Plutus.V1.Ledger.Value (Value (..), valueOf)
 import Text.Printf (printf)
 
 import Mlabs.Governance.Contract.Api qualified as Api
-import Mlabs.Governance.Contract.Validation (AssetClassGov (..), GovernanceDatum (..), GovernanceRedeemer (..))
+import Mlabs.Governance.Contract.Validation (AssetClassGov (..), 
+  GovernanceDatum (..), GovernanceRedeemer (..))
 import Mlabs.Governance.Contract.Validation qualified as Validation
 import Mlabs.Plutus.Contract (getEndpoint, selectForever)
 
 --import GHC.Base (Applicative(pure))
 
-type GovernanceContract a = Contract.Contract (Maybe (Last Integer)) Api.GovernanceSchema Text a
+type GovernanceContract a = 
+  Contract.Contract (Maybe (Last Integer)) Api.GovernanceSchema Text a
 
 governanceEndpoints :: AssetClassGov -> GovernanceContract ()
 governanceEndpoints gov =
@@ -66,8 +68,10 @@ deposit gov (Api.Deposit amnt) = do
         Just (datum, utxo, oref) ->
           ( sconcat
               [ Constraints.mustMintValue xGovValue
-              , Constraints.mustPayToTheScript datum $ Validation.govSingleton gov amnt <> (utxo ^. ciTxOutValue)
-              , Constraints.mustSpendScriptOutput oref (Redeemer . toBuiltinData $ GRDeposit amnt)
+              , Constraints.mustPayToTheScript datum $ 
+                  Validation.govSingleton gov amnt <> (utxo ^. ciTxOutValue)
+              , Constraints.mustSpendScriptOutput oref 
+                  (Redeemer . toBuiltinData $ GRDeposit amnt)
               ]
           , sconcat
               [ Constraints.mintingPolicy $ Validation.xGovMintingPolicy gov
@@ -77,21 +81,26 @@ deposit gov (Api.Deposit amnt) = do
               ]
           )
         Nothing ->
-          let datum = GovernanceDatum ownPkh $ Validation.xGovCurrencySymbol gov
+          let datum = 
+            GovernanceDatum ownPkh $ Validation.xGovCurrencySymbol gov
            in ( sconcat
                   [ Constraints.mustMintValue xGovValue
-                  , Constraints.mustPayToTheScript datum $ Validation.govSingleton gov amnt
+                  , Constraints.mustPayToTheScript datum $ 
+                      Validation.govSingleton gov amnt
                   ]
               , sconcat
-                  [ Constraints.mintingPolicy $ Validation.xGovMintingPolicy gov
+                  [ Constraints.mintingPolicy $ 
+                      Validation.xGovMintingPolicy gov
                   , Constraints.otherScript $ Validation.govValidator gov
-                  , Constraints.typedValidatorLookups $ Validation.govInstance gov
+                  , Constraints.typedValidatorLookups $ 
+                      Validation.govInstance gov
                   ]
               )
 
       xGovValue = Validation.xgovSingleton gov ownPkh amnt
 
-  ledgerTx <- Contract.submitTxConstraintsWith @Validation.Governance lookups tx
+  ledgerTx <- Contract.submitTxConstraintsWith 
+                @Validation.Governance lookups tx
   void $ Contract.awaitTxConfirmed $ txId ledgerTx
   Contract.logInfo @String $ printf "deposited %s GOV tokens" (show amnt)
 
@@ -110,35 +119,44 @@ withdraw gov (Api.Withdraw assets) = do
               valGov = Validation.govSingleton gov (snd ac)
               scriptBalance = utxo ^. ciTxOutValue
            in ( sconcat
-                  [ Constraints.mustPayToTheScript datum $ scriptBalance - valGov
+                  [ Constraints.mustPayToTheScript datum $ 
+                      scriptBalance - valGov
                   , Constraints.mustPayToPubKey ownPkh valGov
                   , Constraints.mustMintValue (negate valxGov)
-                  , Constraints.mustSpendScriptOutput oref (Redeemer . toBuiltinData . GRWithdraw $ snd ac)
+                  , Constraints.mustSpendScriptOutput oref 
+                      (Redeemer . toBuiltinData . GRWithdraw $ snd ac)
                   ]
               , sconcat
-                  [ Constraints.typedValidatorLookups $ Validation.govInstance gov
+                  [ Constraints.typedValidatorLookups $ 
+                      Validation.govInstance gov
                   , Constraints.otherScript $ Validation.govValidator gov
-                  , Constraints.mintingPolicy $ Validation.xGovMintingPolicy gov
+                  , Constraints.mintingPolicy $ 
+                      Validation.xGovMintingPolicy gov
                   , Constraints.unspentOutputs $ Map.singleton oref utxo
                   ]
               )
 
   ledgerTx <- Contract.submitTxConstraintsWith @Validation.Governance lookups tx
   void $ Contract.awaitTxConfirmed $ txId ledgerTx
-  Contract.logInfo @String $ printf "withdrew %s GOV tokens" (show . sum $ map snd assets)
+  Contract.logInfo @String $ 
+    printf "withdrew %s GOV tokens" (show . sum $ map snd assets)
 
 -- TODO fix (works but transaction sizes are HUGE)
 provideRewards :: AssetClassGov -> Api.ProvideRewards -> GovernanceContract ()
 provideRewards gov (Api.ProvideRewards val) = do
   depositMap <- depositMapC
-  let -- annotates each depositor with the total percentage of GOV deposited to the contract
-      (total, props) = foldr (\(pkh, amm) (t, p) -> (amm + t, (pkh, amm % total) : p)) (0, mempty) depositMap
+  let -- annotates each depositor with the total percentage of GOV deposited 
+      -- to the contract
+      (total, props) = 
+        foldr (\(pkh, amm) (t, p) -> (amm + t, (pkh, amm % total) : p)) 
+        (0, mempty) depositMap
 
       dispatch =
         map
           ( \(pkh, prop) ->
               case pkh of
-                Just pkh' -> Just (pkh', Value $ fmap (round.(prop *).(% 1)) <$> getValue val)
+                Just pkh' -> Just (pkh', Value $ fmap (round.(prop *).(% 1)) <$> 
+                                  getValue val)
                 Nothing -> Nothing
           )
           props
@@ -153,14 +171,16 @@ provideRewards gov (Api.ProvideRewards val) = do
           [ Constraints.otherScript $ Validation.govValidator gov
           ]
 
-  ledgerTx <- Contract.submitTxConstraintsWith @Validation.Governance lookups tx
+  ledgerTx <- Contract.submitTxConstraintsWith 
+                @Validation.Governance lookups tx
   void $ Contract.awaitTxConfirmed $ txId ledgerTx
   Contract.logInfo @String $ printf "Provided rewards to all xGOV holders"
   where
     err = Contract.throwError "Could not find PublicKeyHash."
 
     govOf v = valueOf v (acGovCurrencySymbol gov) (acGovTokenName gov)
-    getPkh (_, o) = (,) ((txOutPubKey . toTxOut) o) (govOf . txOutValue . toTxOut $ o)
+    getPkh (_, o) = (,) ((txOutPubKey . toTxOut) o) 
+                    (govOf . txOutValue . toTxOut $ o)
     depositMapC = do
       utxos <- fmap Map.toList . Contract.utxosAt $ Validation.govAddress gov
       pure $ getPkh <$> utxos
@@ -175,11 +195,13 @@ queryBalance gov (Api.QueryBalance pkh) = do
 
 --- util
 
--- looks for governance, returns one with the biggest GOV value attached to it, if it exists
+-- looks for governance, returns one with the biggest GOV value attached to it,
+-- if it exists
 findGovernance ::
   PubKeyHash ->
   AssetClassGov ->
-  GovernanceContract (Maybe (Validation.GovernanceDatum, ChainIndexTxOut, TxOutRef))
+  GovernanceContract (Maybe (Validation.GovernanceDatum, ChainIndexTxOut, 
+                            TxOutRef))
 findGovernance pkh gov@AssetClassGov {..} = do
   utxos <- Contract.utxosAt $ Validation.govAddress gov
   case Map.toList utxos >>= foo of
@@ -191,6 +213,7 @@ findGovernance pkh gov@AssetClassGov {..} = do
     getVal (_, tx, _) = govOf $ tx ^. ciTxOutValue
     foo (oref, o) = case o ^? ciTxOutDatum of
       Just (Right (Datum e)) -> case fromBuiltinData e of
-        Just gd | gd == pkh -> [(GovernanceDatum gd acGovCurrencySymbol, o, oref)]
+        Just gd | gd == pkh -> [(GovernanceDatum gd acGovCurrencySymbol, o, 
+                                oref)]
         _ -> mempty
       _ -> mempty

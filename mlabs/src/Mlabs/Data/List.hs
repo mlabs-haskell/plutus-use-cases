@@ -59,7 +59,8 @@ take n
 -}
 sortOn :: Ord b => (a -> b) -> [a] -> [a]
 sortOn f =
-  map snd . sortBy (comparing fst) . map (\x -> let y = f x in y `Hask.seq` (y, x))
+  map snd . sortBy (comparing fst) . map 
+    (\x -> let y = f x in y `Hask.seq` (y, x))
 
 {-# INLINEABLE sortBy #-}
 

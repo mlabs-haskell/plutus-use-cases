@@ -71,7 +71,8 @@ instance Eq NftId where
 {-# INLINEABLE initNft #-}
 
 -- | Initialise NFT
-initNft :: TxOutRef -> UserId -> BuiltinByteString -> Rational -> Maybe Integer -> Nft
+initNft :: TxOutRef -> UserId -> BuiltinByteString -> Rational -> Maybe Integer 
+        -> Nft
 initNft nftInRef author content share mPrice =
   Nft
     { nft'id = toNftId nftInRef content

@@ -8,7 +8,8 @@ import Prelude
 
 import Data.Functor (void)
 import Data.Monoid (Last (..))
-import Plutus.Trace.Emulator (EmulatorRuntimeError (..), EmulatorTrace, activateContractWallet, observableState, throwError, waitNSlots)
+import Plutus.Trace.Emulator (EmulatorRuntimeError (..), EmulatorTrace, 
+  activateContractWallet, observableState, throwError, waitNSlots)
 import Wallet.Emulator (Wallet)
 
 import Mlabs.Nft.Contract.Api (Buy (..), SetPrice (..), StartParams)

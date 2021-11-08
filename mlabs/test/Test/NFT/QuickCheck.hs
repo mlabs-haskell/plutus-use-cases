@@ -3,7 +3,8 @@
 module Test.NFT.QuickCheck where
 
 import Data.String (IsString (..))
-import PlutusTx.Prelude hiding (fmap, length, mconcat, unless, (<$>), (<*>), (==))
+import PlutusTx.Prelude hiding (fmap, length, mconcat, unless, (<$>), (<*>),
+  (==))
 import Test.QuickCheck qualified as QC
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.QuickCheck (testProperty)
@@ -33,18 +34,23 @@ import Test.NFT.Init
 --     deriving (Hask.Show, Hask.Eq)
 
 --   data ContractInstanceKey NftModel w s e where
---     Key :: Wallet -> ContractInstanceKey NftModel (Last NftId) NFTAppSchema Text
+--     Key :: Wallet -> 
+--     ContractInstanceKey NftModel (Last NftId) NFTAppSchema Text
 
 --   instanceTag key _ = fromString $ Hask.show key
 
 --   arbitraryAction _ =
 --     QC.oneof
 --       [ Hask.pure ActionMint
---       , ActionSetPrice <$> genWallet <*> QC.oneof [Hask.pure Nothing, Just <$> genNonNeg]
---       , ActionBuy <$> genWallet <*> genNonNeg <*> QC.oneof [Hask.pure Nothing, Just <$> genNonNeg]
+--       , ActionSetPrice <$> genWallet <*> 
+--          QC.oneof [Hask.pure Nothing, Just <$> genNonNeg]
+--       , ActionBuy <$> genWallet <*> genNonNeg <*> QC.oneof 
+--          [Hask.pure Nothing, Just <$> genNonNeg]
 --       ]
 
---   initialState = NftModel Nothing w1 w1 False $ Map.fromList [(w1, 1000), (w2, 1000), (w3, 1000)]
+--   initialState = 
+--      NftModel Nothing w1 w1 False $ 
+--        Map.fromList [(w1, 1000), (w2, 1000), (w3, 1000)]
 
 --   nextState ActionMint = do
 --     mMinted $= True
@@ -59,7 +65,8 @@ import Test.NFT.Init
 --     let currPrice = s ^. mPrice
 --     let authorShare = price `div` 10
 --     let ownerShare = price - authorShare
---     if s ^. mWallets . at wal >= Just price && Just price >= currPrice && isJust currPrice && s ^. mMinted
+--     if s ^. mWallets . at wal >= Just price && Just price >= 
+--       currPrice && isJust currPrice && s ^. mMinted
 --       then do
 --         (mWallets . at (s ^. mAuthor)) $~ fmap (+ authorShare)
 --         (mWallets . at (s ^. mOwner)) $~ fmap (+ ownerShare)
@@ -84,7 +91,8 @@ import Test.NFT.Init
 --       hdl <- activateContractWallet wal endpoints
 --       Last nid <- observableState hdl
 --       case nid of
---         Just nftId -> callEndpoint @"buy" hdl (BuyRequestUser nftId price newPrice)
+--         Just nftId -> 
+--          callEndpoint @"buy" hdl (BuyRequestUser nftId price newPrice)
 --         Nothing -> throwError $ GenericError "NFT not minted"
 --       void $ waitNSlots 10
 --   perform _ s (ActionSetPrice wal price) = do
@@ -92,7 +100,8 @@ import Test.NFT.Init
 --       hdl <- activateContractWallet wal endpoints
 --       Last nid <- observableState hdl
 --       case nid of
---         Just nftId -> callEndpoint @"set-price" hdl (SetPriceParams nftId price)
+--         Just nftId -> 
+--          callEndpoint @"set-price" hdl (SetPriceParams nftId price)
 --         Nothing -> throwError $ GenericError "NFT not minted"
 --       void $ waitNSlots 10
 

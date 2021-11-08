@@ -34,7 +34,8 @@ import Data.Text.Prettyprint.Doc (Pretty (..), viaShow)
 import GHC.Generics (Generic)
 
 import Control.Monad.Freer (interpret)
-import Plutus.Contract (Contract, EmptySchema, awaitTxConfirmed, mapError, ownPubKey, submitTx, tell)
+import Plutus.Contract (Contract, EmptySchema, awaitTxConfirmed, mapError, 
+                        ownPubKey, submitTx, tell)
 
 import Ledger (CurrencySymbol, PubKeyHash, pubKeyHash, txId)
 import Ledger.Constraints (mustPayToPubKey)
@@ -44,16 +45,21 @@ import Plutus.V1.Ledger.Value qualified as Value
 import Wallet.Emulator.Types (Wallet, walletPubKey)
 
 import Plutus.PAB.Core (EffectHandlers)
-import Plutus.PAB.Effects.Contract.Builtin (Builtin, BuiltinHandler (contractHandler), HasDefinitions (..), SomeBuiltin (..), endpointsToSchemas, handleBuiltin)
+import Plutus.PAB.Effects.Contract.Builtin (
+  Builtin, BuiltinHandler (contractHandler), HasDefinitions (..), 
+  SomeBuiltin (..), endpointsToSchemas, handleBuiltin)
 import Plutus.PAB.Simulator ()
 import Plutus.PAB.Simulator as Simulator
 
 -- FIXME this was passed as `BootstrapCfg` before update from calling side,
---       but now coz `bootstrapGovernance` moved here, had to hardcode them till can figure out better way
+--       but now coz `bootstrapGovernance` moved here, had to hardcode them 
+--       till can figure out better way
 wallets :: [Wallet]
-wallets = walletFromNumber <$> [1 .. 3] -- wallets participating, wallet #1 is admin
+wallets = walletFromNumber <$> [1 .. 3] -- wallets participating, wallet #1 is 
+                                        -- admin
 govTokenName :: Value.TokenName
-govTokenName = "GOVToken" -- name of GOV token to be paid in exchange of xGOV tokens
+govTokenName = "GOVToken" -- name of GOV token to be paid in exchange of xGOV 
+                          -- tokens
 govAmount :: Integer
 govAmount = 100
 
@@ -76,7 +82,8 @@ instance Pretty GovernanceContracts where
 type BootstrapContract = Contract (Last CurrencySymbol) EmptySchema Text ()
 
 instance HasDefinitions GovernanceContracts where
-  -- FIXME couldn't understand what should be here, demo works both like this or [Bootstrap]
+  -- FIXME couldn't understand what should be here, demo works both like this 
+  --       or [Bootstrap]
   --       didn't try other variants
   getDefinitions = []
   getSchema = \case
@@ -86,15 +93,18 @@ instance HasDefinitions GovernanceContracts where
     Bootstrap -> SomeBuiltin bootstrapGovernance
     Governance params -> SomeBuiltin $ governanceEndpoints params
 
-handlers :: EffectHandlers (Builtin GovernanceContracts) (SimulatorState (Builtin GovernanceContracts))
+handlers :: EffectHandlers (Builtin GovernanceContracts) 
+              (SimulatorState (Builtin GovernanceContracts))
 handlers = mkSimulatorHandlers def def handler
   where
     handler :: SimulatorContractHandler (Builtin GovernanceContracts)
     handler = interpret (contractHandler handleBuiltin)
 
--- FIXME before update it was possible to pass any initialization contract from Main to `handlers`
+-- FIXME before update it was possible to pass any initialization contract 
+--       from Main to `handlers`
 --       don't know how to achieve it now, had to move all config values
---       and initialization contract itself here for now just to make things work
+--       and initialization contract itself here for now just to make things 
+--       work
 --       maybe at least BootstrapCfg could passed from outside via `Bootstrap`
 -- Bootstrap Contract which mints desired tokens
 -- and distributes them ower wallets according to `BootstrapCfg`

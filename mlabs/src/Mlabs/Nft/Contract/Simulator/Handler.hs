@@ -8,7 +8,8 @@ module Mlabs.Nft.Contract.Simulator.Handler (
 import Prelude
 
 -- FIXME
--- handler related imports commented out with `-- !` to disable compilation warnings
+-- handler related imports commented out with `-- !` to disable compilation 
+-- warnings
 -- ! import Control.Monad.Freer (
 --   Eff,
 --   Member,
@@ -89,17 +90,21 @@ handlers = error "Fix required after Plutus update"
 --   interpret (handleNftContracts sp)
 
 -- FIXME
--- startNftContract :: Nft.StartParams -> Contract (Last NftId) Nft.AuthorSchema Text ()
--- startNftContract startParams = mapError (pack . show) $ Nft.startNft startParams
+-- startNftContract :: Nft.StartParams -> 
+-- Contract (Last NftId) Nft.AuthorSchema Text ()
+-- startNftContract startParams = mapError (pack . show) $ 
+-- Nft.startNft startParams
 
 -- | Runs simulator for NFT
 runSimulator :: Nft.StartParams -> Sim () -> IO ()
 runSimulator sp = withSimulator (handlers sp)
 
-withSimulator :: Simulator.SimulatorEffectHandlers (Builtin NftContracts) -> Simulation (Builtin NftContracts) () -> IO ()
+withSimulator :: Simulator.SimulatorEffectHandlers (Builtin NftContracts) 
+              -> Simulation (Builtin NftContracts) () -> IO ()
 withSimulator hs act = void $
   Simulator.runSimulationWith hs $ do
-    Simulator.logString @(Builtin NftContracts) "Starting PAB webserver. Press enter to exit."
+    Simulator.logString @(Builtin NftContracts) 
+      "Starting PAB webserver. Press enter to exit."
     shutdown <- PAB.Server.startServerDebug
     void act
     void $ liftIO getLine

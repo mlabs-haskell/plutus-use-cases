@@ -33,7 +33,8 @@ import Prelude
 import Control.Lens ((&), (.~))
 import Data.Map qualified as M
 import Ledger.Contexts (pubKeyHash)
-import Plutus.Contract.Test (CheckOptions, Wallet (..), defaultCheckOptions, emulatorConfig, walletPubKey)
+import Plutus.Contract.Test (CheckOptions, Wallet (..), defaultCheckOptions, 
+  emulatorConfig, walletPubKey)
 import Plutus.Trace.Emulator (EmulatorTrace, initialChainState)
 import Plutus.V1.Ledger.Ada qualified as Ada
 import Plutus.V1.Ledger.Crypto (PubKeyHash (..))
@@ -47,7 +48,9 @@ import Mlabs.Lending.Logic.Types (Coin, LendexId (..), UserAct (..), UserId (..)
 import Mlabs.Utils.Wallet (walletFromNumber)
 
 checkOptions :: CheckOptions
-checkOptions = defaultCheckOptions & emulatorConfig . initialChainState .~ Left initialDistribution
+checkOptions = 
+  defaultCheckOptions & emulatorConfig . initialChainState .~ 
+    Left initialDistribution
 
 -- | Wallets that are used for testing.
 wAdmin, w1, w2, w3 :: Wallet

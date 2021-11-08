@@ -52,7 +52,8 @@ initApp = do
   appInstance <- createListHead
   let appSymbol = getAppSymbol appInstance
   Contract.tell . Last . Just $ appSymbol
-  Contract.logInfo @Hask.String $ printf "Finished Initialisation: App symbol: %s" (Hask.show appSymbol)
+  Contract.logInfo @Hask.String $ printf 
+    "Finished Initialisation: App symbol: %s" (Hask.show appSymbol)
 
 {- | Initialise the application at the address of the script by creating the
  HEAD of the list, and coupling the one time token with the Head of the list.
@@ -70,7 +71,8 @@ createListHead = do
     mintListHead appInstance uniqueTokenValue headDatum = do
       let headPolicy = mintPolicy appInstance
           emptyTokenName = TokenName PlutusTx.Prelude.emptyByteString
-          proofTokenValue = Value.singleton (scriptCurrencySymbol headPolicy) emptyTokenName 1
+          proofTokenValue = 
+            Value.singleton (scriptCurrencySymbol headPolicy) emptyTokenName 1
           initRedeemer = asRedeemer Initialise
           (lookups, tx) =
             ( mconcat
@@ -78,18 +80,22 @@ createListHead = do
                 , Constraints.mintingPolicy headPolicy
                 ]
             , mconcat
-                [ Constraints.mustPayToTheScript headDatum (proofTokenValue <> uniqueTokenValue)
-                , Constraints.mustMintValueWithRedeemer initRedeemer proofTokenValue
+                [ Constraints.mustPayToTheScript headDatum 
+                    (proofTokenValue <> uniqueTokenValue)
+                , Constraints.mustMintValueWithRedeemer initRedeemer 
+                    proofTokenValue
                 ]
             )
       void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
-      Contract.logInfo @Hask.String $ printf "forged HEAD for %s" (Hask.show appInstance)
+      Contract.logInfo @Hask.String $ printf 
+        "forged HEAD for %s" (Hask.show appInstance)
 
     -- Contract that mints a unique token to be used in the minting of the head
     generateUniqueToken :: GenericContract (AssetClass, Value)
     generateUniqueToken = do
       self <- Ledger.pubKeyHash <$> ownPubKey
-      let nftTokenName = TokenName "Unique App Token" --PlutusTx.Prelude.emptyByteString
+      let nftTokenName = TokenName "Unique App Token" 
+                        -- PlutusTx.Prelude.emptyByteString
       x <-
         mapError
           (pack . Hask.show @CurrencyError)

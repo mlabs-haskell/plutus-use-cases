@@ -8,7 +8,8 @@ module Mlabs.Lending.Contract.Simulator.Handler (
 
 import Prelude
 
--- handler related imports commented out with `-- !` to disable compilation warnings
+-- handler related imports commented out with `-- !` to disable compilation 
+-- warnings
 -- ! import Control.Monad.Freer (
 --   Eff,
 --   Member,
@@ -57,7 +58,8 @@ type Sim a = Simulation (Builtin LendexContracts) a
 data LendexContracts
   = -- | init wallets
     Init
-  | -- | we read Lendex identifier and instantiate schema for the user actions
+  | -- | we read Lendex identifier and instantiate schema for the 
+    -- user actions
     User
   | -- | price oracle actions
     Oracle
@@ -71,7 +73,8 @@ data LendexContracts
 instance Pretty LendexContracts where
   pretty = viaShow
 
-type InitContract = Contract (Last CurrencySymbol) EmptySchema Server.LendexError ()
+type InitContract = 
+  Contract (Last CurrencySymbol) EmptySchema Server.LendexError ()
 
 -- FIXME
 -- handleLendexContracts lendexId initHandler =
@@ -100,7 +103,8 @@ type InitContract = Contract (Last CurrencySymbol) EmptySchema Server.LendexErro
 --     Query -> SomeBuiltin $ Server.queryEndpoints lendexId
 
 -- FIXME
-handlers :: LendexId -> InitContract -> SimulatorEffectHandlers (Builtin LendexContracts)
+handlers :: LendexId -> InitContract 
+         -> SimulatorEffectHandlers (Builtin LendexContracts)
 handlers = error "Fix required after Plutus update"
 
 -- handlers lid initContract =
@@ -111,10 +115,12 @@ handlers = error "Fix required after Plutus update"
 runSimulator :: LendexId -> InitContract -> Sim () -> IO ()
 runSimulator lid initContract = withSimulator (handlers lid initContract)
 
-withSimulator :: Simulator.SimulatorEffectHandlers (Builtin LendexContracts) -> Simulation (Builtin LendexContracts) () -> IO ()
+withSimulator :: Simulator.SimulatorEffectHandlers (Builtin LendexContracts) 
+              -> Simulation (Builtin LendexContracts) () -> IO ()
 withSimulator hs act = void $
   Simulator.runSimulationWith hs $ do
-    Simulator.logString @(Builtin LendexContracts) "Starting PAB webserver. Press enter to exit."
+    Simulator.logString @(Builtin LendexContracts) 
+      "Starting PAB webserver. Press enter to exit."
     shutdown <- PAB.Server.startServerDebug
     void act
     void $ liftIO getLine

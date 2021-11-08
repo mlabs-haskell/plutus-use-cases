@@ -16,16 +16,19 @@ import Control.Monad (forever)
 import Data.Map qualified as M
 import Data.Monoid (Last (..))
 import Ledger.Address (pubKeyAddress)
-import Ledger.Constraints (mintingPolicy, mustIncludeDatum, mustMintValue, mustSpendPubKeyOutput, ownPubKeyHash)
+import Ledger.Constraints (mintingPolicy, mustIncludeDatum, mustMintValue, 
+  mustSpendPubKeyOutput, ownPubKeyHash)
 import Ledger.Crypto (pubKeyHash)
 import Ledger.Tx (ciTxOutDatum)
 import Mlabs.Data.List (firstJustRight)
 import Mlabs.Emulator.Types (ownUserId)
-import Mlabs.Nft.Contract.Api (AuthorSchema, Buy, IsUserAct, SetPrice, StartParams (..), UserSchema, toUserAct)
+import Mlabs.Nft.Contract.Api (AuthorSchema, Buy, IsUserAct, SetPrice, 
+  StartParams (..), UserSchema, toUserAct)
 import Mlabs.Nft.Contract.StateMachine qualified as SM
 import Mlabs.Nft.Logic.Types (Act (UserAct), NftId, initNft, toNftId)
 import Mlabs.Plutus.Contract (getEndpoint, selectForever)
-import Plutus.Contract (Contract, logError, ownPubKey, tell, throwError, toContract, utxosAt)
+import Plutus.Contract (Contract, logError, ownPubKey, tell, throwError, 
+  toContract, utxosAt)
 import Plutus.V1.Ledger.Api (Datum)
 import PlutusTx.Prelude hiding ((<>))
 
@@ -79,7 +82,8 @@ startNft StartParams {..} = do
             mustMintValue val
               <> mustSpendPubKeyOutput oref
       authorId <- ownUserId
-      SM.runInitialiseWith nftId (initNft oref authorId sp'content sp'share sp'price) val lookups tx
+      SM.runInitialiseWith nftId 
+        (initNft oref authorId sp'content sp'share sp'price) val lookups tx
       tell $ Last $ Just nftId
 
 ----------------------------------------------------------------
@@ -97,6 +101,7 @@ getUserAct act = do
 findInputStateDatum :: NftId -> UserContract Datum
 findInputStateDatum nid = do
   utxos <- utxosAt (SM.nftAddress nid)
-  maybe err pure $ firstJustRight (preview ciTxOutDatum . snd) $ M.toList utxos
+  maybe err pure $ firstJustRight (preview ciTxOutDatum . snd) $ 
+    M.toList utxos
   where
     err = throwError $ SM.toNftError "Can not find NFT app instance"

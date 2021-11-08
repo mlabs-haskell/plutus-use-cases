@@ -91,7 +91,8 @@ instance Validators.ValidatorTypes Governance where
 -- | governance validator
 {-# INLINEABLE govValidator #-}
 
-mkValidator :: AssetClassGov -> GovernanceDatum -> GovernanceRedeemer -> ScriptContext -> Bool
+mkValidator :: AssetClassGov -> GovernanceDatum -> GovernanceRedeemer 
+            -> ScriptContext -> Bool
 mkValidator !gov !datum !redeemer !ctx =
   traceIfFalse "incorrect value from redeemer" checkCorrectValue
     && traceIfFalse "incorrect minting script involvenment" checkForging
@@ -133,12 +134,13 @@ mkValidator !gov !datum !redeemer !ctx =
     --- checks
 
     checkForging :: Bool
-    !checkForging = case AssocMap.lookup xGov . Value.getValue $ txInfoMint info of
-      Nothing -> False
-      Just !mp -> case (redeemer, AssocMap.lookup (coerce pkh) mp) of
-        (GRDeposit !n, Just !m) -> n == m
-        (GRWithdraw !n, Just !m) -> n == negate m
-        _ -> False
+    !checkForging = case AssocMap.lookup xGov . Value.getValue $ 
+      txInfoMint info of
+        Nothing -> False
+        Just !mp -> case (redeemer, AssocMap.lookup (coerce pkh) mp) of
+          (GRDeposit !n, Just !m) -> n == m
+          (GRWithdraw !n, Just !m) -> n == negate m
+          _ -> False
 
     checkCorrectValue :: Bool
     !checkCorrectValue = case redeemer of
@@ -168,7 +170,8 @@ govAddress = scriptAddress . govValidator
 
 {-# INLINEABLE govSingleton #-}
 govSingleton :: AssetClassGov -> Integer -> Value
-govSingleton AssetClassGov {..} = Value.singleton acGovCurrencySymbol acGovTokenName
+govSingleton AssetClassGov {..} = 
+  Value.singleton acGovCurrencySymbol acGovTokenName
 
 xgovSingleton :: AssetClassGov -> PubKeyHash -> Integer -> Value
 xgovSingleton gov pkh = Value.singleton (xGovCurrencySymbol gov) (coerce pkh)
@@ -185,10 +188,13 @@ mkPolicy vh AssetClassGov {..} _ !ctx =
     isGov _ = False
 
     getGovernanceIn :: [TxOut]
-    !getGovernanceIn = filter (isGov . addressCredential . txOutAddress) . map txInInfoResolved $ txInfoInputs info
+    !getGovernanceIn = 
+      filter (isGov . addressCredential . txOutAddress) . map txInInfoResolved $ 
+        txInfoInputs info
 
     getGovernanceOut :: [TxOut]
-    !getGovernanceOut = filter (isGov . addressCredential . txOutAddress) $ txInfoOutputs info
+    !getGovernanceOut = filter (isGov . addressCredential . txOutAddress) $ 
+      txInfoOutputs info
 
     -- how much GOV sits 'at every pkh'
     pkhWithGov :: [TxOut] -> [(PubKeyHash, Integer)]
@@ -200,12 +206,14 @@ mkPolicy vh AssetClassGov {..} _ !ctx =
             Nothing -> traceError "no datum on governance"
             Just (Datum d) -> case PlutusTx.fromBuiltinData d of
               Nothing -> traceError "no datum parse"
-              Just !gd -> case AssocMap.lookup acGovCurrencySymbol . Value.getValue $ txOutValue utxo of
+              Just !gd -> case AssocMap.lookup acGovCurrencySymbol . 
+                            Value.getValue $ txOutValue utxo of
                 Nothing -> [] -- just in case someone puts some other tokens in the script
                 Just !mp -> [(gdPubKeyHash gd, snd . head $ AssocMap.toList mp)]
 
     differenceGovDeposits :: [(PubKeyHash, Integer)]
-    !differenceGovDeposits = filter ((> 0) . snd) $ foldr foo [] (pkhWithGov getGovernanceOut)
+    !differenceGovDeposits = 
+      filter ((> 0) . snd) $ foldr foo [] (pkhWithGov getGovernanceOut)
       where
         !inMap = AssocMap.fromList $ pkhWithGov getGovernanceIn
 
@@ -214,17 +222,22 @@ mkPolicy vh AssetClassGov {..} _ !ctx =
           Just !m -> (pkh, n - m) : xs
 
     mintedDeposit :: [(TokenName, Integer)]
-    mintedDeposit = case AssocMap.lookup (ownCurrencySymbol ctx) . Value.getValue $ txInfoMint info of
-      Nothing -> traceError "no self minting"
-      Just !mp -> filter ((> 0) . snd) $ AssocMap.toList mp
+    mintedDeposit = 
+      case AssocMap.lookup (ownCurrencySymbol ctx) . Value.getValue $ 
+        txInfoMint info of
+        Nothing -> traceError "no self minting"
+        Just !mp -> filter ((> 0) . snd) $ AssocMap.toList mp
 
     -- checks
 
-    -- mintedDeposit \subseteq differenceGovDeposits => minteddeposit == differencegovdeposits
+    -- mintedDeposit \subseteq differenceGovDeposits => 
+    -- minteddeposit == differencegovdeposits
     checkMintedSubsetGovDeposits :: Bool
-    checkMintedSubsetGovDeposits = foldr memb True (map (first coerce) mintedDeposit)
+    checkMintedSubsetGovDeposits = 
+      foldr memb True (map (first coerce) mintedDeposit)
       where
-        memb !pair !b = (b &&) . foldr (||) False $ map (== pair) differenceGovDeposits
+        memb !pair !b = (b &&) . foldr (||) False $ 
+          map (== pair) differenceGovDeposits
 
 -- yes, I've only done it ^this way so that it compiles
 

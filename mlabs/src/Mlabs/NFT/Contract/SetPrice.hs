@@ -73,7 +73,8 @@ setPrice symbol SetPriceParams {..} = do
   Contract.tell . Last . Just $ sp'nftId
   Contract.logInfo @Hask.String "set-price successful!"
   where
-    updateDatum node = node {node'information = (node'information node) {info'price = sp'price}}
+    updateDatum node = 
+      node {node'information = (node'information node) {info'price = sp'price}}
 
     negativePrice = case sp'price of
       Nothing -> False

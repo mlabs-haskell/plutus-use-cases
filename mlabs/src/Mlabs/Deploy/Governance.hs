@@ -20,7 +20,8 @@ serializeGovernance :: IO ()
 serializeGovernance = do
   let acGov =
         AssetClassGov
-          "fda1b6b487bee2e7f64ecf24d24b1224342484c0195ee1b7b943db50" -- MintingPolicy.plutus
+        -- MintingPolicy.plutus
+          "fda1b6b487bee2e7f64ecf24d24b1224342484c0195ee1b7b943db50" 
           "GOV"
       validator = validatorScript $ govInstance acGov
       policy = xGovMintingPolicy acGov

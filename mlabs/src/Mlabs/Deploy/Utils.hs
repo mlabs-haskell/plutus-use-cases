@@ -33,7 +33,8 @@ import PlutusTx (ToData, toData)
 validatorToPlutus :: FilePath -> Validator -> IO ()
 validatorToPlutus file validator = do
   -- taken from here
-  -- https://github.com/input-output-hk/Alonzo-testnet/blob/main/resources/plutus-sources/plutus-example/app/plutus-minting-purple-example.hs
+  -- https://github.com/input-output-hk/Alonzo-testnet/blob/main/resources
+  -- /plutus-sources/plutus-example/app/plutus-minting-purple-example.hs
   let (validatorPurpleScript, validatorAsSBS) = serializeValidator validator
   case Plutus.defaultCostModelParams of
     Just m ->
@@ -63,7 +64,8 @@ policyToPlutus file policy =
     file
     $ Plutus.Validator $ Plutus.unMintingPolicyScript policy
 
-serializeValidator :: Validator -> (PlutusScript PlutusScriptV1, SBS.ShortByteString)
+serializeValidator :: Validator -> (PlutusScript PlutusScriptV1, 
+                                    SBS.ShortByteString)
 serializeValidator validator =
   let sbs :: SBS.ShortByteString
       sbs = SBS.toShort . LB.toStrict . serialise $ validator

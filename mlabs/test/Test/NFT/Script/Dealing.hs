@@ -19,16 +19,24 @@ import Test.Tasty.Plutus.Script.Unit
 testDealing :: TestTree
 testDealing = withValidator "Test NFT dealing validator" dealingValidator $ do
   shouldValidate "Can buy from author" validBuyData validBuyContext
-  shouldValidate "Author can set price when owner" validSetPriceData validSetPriceContext
-  shouldValidate "Owner can set price" ownerUserOneSetPriceData ownerUserOneSetPriceContext
-  shouldn'tValidate "Author can't set price when not owner" ownerUserOneSetPriceData authorNotOwnerSetPriceContext
-  shouldn'tValidate "Can't buy if not for sale" notForSaleData notForSaleContext
-  shouldn'tValidate "Can't buy if bid not high enough" bidNotHighEnoughData bidNotHighEnoughContext
-  shouldn'tValidate "Can't buy if author not paid" validBuyData authorNotPaidContext
-  shouldn'tValidate "Can't buy if owner not paid" ownerNotPaidData ownerNotPaidContext
+  shouldValidate "Author can set price when owner" 
+    validSetPriceData validSetPriceContext
+  shouldValidate "Owner can set price" 
+    ownerUserOneSetPriceData ownerUserOneSetPriceContext
+  shouldn'tValidate "Author can't set price when not owner" 
+    ownerUserOneSetPriceData authorNotOwnerSetPriceContext
+  shouldn'tValidate "Can't buy if not for sale" 
+    notForSaleData notForSaleContext
+  shouldn'tValidate "Can't buy if bid not high enough" 
+    bidNotHighEnoughData bidNotHighEnoughContext
+  shouldn'tValidate "Can't buy if author not paid" 
+    validBuyData authorNotPaidContext
+  shouldn'tValidate "Can't buy if owner not paid" 
+    ownerNotPaidData ownerNotPaidContext
 
 -- TODO: bring back this test if `tasty-plutus` would allow to change datum order
--- shouldn'tValidate "Can't buy with inconsistent datum" validBuyData inconsistentDatumContext
+-- shouldn'tValidate "Can't buy with inconsistent datum" validBuyData 
+-- inconsistentDatumContext
 
 initialNode :: NFT.NftListNode
 initialNode =
@@ -161,7 +169,8 @@ bidNotHighEnoughContext =
 notForSaleContext :: ContextBuilder 'ForSpending
 notForSaleContext =
   paysToWallet TestValues.userOneWallet TestValues.oneNft
-    <> paysToWallet TestValues.authorWallet (TestValues.adaValue 100)
+    <> paysToWallet TestValues.authorWallet 
+        (TestValues.adaValue 100)
     <> paysOther NFT.txValHash oneNft notForSaleDatum
 
 authorNotPaidContext :: ContextBuilder 'ForSpending
@@ -177,7 +186,8 @@ ownerNotPaidContext =
 inconsistentDatumContext :: ContextBuilder 'ForSpending
 inconsistentDatumContext =
   paysToWallet TestValues.userOneWallet TestValues.oneNft
-    <> paysToWallet TestValues.authorWallet (TestValues.adaValue 100)
+    <> paysToWallet TestValues.authorWallet 
+        (TestValues.adaValue 100)
     <> paysOther NFT.txValHash oneNft inconsistentDatum
 
 -- SetPrice test cases
@@ -212,7 +222,8 @@ validSetPriceContext =
     -- TODO: choose between `paysOther NFT.txValHash` and `output` (see below)
     <> paysOther NFT.txValHash oneNft initialAuthorDatum
 
--- <> (output $ Output (OwnType $ toBuiltinData initialAuthorDatum) TestValues.oneNft)
+-- <> (output $ Output (OwnType $ toBuiltinData initialAuthorDatum) 
+-- TestValues.oneNft)
 
 ownerUserOneSetPriceContext :: ContextBuilder 'ForSpending
 ownerUserOneSetPriceContext =

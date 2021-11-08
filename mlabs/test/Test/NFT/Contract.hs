@@ -60,35 +60,38 @@ testBuyTwice = check "Buy twice" (checkScene scene) w1 script
 
 -- | User 1 tries to set price after user 2 owned the NFT.
 testChangePriceWithoutOwnership :: TestTree
-testChangePriceWithoutOwnership = check "Sets price without ownership" (checkScene scene) w1 script
-  where
-    script = do
-      nft1 <- userMint w1 artwork1
-      userSetPrice w1 $ SetPriceParams nft1 (Just 1_000_000)
-      userBuy w2 $ BuyRequestUser nft1 1_000_000 Nothing
-      userSetPrice w1 $ SetPriceParams nft1 (Just 2_000_000)
-    scene =
-      mconcat
-        [ w1 `ownsAda` 1_000_000
-        , w2 `ownsAda` (-1_000_000)
-        ]
+testChangePriceWithoutOwnership = 
+  check "Sets price without ownership" (checkScene scene) w1 script
+    where
+      script = do
+        nft1 <- userMint w1 artwork1
+        userSetPrice w1 $ SetPriceParams nft1 (Just 1_000_000)
+        userBuy w2 $ BuyRequestUser nft1 1_000_000 Nothing
+        userSetPrice w1 $ SetPriceParams nft1 (Just 2_000_000)
+      scene =
+        mconcat
+          [ w1 `ownsAda` 1_000_000
+          , w2 `ownsAda` (-1_000_000)
+          ]
 
 -- | User 2 tries to buy NFT which is locked (no price is set)
 testBuyLockedScript :: TestTree
-testBuyLockedScript = check "Buy locked NFT" (checkScene noChangesScene) w1 script
-  where
-    script = do
-      nft1 <- userMint w1 artwork1
-      userBuy w2 $ BuyRequestUser nft1 1_000_000 Nothing
+testBuyLockedScript = 
+  check "Buy locked NFT" (checkScene noChangesScene) w1 script
+    where
+      script = do
+        nft1 <- userMint w1 artwork1
+        userBuy w2 $ BuyRequestUser nft1 1_000_000 Nothing
 
 -- | User 2 tries to buy open NFT with not enough money
 testBuyNotEnoughPriceScript :: TestTree
-testBuyNotEnoughPriceScript = check "Buy not enough price" (checkScene noChangesScene) w1 script
-  where
-    script = do
-      nft1 <- userMint w1 artwork1
-      userSetPrice w1 $ SetPriceParams nft1 (Just 1_000_000)
-      userBuy w2 $ BuyRequestUser nft1 500_000 Nothing
+testBuyNotEnoughPriceScript = 
+  check "Buy not enough price" (checkScene noChangesScene) w1 script
+    where
+      script = do
+        nft1 <- userMint w1 artwork1
+        userSetPrice w1 $ SetPriceParams nft1 (Just 1_000_000)
+        userBuy w2 $ BuyRequestUser nft1 500_000 Nothing
 
 -- testQueryPrice :: TestTree
 -- testQueryPrice =
@@ -139,5 +142,6 @@ testBuyNotEnoughPriceScript = check "Buy not enough price" (checkScene noChanges
 --       void $ callEndpoint @"query-current-owner" hdl2 nftId
 --       void $ waitNSlots 10
 --     predicate = \case
---       Last (Just (QueryCurrentOwner (UserId hash))) -> hash == pubKeyHash (walletPubKey w1)
+--       Last (Just (QueryCurrentOwner (UserId hash))) -> hash == 
+--         pubKeyHash (walletPubKey w1)
 --       _ -> False

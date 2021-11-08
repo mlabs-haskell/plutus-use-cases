@@ -84,10 +84,14 @@ applyResp resp (BchState wallets) = fmap BchState $ case resp of
   Mint coin amount -> updateWallet Self coin amount wallets
   Burn coin amount -> updateWallet Self coin (negate amount) wallets
   where
-    updateWallet addr coin amt m = M.alterF (maybe (pure Nothing) (fmap Just . updateBalance coin amt)) addr m
+    updateWallet addr coin amt m = 
+      M.alterF (maybe (pure Nothing) (fmap Just . updateBalance coin amt))
+        addr m
 
-    updateBalance :: Coin -> Integer -> BchWallet -> Either BuiltinByteString BchWallet
-    updateBalance coin amt (BchWallet bals) = fmap BchWallet $ M.alterF (upd amt) coin bals
+    updateBalance :: Coin -> Integer -> BchWallet 
+                  -> Either BuiltinByteString BchWallet
+    updateBalance coin amt (BchWallet bals) = 
+      fmap BchWallet $ M.alterF (upd amt) coin bals
 
     upd amt x
       | res >= 0 = Right $ Just res

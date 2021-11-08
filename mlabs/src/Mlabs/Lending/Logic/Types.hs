@@ -61,7 +61,8 @@ import GHC.Generics (Generic)
 import Playground.Contract (ToSchema)
 import Plutus.V1.Ledger.Crypto (PubKeyHash)
 import Plutus.V1.Ledger.Tx (Address)
-import Plutus.V1.Ledger.Value (AssetClass (..), CurrencySymbol (..), TokenName (..), Value)
+import Plutus.V1.Ledger.Value (AssetClass (..), CurrencySymbol (..), 
+  TokenName (..), Value)
 import PlutusTx qualified
 import PlutusTx.AssocMap (Map)
 import PlutusTx.AssocMap qualified as M
@@ -98,16 +99,17 @@ data LendingPool = LendingPool
 
 instance Eq LendingPool where
   {-# INLINEABLE (==) #-}
-  (LendingPool r1 us1 c1 cm1 hr1 as1 tos1) == (LendingPool r2 us2 c2 cm2 hr2 as2 tos2) =
-    and
-      [ r1 == r2
-      , us1 == us2
-      , c1 == c2
-      , cm1 == cm2
-      , hr1 == hr2
-      , as1 == as2
-      , tos1 == tos2
-      ]
+  (LendingPool r1 us1 c1 cm1 hr1 as1 tos1) == 
+    (LendingPool r2 us2 c2 cm2 hr2 as2 tos2) =
+      and
+        [ r1 == r2
+        , us1 == us2
+        , c1 == c2
+        , cm1 == cm2
+        , hr1 == hr2
+        , as1 == as2
+        , tos1 == tos2
+        ]
 
 {- | Reserve of give coin in the pool.
  It holds all info on individual collaterals and deposits.
@@ -119,7 +121,8 @@ data Reserve = Reserve
     reserve'rate :: !CoinRate
   , -- | ratio at which liquidation of collaterals can happen for this coin
     reserve'liquidationThreshold :: !Rational
-  , -- | ratio of bonus for liquidation of the borrow in collateral of this asset
+  , -- | ratio of bonus for liquidation of the borrow in collateral of this 
+    -- asset
     reserve'liquidationBonus :: !Rational
   , -- | aToken corresponding to the coin of the reserve
     reserve'aToken :: !TokenName
@@ -200,14 +203,15 @@ data ReserveInterest = ReserveInterest
 
 instance Eq ReserveInterest where
   {-# INLINEABLE (==) #-}
-  (ReserveInterest im1 lr1 li1 ni1 lut1) == (ReserveInterest im2 lr2 li2 ni2 lut2) =
-    and
-      [ im1 == im2
-      , lr1 == lr2
-      , li1 == li2
-      , ni1 == ni2
-      , lut1 == lut2
-      ]
+  (ReserveInterest im1 lr1 li1 ni1 lut1) == 
+    (ReserveInterest im2 lr2 li2 ni2 lut2) =
+      and
+        [ im1 == im2
+        , lr1 == lr2
+        , li1 == li2
+        , ni1 == ni2
+        , lut1 == lut2
+        ]
 
 data InterestModel = InterestModel
   { im'optimalUtilisation :: !Rational
@@ -249,7 +253,8 @@ data CoinCfg = CoinCfg
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 {-# INLINEABLE initLendingPool #-}
-initLendingPool :: CurrencySymbol -> [CoinCfg] -> [UserId] -> [UserId] -> LendingPool
+initLendingPool :: CurrencySymbol -> [CoinCfg] -> [UserId] -> [UserId] 
+                -> LendingPool
 initLendingPool curSym coinCfgs admins oracles =
   LendingPool
     { lp'reserves = reserves
@@ -261,8 +266,10 @@ initLendingPool curSym coinCfgs admins oracles =
     , lp'trustedOracles = oracles
     }
   where
-    reserves = M.fromList $ fmap (\cfg -> (coinCfg'coin cfg, initReserve cfg)) coinCfgs
-    coinMap = M.fromList $ fmap (\(CoinCfg coin _ aToken _ _) -> (aToken, coin)) coinCfgs
+    reserves = M.fromList $ 
+      fmap (\cfg -> (coinCfg'coin cfg, initReserve cfg)) coinCfgs
+    coinMap = M.fromList $ 
+      fmap (\(CoinCfg coin _ aToken _ _) -> (aToken, coin)) coinCfgs
 
 {-# INLINEABLE initReserve #-}
 
@@ -412,12 +419,14 @@ data UserAct
       { act'asset :: Coin
       , act'rate :: InterestRate
       }
-  | -- | transfer amount of Asset from the user's Wallet to the Contract, locked as the user's Collateral
+  | -- | transfer amount of Asset from the user's Wallet to the Contract, 
+    -- locked as the user's Collateral
     AddCollateralAct
       { add'asset :: Coin
       , add'amount :: Integer
       }
-  | -- | transfer amount of Asset from user's Collateral locked in Contract to user's Wallet
+  | -- | transfer amount of Asset from user's Collateral locked in Contract to
+    -- user's Wallet
     RemoveCollateralAct
       { remove'asset :: Coin
       , remove'amount :: Integer
@@ -472,7 +481,8 @@ data PriceAct
 {-# INLINEABLE toLendingToken #-}
 toLendingToken :: LendingPool -> Coin -> Maybe Coin
 toLendingToken LendingPool {..} coin =
-  flip fmap (M.lookup coin lp'reserves) $ \Reserve {..} -> AssetClass (lp'currency, reserve'aToken)
+  flip fmap (M.lookup coin lp'reserves) $ \Reserve {..} -> 
+    AssetClass (lp'currency, reserve'aToken)
 
 {-# INLINEABLE fromAToken #-}
 fromAToken :: LendingPool -> TokenName -> Maybe Coin
@@ -530,15 +540,16 @@ data UserBalance = UserBalance
 
 instance Eq UserBalance where
   {-# INLINEABLE (==) #-}
-  (UserBalance id1 td1 tc1 tb1 cb1 f1) == (UserBalance id2 td2 tc2 tb2 cb2 f2) =
-    and
-      [ id1 == id2
-      , td1 == td2
-      , tc1 == tc2
-      , tb1 == tb2
-      , cb1 == cb2
-      , f1 == f2
-      ]
+  (UserBalance id1 td1 tc1 tb1 cb1 f1) == 
+    (UserBalance id2 td2 tc2 tb2 cb2 f2) =
+      and
+        [ id1 == id2
+        , td1 == td2
+        , tc1 == tc2
+        , tb1 == tb2
+        , cb1 == cb2
+        , f1 == f2
+        ]
 
 data InsolventAccount = InsolventAccount
   { -- | User Id
@@ -557,7 +568,7 @@ instance Eq InsolventAccount where
       , ic1 == ic2
       ]
 
--- If anot                                                                      her query is added, extend this data type
+-- If another query is added, extend this data type
 
 -- | Results of query endpoints calls on `QueryContract`
 data QueryRes

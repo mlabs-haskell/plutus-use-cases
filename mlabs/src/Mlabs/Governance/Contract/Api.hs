@@ -33,7 +33,8 @@ import Mlabs.Plutus.Contract (Call, IsEndpoint (..))
 -- TBD mixed withdraw/deposit endpoint
 
 -- since we have split of withdraw/deposit we might want to ensure that
--- the amounts have to be positive by construction, tbd (for now Natural has no ToSchema instance)
+-- the amounts have to be positive by construction, tbd (for now Natural
+-- has no ToSchema instance)
 newtype Deposit = Deposit Integer
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving newtype (FromJSON, ToJSON)

@@ -11,8 +11,10 @@ module Mlabs.Lending.Contract.StateMachine (
   runInitialise,
 ) where
 
-import Ledger.TimeSlot qualified as TimeSlot (posixTimeRangeToContainedSlotRange)
-import PlutusTx.Prelude hiding (Applicative (..), Monoid (..), Semigroup (..), check)
+import Ledger.TimeSlot qualified as 
+  TimeSlot (posixTimeRangeToContainedSlotRange)
+import PlutusTx.Prelude hiding 
+  (Applicative (..), Monoid (..), Semigroup (..), check)
 import PlutusTx.Prelude qualified as Plutus
 import Prelude qualified as Hask (String)
 
@@ -52,7 +54,8 @@ machine lid =
       where
         check !t =
           Ledger.Slot t
-            `Ledger.member` TimeSlot.posixTimeRangeToContainedSlotRange def range
+            `Ledger.member` 
+            TimeSlot.posixTimeRangeToContainedSlotRange def range
         !range = Ledger.txInfoValidRange $ Ledger.scriptContextTxInfo ctx
 
     !getInputTime = \case
@@ -64,8 +67,10 @@ machine lid =
 mkValidator :: Types.LendexId -> Validators.ValidatorType Lendex
 mkValidator lid = SM.mkValidator (machine lid)
 
-client :: Types.LendexId -> SM.StateMachineClient (Types.LendexId, Types.LendingPool) Types.Act
-client lid = SM.mkStateMachineClient $ SM.StateMachineInstance (machine lid) (scriptInstance lid)
+client :: Types.LendexId 
+       -> SM.StateMachineClient (Types.LendexId, Types.LendingPool) Types.Act
+client lid = SM.mkStateMachineClient $ 
+  SM.StateMachineInstance (machine lid) (scriptInstance lid)
 
 lendexValidatorHash :: Types.LendexId -> Ledger.ValidatorHash
 lendexValidatorHash lid = Validators.validatorHash (scriptInstance lid)
@@ -88,7 +93,8 @@ transition ::
   Types.LendexId ->
   SM.State (Types.LendexId, Types.LendingPool) ->
   Types.Act ->
-  Maybe (SM.TxConstraints SM.Void SM.Void, SM.State (Types.LendexId, Types.LendingPool))
+  Maybe (SM.TxConstraints SM.Void SM.Void, 
+        SM.State (Types.LendexId, Types.LendingPool))
 transition lid SM.State {stateData = !oldData, stateValue = !oldValue} input
   | lid == inputLid = case runStateT (react input) (snd oldData) of
     Left _err -> Nothing
@@ -128,9 +134,11 @@ runStepWith ::
   Types.LendexId ->
   Types.Act ->
   ScriptLookups Lendex ->
-  TxConstraints (Validators.RedeemerType Lendex) (Validators.DatumType Lendex) ->
+  TxConstraints (Validators.RedeemerType Lendex) 
+    (Validators.DatumType Lendex) ->
   Contract.Contract w schema e ()
-runStepWith lid act lookups constraints = void $ SM.runStepWith lookups constraints (client lid) act
+runStepWith lid act lookups constraints = 
+  void $ SM.runStepWith lookups constraints (client lid) act
 
 runInitialise ::
   forall w e schema.
@@ -139,4 +147,5 @@ runInitialise ::
   Types.LendingPool ->
   Ledger.Value ->
   Contract.Contract w schema e ()
-runInitialise lid lendingPool val = void $ SM.runInitialise (client lid) (lid, lendingPool) val
+runInitialise lid lendingPool val = 
+  void $ SM.runInitialise (client lid) (lid, lendingPool) val

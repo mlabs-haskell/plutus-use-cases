@@ -37,7 +37,8 @@ paysNftToScriptCtx = paysOther NFT.txValHash TestValues.oneNft ()
 
 paysDatumToScriptCtx :: ContextBuilder 'ForMinting
 paysDatumToScriptCtx =
-  spendsFromOther NFT.txValHash TestValues.oneNft (NFT.HeadDatum $ NFT.NftListHead Nothing TestValues.appInstance)
+  spendsFromOther NFT.txValHash TestValues.oneNft 
+    (NFT.HeadDatum $ NFT.NftListHead Nothing TestValues.appInstance)
     <> paysOther NFT.txValHash mempty nodeDatum
     <> paysOther NFT.txValHash mempty headDatum
   where
@@ -55,8 +56,10 @@ paysDatumToScriptCtx =
           , node'next = Nothing
           , node'appInstance = TestValues.appInstance
           }
-    ptr = NFT.Pointer $ AssetClass (TestValues.nftCurrencySymbol, TestValues.testTokenName)
-    headDatum = NFT.HeadDatum $ NFT.NftListHead (Just ptr) TestValues.appInstance
+    ptr = NFT.Pointer $ AssetClass 
+      (TestValues.nftCurrencySymbol, TestValues.testTokenName)
+    headDatum = 
+      NFT.HeadDatum $ NFT.NftListHead (Just ptr) TestValues.appInstance
 
 paysWrongAmountCtx :: ContextBuilder 'ForMinting
 paysWrongAmountCtx =
@@ -86,14 +89,16 @@ nonMintingCtx =
 wrongAmountCtx :: ContextBuilder 'ForMinting
 wrongAmountCtx =
   baseCtx <> mintingCtx <> paysDatumToScriptCtx
-    <> paysOther NFT.txValHash (TestValues.oneNft PlutusPrelude.<> TestValues.oneNft) ()
+    <> paysOther NFT.txValHash 
+      (TestValues.oneNft PlutusPrelude.<> TestValues.oneNft) ()
 
 nftMintPolicy :: Ledger.MintingPolicy
 nftMintPolicy =
   Ledger.mkMintingPolicyScript $
     $$(PlutusTx.compile [||go||])
       `PlutusTx.applyCode` ( $$(PlutusTx.compile [||NFT.mkMintPolicy||])
-                              `PlutusTx.applyCode` PlutusTx.liftCode TestValues.appInstance
+                              `PlutusTx.applyCode` PlutusTx.liftCode 
+                              TestValues.appInstance
                            )
   where
     go = toTestMintingPolicy

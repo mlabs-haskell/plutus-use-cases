@@ -53,7 +53,9 @@ acGOV :: Gov.AssetClassGov
 acGOV = Gov.AssetClassGov "ff" "GOVToken"
 
 checkOptions :: CheckOptions
-checkOptions = defaultCheckOptions & emulatorConfig . initialChainState .~ Left initialDistribution
+checkOptions = 
+  defaultCheckOptions & emulatorConfig . initialChainState .~ 
+    Left initialDistribution
 
 -- | Wallets that are used for testing.
 fstWalletWithGOV, sndWalletWithGOV, walletNoGOV, adminWallet :: Wallet

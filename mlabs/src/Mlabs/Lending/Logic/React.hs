@@ -19,14 +19,16 @@ import PlutusTx.AssocMap qualified as M
 import PlutusTx.These (these)
 import Prelude qualified as Hask
 
-import Mlabs.Control.Check (isNonNegative, isPositive, isPositiveRational, isUnitRange)
+import Mlabs.Control.Check (isNonNegative, isPositive, isPositiveRational, 
+  isUnitRange)
 import Mlabs.Data.List qualified as L
 import Mlabs.Emulator.Blockchain (Resp (Burn, Mint), moveFromTo)
 import Mlabs.Lending.Logic.InterestRate (addDeposit)
 import Mlabs.Lending.Logic.State qualified as State
 import Mlabs.Lending.Logic.Types (
   BadBorrow (BadBorrow, badBorrow'asset, badBorrow'userId),
-  CoinCfg (coinCfg'aToken, coinCfg'coin, coinCfg'interestModel, coinCfg'liquidationBonus, coinCfg'rate),
+  CoinCfg (coinCfg'aToken, coinCfg'coin, coinCfg'interestModel, 
+    coinCfg'liquidationBonus, coinCfg'rate),
   CoinRate (CoinRate, coinRate'lastUpdateTime),
   InterestModel (im'optimalUtilisation, im'slope1, im'slope2),
   LendingPool (lp'coinMap, lp'healthReport, lp'reserves, lp'users),
@@ -55,11 +57,13 @@ qReact input = do
   where
     queryAct uid time = \case
       Types.QueryCurrentBalanceAct () -> queryCurrentBalance uid time
-      Types.QueryInsolventAccountsAct () -> queryInsolventAccounts uid time
+      Types.QueryInsolventAccountsAct () -> 
+        queryInsolventAccounts uid time
 
-    ---------------------------------------------------------------------------------------------------------
+    ---------------------------------------------------------------------------
     -- Current Balance Query
-    queryCurrentBalance :: Types.UserId -> Integer -> State.St (Maybe (Last Types.QueryRes))
+    queryCurrentBalance :: Types.UserId -> Integer 
+                        -> State.St (Maybe (Last Types.QueryRes))
     queryCurrentBalance uid _cTime = do
       user <- State.getUser uid
       tWallet <- State.getAllWallets uid
@@ -77,11 +81,12 @@ qReact input = do
           , ub'funds = tWallet
           }
 
-    ---------------------------------------------------------------------------------------------------------
+    ---------------------------------------------------------------------------
     -- Insolvent Accounts Query
     -- Returns a list of users where the health of a coin is under 1, together
     -- with the health of the coin. Only admins can use.
-    queryInsolventAccounts :: Types.UserId -> Integer -> State.St (Maybe (Last Types.QueryRes))
+    queryInsolventAccounts :: Types.UserId -> Integer 
+                            -> State.St (Maybe (Last Types.QueryRes))
     queryInsolventAccounts uid _cTime = do
       State.isAdmin uid -- check user is admin
       allUsersIds :: [UserId] <- M.keys <$> State.getAllUsers
@@ -89,11 +94,14 @@ qReact input = do
       userWCoins :: [(UserId, (User, [Types.Coin]))] <-
         fmap (zip allUsersIds . zip allUsers) $
           sequence $ flip State.getsAllWallets M.keys <$> allUsersIds
-      insolventUsers :: [(UserId, [(Types.Coin, Rational)])] <- sequence $ fmap aux userWCoins
-      let onlyInsolventUsers = filter (not . null . snd) insolventUsers -- Remove the users with no insolvent coins.
+      insolventUsers :: [(UserId, [(Types.Coin, Rational)])] <- 
+        sequence $ fmap aux userWCoins
+       -- Remove the users with no insolvent coins.
+      let onlyInsolventUsers = filter (not . null . snd) insolventUsers
       pure . wrap $ uncurry Types.InsolventAccount <$> onlyInsolventUsers
       where
-        aux :: (UserId, (User, [Types.Coin])) -> State.St (UserId, [(Types.Coin, Rational)])
+        aux :: (UserId, (User, [Types.Coin])) 
+            -> State.St (UserId, [(Types.Coin, Rational)])
         aux = \(uId, (user, coins)) -> do
           y <- sequence $ flip State.getCurrentHealthCheck user <$> coins
           let coins' = fst <$> filter snd (zip coins y)
@@ -116,18 +124,23 @@ react input = do
     Types.UserAct t uid act -> withHealthCheck t $ userAct t uid act
     Types.PriceAct t uid act -> withHealthCheck t $ priceAct t uid act
     Types.GovernAct uid act -> governAct uid act
-    Types.QueryAct {} -> pure [] -- A query should produce no state modifying actions
+    Types.QueryAct {} -> pure [] -- A query should produce no state modifying 
+                                 -- actions
   where
     userAct time uid = \case
       Types.DepositAct {..} -> depositAct time uid act'amount act'asset
       Types.BorrowAct {..} -> borrowAct time uid act'asset act'amount act'rate
       Types.RepayAct {..} -> repayAct time uid act'asset act'amount act'rate
-      Types.SwapBorrowRateModelAct {..} -> swapBorrowRateModelAct uid act'asset act'rate
+      Types.SwapBorrowRateModelAct {..} -> 
+        swapBorrowRateModelAct uid act'asset act'rate
       Types.AddCollateralAct {..} -> addCollateral uid add'asset add'amount
-      Types.RemoveCollateralAct {..} -> removeCollateral uid remove'asset remove'amount
+      Types.RemoveCollateralAct {..} -> 
+        removeCollateral uid remove'asset remove'amount
       Types.WithdrawAct {..} -> withdrawAct time uid act'amount act'asset
       Types.FlashLoanAct -> flashLoanAct uid
-      Types.LiquidationCallAct {..} -> liquidationCallAct time uid act'collateral act'debt act'debtToCover act'receiveAToken
+      Types.LiquidationCallAct {..} -> 
+        liquidationCallAct time uid act'collateral act'debt act'debtToCover 
+          act'receiveAToken
 
     ---------------------------------------------------
     -- deposit
@@ -147,10 +160,12 @@ react input = do
     ---------------------------------------------------
     -- borrow
 
-    -- TODO: ignores rate strategy (stable vs variable), ratio of liquidity to borrowed totals, health-check
+    -- TODO: ignores rate strategy (stable vs variable), ratio of liquidity to 
+    -- borrowed totals, health-check
     -- For borrowing to be valid we check that
     --  * reserve has enough liquidity
-    --  * user does not use collateral reserve to borrow (it's meaningless for the user)
+    --  * user does not use collateral reserve to borrow (it's meaningless for 
+    --    the user)
     --  * user has enough collateral for the borrow
     borrowAct currentTime uid asset amount _rate = do
       hasEnoughLiquidityToBorrow asset amount
@@ -162,7 +177,8 @@ react input = do
       where
         updateOnBorrow = do
           ni <- State.getNormalisedIncome asset
-          State.modifyWallet uid asset $ \w -> w {wallet'borrow = wallet'borrow w + amount}
+          State.modifyWallet uid asset $ \w -> w 
+            {wallet'borrow = wallet'borrow w + amount}
           State.modifyReserveWallet' asset $ addDeposit ni (negate amount)
 
     hasEnoughLiquidityToBorrow asset amount = do
@@ -257,7 +273,8 @@ react input = do
 
     hasEnoughDepositToWithdraw uid amount asset = do
       dep <- State.getCumulativeBalance uid asset
-      State.guardError "Not enough deposit to withdraw" (dep >= R.fromInteger amount)
+      State.guardError "Not enough deposit to withdraw" 
+        (dep >= R.fromInteger amount)
 
     ---------------------------------------------------
     -- flash loan
@@ -267,67 +284,71 @@ react input = do
     ---------------------------------------------------
     -- liquidation call
 
-    liquidationCallAct currentTime uid collateralAsset debt amountCovered receiveATokens = do
-      isBadBorrow debt
-      wals <- State.getsUser (badBorrow'userId debt) user'wallets
-      bor <- getDebtValue wals
-      col <- getCollateralValue wals
-      isPositive "liquidation collateral" col
-      debtAmountIsLessThanHalf bor amountCovered
-      colCovered <- min col <$> getCollateralCovered amountCovered
-      adaBonus <- getBonus colCovered
-      aCollateralAsset <- State.aToken collateralAsset
-      updateBorrowUser colCovered
-      pure $
-        mconcat
-          [ moveFromTo uid Self borrowAsset amountCovered
-          , moveFromTo Self uid (receiveAsset aCollateralAsset) colCovered
-          , moveFromTo Self uid adaCoin adaBonus
-          ]
-      where
-        borrowAsset = badBorrow'asset debt
-        borrowUserId = badBorrow'userId debt
+    liquidationCallAct currentTime uid collateralAsset debt amountCovered 
+      receiveATokens = do
+        isBadBorrow debt
+        wals <- State.getsUser (badBorrow'userId debt) user'wallets
+        bor <- getDebtValue wals
+        col <- getCollateralValue wals
+        isPositive "liquidation collateral" col
+        debtAmountIsLessThanHalf bor amountCovered
+        colCovered <- min col <$> getCollateralCovered amountCovered
+        adaBonus <- getBonus colCovered
+        aCollateralAsset <- State.aToken collateralAsset
+        updateBorrowUser colCovered
+        pure $
+          mconcat
+            [ moveFromTo uid Self borrowAsset amountCovered
+            , moveFromTo Self uid (receiveAsset aCollateralAsset) colCovered
+            , moveFromTo Self uid adaCoin adaBonus
+            ]
+        where
+          borrowAsset = badBorrow'asset debt
+          borrowUserId = badBorrow'userId debt
 
-        receiveAsset aCoin
-          | receiveATokens = aCoin
-          | otherwise = collateralAsset
+          receiveAsset aCoin
+            | receiveATokens = aCoin
+            | otherwise = collateralAsset
 
-        getDebtValue wals = case M.lookup borrowAsset wals of
-          Just wal -> pure $ wallet'borrow wal
-          Nothing -> throwError "Wallet does not have the debt to liquidate"
+          getDebtValue wals = case M.lookup borrowAsset wals of
+            Just wal -> pure $ wallet'borrow wal
+            Nothing -> throwError "Wallet does not have the debt to liquidate"
 
-        getCollateralValue wals = case M.lookup collateralAsset wals of
-          Just wal -> pure $ wallet'collateral wal
-          Nothing -> throwError "Wallet does not have collateral for liquidation asset"
+          getCollateralValue wals = case M.lookup collateralAsset wals of
+            Just wal -> pure $ wallet'collateral wal
+            Nothing -> throwError 
+              "Wallet does not have collateral for liquidation asset"
 
-        debtToColateral =
-          State.convertCoin
-            State.Convert
-              { convert'from = borrowAsset
-              , convert'to = collateralAsset
-              }
+          debtToColateral =
+            State.convertCoin
+              State.Convert
+                { convert'from = borrowAsset
+                , convert'to = collateralAsset
+                }
 
-        getCollateralCovered amount = debtToColateral amount
+          getCollateralCovered amount = debtToColateral amount
 
-        getBonus amount = do
-          rate <- State.getLiquidationBonus collateralAsset
-          State.toAda collateralAsset $ R.round $ R.fromInteger amount * rate
+          getBonus amount = do
+            rate <- State.getLiquidationBonus collateralAsset
+            State.toAda collateralAsset $ R.round $ R.fromInteger amount * rate
 
-        debtAmountIsLessThanHalf userDebt amount
-          | userDebt >= 2 * amount = pure ()
-          | otherwise = throwError "Can not cover more than half of the borrow"
+          debtAmountIsLessThanHalf userDebt amount
+            | userDebt >= 2 * amount = pure ()
+            | otherwise = throwError 
+              "Can not cover more than half of the borrow"
 
-        -- we remove part of the borrow from the user and part of the collateral
-        updateBorrowUser colCovered = do
-          State.modifyWalletAndReserve borrowUserId collateralAsset $ \w ->
-            w {wallet'collateral = wallet'collateral w - colCovered}
-          State.modifyWalletAndReserve borrowUserId borrowAsset $ \w ->
-            w {wallet'borrow = wallet'borrow w - amountCovered}
-          updateSingleUserHealth currentTime borrowUserId
+          -- we remove part of the borrow from the user and part of the 
+          -- collateral
+          updateBorrowUser colCovered = do
+            State.modifyWalletAndReserve borrowUserId collateralAsset $ \w ->
+              w {wallet'collateral = wallet'collateral w - colCovered}
+            State.modifyWalletAndReserve borrowUserId borrowAsset $ \w ->
+              w {wallet'borrow = wallet'borrow w - amountCovered}
+            updateSingleUserHealth currentTime borrowUserId
 
-        isBadBorrow bor = do
-          isOk <- M.member bor <$> gets lp'healthReport
-          State.guardError "Bad borrow not present" isOk
+          isBadBorrow bor = do
+            isOk <- M.member bor <$> gets lp'healthReport
+            State.guardError "Bad borrow not present" isOk
 
     ---------------------------------------------------
     priceAct currentTime uid act = do
@@ -339,7 +360,8 @@ react input = do
     -- update on market price change
 
     setAssetPrice currentTime asset rate = do
-      State.modifyReserve asset $ \r -> r {reserve'rate = CoinRate rate currentTime}
+      State.modifyReserve asset $ \r -> 
+        r {reserve'rate = CoinRate rate currentTime}
       pure []
 
     ---------------------------------------------------
@@ -357,7 +379,8 @@ react input = do
       st <- get
       State.guardError "Reserve is already present" $
         M.member coinCfg'coin (lp'reserves st)
-      let newReserves = M.insert coinCfg'coin (initReserve cfg) $ lp'reserves st
+      let newReserves = M.insert coinCfg'coin (initReserve cfg) $ 
+                        lp'reserves st
           newCoinMap = M.insert coinCfg'aToken coinCfg'coin $ lp'coinMap st
       put $ st {lp'reserves = newReserves, lp'coinMap = newCoinMap}
       return []
@@ -379,7 +402,8 @@ react input = do
           us <- fmap setTimestamp . M.toList <$> gets lp'users
           pure $ fmap snd $ L.take userUpdateSpan $ L.sortOn fst us
 
-        setTimestamp (uid, user) = (user'lastUpdateTime user - currentTime, (uid, user))
+        setTimestamp (uid, user) = 
+          (user'lastUpdateTime user - currentTime, (uid, user))
 
     updateSingleUserHealth currentTime uid = do
       user <- State.getUser uid
@@ -387,7 +411,8 @@ react input = do
       State.modifyUser uid $ const newUser
 
     updateUserHealth currentTime (uid, user) = do
-      health <- mapM (\asset -> (asset,) <$> State.getHealth 0 asset user) userBorrows
+      health <- mapM (\asset -> (asset,) <$> 
+        State.getHealth 0 asset user) userBorrows
       L.mapM_ (reportUserHealth uid) health
       pure
         ( uid
@@ -397,11 +422,14 @@ react input = do
             }
         )
       where
-        userBorrows = M.keys $ M.filter ((> 0) . wallet'borrow) $ user'wallets user
+        userBorrows = M.keys $ M.filter ((> 0) . wallet'borrow) $ 
+                      user'wallets user
 
     reportUserHealth uid (asset, health)
-      | health >= R.fromInteger 1 = State.modifyHealthReport $ M.delete (BadBorrow uid asset)
-      | otherwise = State.modifyHealthReport $ M.insert (BadBorrow uid asset) health
+      | health >= R.fromInteger 1 = State.modifyHealthReport $ 
+          M.delete (BadBorrow uid asset)
+      | otherwise = State.modifyHealthReport $ 
+          M.insert (BadBorrow uid asset) health
 
     -- insert m1 to m2
     batchInsert m1 m2 = fmap (these id id const) $ M.union m1 m2
@@ -444,9 +472,10 @@ checkInput = \case
         isPositive "withdraw" amount
         State.isAsset asset
       Types.FlashLoanAct -> pure ()
-      Types.LiquidationCallAct collateral _debt debtToCover _recieveAToken -> do
-        State.isAsset collateral
-        isPositive "Debt to cover" debtToCover
+      Types.LiquidationCallAct collateral _debt debtToCover _recieveAToken -> 
+        do
+          State.isAsset collateral
+          isPositive "Debt to cover" debtToCover
 
     checkPriceAct time act = do
       isNonNegative "price rate timestamp" time
@@ -470,5 +499,7 @@ checkInput = \case
       isPositiveRational "slope 2" im'slope2
 
     checkCoinRateTimeProgress time asset = do
-      lastUpdateTime <- coinRate'lastUpdateTime . reserve'rate <$> State.getReserve asset
-      isNonNegative "Timestamps for price update should grow" (time - lastUpdateTime)
+      lastUpdateTime <- coinRate'lastUpdateTime . reserve'rate <$> 
+        State.getReserve asset
+      isNonNegative "Timestamps for price update should grow" 
+        (time - lastUpdateTime)

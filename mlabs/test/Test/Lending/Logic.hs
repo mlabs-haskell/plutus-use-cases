@@ -16,13 +16,15 @@ import PlutusTx.Prelude
 
 import Data.Map.Strict qualified as M
 import Plutus.V1.Ledger.Crypto (PubKeyHash (..))
-import Plutus.V1.Ledger.Value (AssetClass (AssetClass), CurrencySymbol, TokenName, currencySymbol, tokenName)
+import Plutus.V1.Ledger.Value (AssetClass (AssetClass), CurrencySymbol, 
+  TokenName, currencySymbol, tokenName)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, testCase)
 
 import Mlabs.Emulator.App (checkWallets, noErrors, someErrors)
 import Mlabs.Emulator.Blockchain (BchWallet (..))
-import Mlabs.Lending.Logic.App (AppConfig (AppConfig), LendingApp, Script, priceAct, runLendingApp, toCoin, userAct)
+import Mlabs.Lending.Logic.App (AppConfig (AppConfig), LendingApp, Script, 
+  priceAct, runLendingApp, toCoin, userAct)
 import Mlabs.Lending.Logic.Types (
   BadBorrow (BadBorrow),
   Coin,
@@ -62,12 +64,17 @@ test =
       where
         w1 = BchWallet $ M.fromList [(coin1, 50), (coin2, 30), (aCoin1, 0)]
 
-    testDeposit = testWallets [(user1, wal coin1 aToken1), (user2, wal coin2 aToken2), (user3, wal coin3 aToken3)] depositScript
+    testDeposit = testWallets [(user1, wal coin1 aToken1), 
+                              (user2, wal coin2 aToken2), 
+                              (user3, wal coin3 aToken3)] depositScript
       where
-        wal coin aToken = BchWallet $ M.fromList [(coin, 50), (fromToken aToken, 50)]
+        wal coin aToken = 
+          BchWallet $ M.fromList [(coin, 50), (fromToken aToken, 50)]
 
-    testBorrowNoCollateral = someErrors $ testScript borrowNoCollateralScript
-    testBorrowNotEnoughCollateral = someErrors $ testScript borrowNotEnoughCollateralScript
+    testBorrowNoCollateral = someErrors $ 
+      testScript borrowNoCollateralScript
+    testBorrowNotEnoughCollateral = someErrors $ 
+      testScript borrowNotEnoughCollateralScript
 
     testWithdraw = testWallets [(user1, w1)] withdrawScript
       where
@@ -85,7 +92,8 @@ test =
     --    aToken - 0 = remaining from collateral
     testRepay = testWallets [(user1, w1)] repayScript
       where
-        w1 = BchWallet $ M.fromList [(coin1, 50), (coin2, 10), (fromToken aToken1, 0)]
+        w1 = BchWallet $ 
+        M.fromList [(coin1, 50), (coin2, 10), (fromToken aToken1, 0)]
 
     testLiquidationCall =
       [ testCase "get aTokens for collateral" $
@@ -94,11 +102,14 @@ test =
           testWallets [(user1, w1), (user2, w2)] $ liquidationCallScript False
       ]
       where
-        w1 = BchWallet $ M.fromList [(coin1, 50), (coin2, 30), (fromToken aToken1, 0)]
+        w1 = BchWallet $ 
+          M.fromList [(coin1, 50), (coin2, 30), (fromToken aToken1, 0)]
         -- receive aTokens
-        w2a = BchWallet $ M.fromList [(coin2, 40), (aCoin2, 50), (aCoin1, 20), (adaCoin, 1)]
+        w2a = BchWallet $ 
+          M.fromList [(coin2, 40), (aCoin2, 50), (aCoin1, 20), (adaCoin, 1)]
         -- receive underlying currency
-        w2 = BchWallet $ M.fromList [(coin2, 40), (aCoin2, 50), (coin1, 20), (adaCoin, 1)]
+        w2 = BchWallet $ 
+          M.fromList [(coin2, 40), (aCoin2, 50), (coin1, 20), (adaCoin, 1)]
 
     testWrongUserPriceSet = someErrors $ testScript wrongUserPriceSetScript
 
@@ -195,7 +206,8 @@ repayScript = do
  * User 1 lends in coin1 and borrows in coin2
  * price for coin2 grows so that collateral is not enough
  * health check for user 1 becomes bad
- * user 2 repays part of the borrow and aquires part of the collateral of the user 1
+ * user 2 repays part of the borrow and aquires part of the collateral of the 
+   user 1
 
  So we should get the balances
 
@@ -234,7 +246,8 @@ wrongUserPriceSetScript = do
 fromToken :: TokenName -> Coin
 fromToken aToken = AssetClass (lendingPoolCurrency, aToken)
 
--- | Base currency of lending app (it's mock for monetary policy of the lending app)
+-- | Base currency of lending app (it's mock for monetary policy of the lending 
+-- app)
 lendingPoolCurrency :: CurrencySymbol
 lendingPoolCurrency = currencySymbol "lending-pool"
 
@@ -264,7 +277,8 @@ aCoin2 = fromToken aToken2
 
 {- | Default application.
  It allocates three users and three reserves for Dollars, Euros and Liras.
- Each user has 100 units of only one currency. User 1 has dollars, user 2 has euros and user 3 has liras.
+ Each user has 100 units of only one currency. User 1 has dollars, user 2 has 
+ euros and user 3 has liras.
 -}
 testAppConfig :: AppConfig
 testAppConfig = AppConfig reserves users lendingPoolCurrency admins oracles

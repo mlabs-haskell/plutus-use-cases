@@ -35,4 +35,5 @@ waitForLast cid =
 
 printBalance :: Integer -> Simulation (Builtin schema) ()
 printBalance n =
-  logBalance ("WALLET " <> show n) =<< (valueAt . Wallet.walletAddress $ walletFromNumber n)
+  logBalance ("WALLET " <> show n) =<< 
+    (valueAt . Wallet.walletAddress $ walletFromNumber n)

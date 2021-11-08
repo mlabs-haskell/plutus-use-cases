@@ -78,7 +78,8 @@ class IsUserAct a where
   toUserAct :: a -> UserAct
 
 instance IsUserAct Buy where toUserAct Buy {..} = BuyAct buy'price buy'newPrice
-instance IsUserAct SetPrice where toUserAct SetPrice {..} = SetPriceAct setPrice'newPrice
+instance IsUserAct SetPrice where toUserAct SetPrice {..} = 
+  SetPriceAct setPrice'newPrice
 
 instance IsEndpoint Buy where
   type EndpointSymbol Buy = "buy-nft"

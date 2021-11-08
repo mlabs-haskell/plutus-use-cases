@@ -34,12 +34,14 @@ logAsciiLogo color logo = do
   Pretty.logNewLine
 
 logAction :: MonadIO m => String -> m ()
-logAction str = Pretty.logPrettyColorBold (Vibrant Green) (Pretty.withNewLines str)
+logAction str = 
+  Pretty.logPrettyColorBold (Vibrant Green) (Pretty.withNewLines str)
 
 logBalance :: MonadIO m => String -> Value.Value -> m ()
 logBalance wallet val = do
   Pretty.logNewLine
-  Pretty.logPrettyBgColor 40 (Vibrant Cyan) (Standard Black) (wallet ++ " BALANCE")
+  Pretty.logPrettyBgColor 40 (Vibrant Cyan) (Standard Black) 
+    (wallet ++ " BALANCE")
   Pretty.logNewLine
   Pretty.logPrettyColor (Vibrant Cyan) (formatValue val)
   Pretty.logNewLine
@@ -53,5 +55,7 @@ formatValue v =
     formatTokenValue (_, name, value) =
       case name of
         "" -> Pretty.padRight ' ' 7 "Ada" ++ " " ++ show value
-        --         (Value.TokenName n) -> Pretty.padRight ' ' 7 $ Char8.unpack n ++ " " ++ show value
-        (Value.TokenName n) -> Pretty.padRight ' ' 7 $ show n ++ " " ++ show value
+        --         (Value.TokenName n) -> Pretty.padRight ' ' 7 $ 
+        --           Char8.unpack n ++ " " ++ show value
+        (Value.TokenName n) -> 
+          Pretty.padRight ' ' 7 $ show n ++ " " ++ show value

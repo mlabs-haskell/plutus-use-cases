@@ -27,7 +27,8 @@ type Script act = ScriptM act ()
 
 -- | Auto-allocation of timestamps, monadic interface for collection of actions
 newtype ScriptM act a = Script (Strict.State (St act) a)
-  deriving newtype (Strict.Functor, Applicative, Strict.Monad, Strict.MonadState (St act))
+  deriving newtype (Strict.Functor, Applicative, Strict.Monad, 
+                    Strict.MonadState (St act))
 
 -- | Script accumulator state.
 data St act = St
