@@ -137,23 +137,6 @@ ownerNotPaidData = SpendingTest dtm redeemer val
         }
     val = TestValues.adaValue 0 <> TestValues.oneNft
 
-mismathingIdBuyData :: TestData 'ForSpending
-mismathingIdBuyData = SpendingTest dtm redeemer val
-  where
-    dtm =
-      NFT.NodeDatum $
-        initialNode
-          { NFT.node'information = ((NFT.node'information initialNode) {NFT.info'id = NFT.NftId "I AM INVALID"})
-          }
-
-    redeemer =
-      NFT.BuyAct
-        { act'bid = 100 * 1_000_000
-        , act'newPrice = Nothing
-        , act'symbol = TestValues.appSymbol
-        }
-    val = TestValues.adaValue 100
-
 inconsistentDatumData :: TestData 'ForSpending
 inconsistentDatumData = SpendingTest dtm redeemer val
   where
