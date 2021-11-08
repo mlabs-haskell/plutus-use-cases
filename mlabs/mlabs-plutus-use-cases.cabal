@@ -26,6 +26,7 @@ common common-imports
     , plutus-tx
     , plutus-ledger-api
     , plutus-chain-index
+    , plutus-chain-index-core
     , plutus-tx-plugin
     , plutus-pab
     , plutus-use-cases
@@ -170,6 +171,7 @@ library
     Mlabs.NFT.Types
     Mlabs.NFT.Contract
     Mlabs.NFT.Validation
+    Mlabs.IntegrationTest.Types
     Mlabs.IntegrationTest.Wbe.TxRead
     Mlabs.IntegrationTest.Wbe.WbeClient
     Mlabs.IntegrationTest.Wbe.TestStand
@@ -182,6 +184,7 @@ library
     Mlabs.IntegrationTest.PabWbe.Run
     Mlabs.IntegrationTest.PabWbe.TestContracts
     Mlabs.IntegrationTest.PabWbe.TestContracts.Balance
+    Mlabs.IntegrationTest.PabWbe.Types
     Mlabs.NFT.Api
     Mlabs.NFT.Contract.Init
     Mlabs.NFT.Contract.Mint

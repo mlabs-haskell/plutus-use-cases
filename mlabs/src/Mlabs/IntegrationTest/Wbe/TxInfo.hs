@@ -1,6 +1,4 @@
 module Mlabs.IntegrationTest.Wbe.TxInfo (
-  BalanceInfo (..),
-  SignInfo (..),
   UTXOGetter,
   analyseBalanced,
   analyseSigned,
@@ -22,8 +20,7 @@ import Data.Map qualified as Map
 import Data.Set (Set)
 import Data.Set qualified as Set
 
-import GHC.Generics (Generic)
-
+import Mlabs.IntegrationTest.Types
 import Mlabs.IntegrationTest.Wbe.TxRead
 import Mlabs.IntegrationTest.Wbe.Types
 
@@ -39,23 +36,6 @@ import Plutus.ChainIndex (
 import Plutus.Contract.Wallet (ExportTx (..))
 
 import Prelude
-
-data BalanceInfo = BalanceInfo
-  { fromWalletTotalValue :: Value
-  , txInFromWallet :: Set TxIn
-  , fee :: Maybe Coin
-  , totalOutsValue :: Value
-  , unbalancedIsOuts :: (Set TxIn, ChainIndexTxOutputs)
-  , balancedIsOuts :: (Set TxIn, ChainIndexTxOutputs)
-  }
-  deriving stock (Show, Eq, Generic)
-
-data SignInfo = SignInfo
-  { balancedWitnesses :: [C.KeyWitness C.AlonzoEra]
-  , signedWitnesses :: [C.KeyWitness C.AlonzoEra]
-  , witnessDiff :: [C.KeyWitness C.AlonzoEra]
-  }
-  deriving stock (Show, Eq, Generic)
 
 type UTXOGetter = Set TxIn -> IO (Either WbeError (Map TxIn TxOut))
 
