@@ -8,9 +8,8 @@
 let
   project = import ./default.nix args;
   inherit (plutus) pkgs;
-  pab = import ./nix/pab.nix { inherit plutus-apps; };
 
-in project.shellFor (pab.env_variables // {
+in project.shellFor {
   packages = ps: [ ps.mlabs-plutus-use-cases ];
 
   tools.cabal = "latest";
@@ -59,10 +58,6 @@ in project.shellFor (pab.env_variables // {
       # Graphviz Diagrams for documentation
       graphviz
 
-      ### Pab
-      pab.plutus_pab_client
-
       pkg-config libsodium-vrf
-    ] ++ (lib.optionals (!stdenv.isDarwin) [ rPackages.plotly R systemdMinimal ])
-      ++ builtins.attrValues plutus-apps.plutus-pab.pab-exes;
-})
+    ] ++ (lib.optionals (!stdenv.isDarwin) [ rPackages.plotly R systemdMinimal ]);
+}
