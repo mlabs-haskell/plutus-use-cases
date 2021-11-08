@@ -68,7 +68,7 @@ in pkgs.haskell-nix.cabalProject rec {
       sources.cardano-base.sha256;
     "https://github.com/input-output-hk/cardano-crypto.git"."${sources.cardano-crypto.rev}" =
       sources.cardano-crypto.sha256;
-    "https://github.com/raduom/cardano-ledger-specs"."${sources.cardano-ledger-specs.rev}" =
+    "https://github.com/input-output-hk/cardano-ledger-specs"."${sources.cardano-ledger-specs.rev}" =
       sources.cardano-ledger-specs.sha256;
     "https://github.com/input-output-hk/cardano-node.git"."${sources.cardano-node.rev}" =
       sources.cardano-node.sha256;
@@ -76,7 +76,7 @@ in pkgs.haskell-nix.cabalProject rec {
       sources.cardano-prelude.sha256;
     "https://github.com/input-output-hk/cardano-addresses"."${sources.cardano-addresses.rev}" =
       sources.cardano-addresses.sha256;
-    "https://github.com/input-output-hk/cardano-wallet"."${sources.cardano-wallet.rev}" =
+    "https://github.com/j-mueller/cardano-wallet"."${sources.cardano-wallet.rev}" =
       sources.cardano-wallet.sha256;
     "https://github.com/input-output-hk/goblins"."${sources.goblins.rev}" =
       sources.goblins.sha256;
