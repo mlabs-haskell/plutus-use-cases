@@ -180,8 +180,8 @@ getHead aSym = do
       utxos <- getDatumsTxsOrdered aSym
       Contract.throwError $
         mconcat
-          [ "This should have not happened! More than one Head Datums. 
-            Datums are: "
+          [ "This should have not happened! More than one Head Datums. \
+            \Datums are: "
           , pack . Hask.show . fmap pi'datum $ utxos
           ]
   where

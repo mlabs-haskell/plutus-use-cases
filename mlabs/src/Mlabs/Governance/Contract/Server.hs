@@ -82,20 +82,20 @@ deposit gov (Api.Deposit amnt) = do
           )
         Nothing ->
           let datum = 
-            GovernanceDatum ownPkh $ Validation.xGovCurrencySymbol gov
-           in ( sconcat
-                  [ Constraints.mustMintValue xGovValue
-                  , Constraints.mustPayToTheScript datum $ 
-                      Validation.govSingleton gov amnt
-                  ]
-              , sconcat
-                  [ Constraints.mintingPolicy $ 
-                      Validation.xGovMintingPolicy gov
-                  , Constraints.otherScript $ Validation.govValidator gov
-                  , Constraints.typedValidatorLookups $ 
-                      Validation.govInstance gov
-                  ]
-              )
+                GovernanceDatum ownPkh $ Validation.xGovCurrencySymbol gov
+              in ( sconcat
+                      [ Constraints.mustMintValue xGovValue
+                      , Constraints.mustPayToTheScript datum $ 
+                          Validation.govSingleton gov amnt
+                      ]
+                  , sconcat
+                      [ Constraints.mintingPolicy $ 
+                          Validation.xGovMintingPolicy gov
+                      , Constraints.otherScript $ Validation.govValidator gov
+                      , Constraints.typedValidatorLookups $ 
+                          Validation.govInstance gov
+                      ]
+                  )
 
       xGovValue = Validation.xgovSingleton gov ownPkh amnt
 

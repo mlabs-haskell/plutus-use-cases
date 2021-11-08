@@ -93,7 +93,7 @@ test =
     testRepay = testWallets [(user1, w1)] repayScript
       where
         w1 = BchWallet $ 
-        M.fromList [(coin1, 50), (coin2, 10), (fromToken aToken1, 0)]
+          M.fromList [(coin1, 50), (coin2, 10), (fromToken aToken1, 0)]
 
     testLiquidationCall =
       [ testCase "get aTokens for collateral" $

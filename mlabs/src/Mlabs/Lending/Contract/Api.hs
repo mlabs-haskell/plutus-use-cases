@@ -255,12 +255,13 @@ class IsEndpoint a => IsQueryAct a where
 
 -- user acts
 
-instance IsUserAct Deposit where toUserAct Deposit {..} = 
-  Types.DepositAct deposit'amount deposit'asset
-instance IsUserAct Borrow where toUserAct Borrow {..} = 
-  Types.BorrowAct borrow'amount borrow'asset (fromInterestRateFlag borrow'rate)
-instance IsUserAct Repay where toUserAct Repay {..} = 
-  Types.RepayAct repay'amount repay'asset (fromInterestRateFlag repay'rate)
+instance IsUserAct Deposit where 
+  toUserAct Deposit {..} = Types.DepositAct deposit'amount deposit'asset
+instance IsUserAct Borrow where 
+  toUserAct Borrow {..} = 
+    Types.BorrowAct borrow'amount borrow'asset (fromInterestRateFlag borrow'rate)
+instance IsUserAct Repay where 
+  toUserAct Repay {..} = Types.RepayAct repay'amount repay'asset (fromInterestRateFlag repay'rate)
 instance IsUserAct SwapBorrowRateModel where 
   toUserAct SwapBorrowRateModel {..} = 
     Types.SwapBorrowRateModelAct swapRate'asset 
