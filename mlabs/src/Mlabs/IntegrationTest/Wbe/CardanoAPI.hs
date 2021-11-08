@@ -60,4 +60,9 @@ convert (C.UTxO utxoMap) =
         ( (`TxIn` Nothing)
             . fromCardanoTxIn
         )
-      $ utxoMap
+      $ toTxCtx utxoMap
+  where
+    toTxCtx ::
+      Map C.TxIn (C.TxOut C.CtxUTxO C.AlonzoEra) ->
+      Map C.TxIn (C.TxOut C.CtxTx C.AlonzoEra)
+    toTxCtx = error "FIXME"

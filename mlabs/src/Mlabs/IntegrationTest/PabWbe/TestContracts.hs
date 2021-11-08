@@ -19,7 +19,7 @@ import Data.Text.Prettyprint.Doc (Pretty (pretty), viaShow)
 
 import GHC.Generics (Generic)
 
-import Language.PureScript.Bridge (equal, genericShow, mkSumType)
+import Language.PureScript.Bridge (equal, genericShow, mkSumType, argonaut)
 
 import Mlabs.IntegrationTest.PabWbe.TestContracts.Balance qualified as Contract.Balance
 
@@ -41,8 +41,8 @@ instance Pretty TestContracts where
   pretty = viaShow
 
 instance HasPSTypes TestContracts where
-  psTypes p =
-    [ equal p (genericShow p $ mkSumType p)
+  psTypes =
+    [ equal . genericShow . argonaut $ mkSumType @TestContracts
     ]
 
 instance HasDefinitions TestContracts where

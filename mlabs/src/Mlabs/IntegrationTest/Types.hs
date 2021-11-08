@@ -1,15 +1,12 @@
 module Mlabs.IntegrationTest.Types (
   BalanceInfo (..),
   SignInfo (..),
-  decodePkh,
+  TxBodyContent,
 ) where
 
 import Cardano.Api.Shelley qualified as C
 import Cardano.Ledger.Coin (Coin)
 
-import Data.Aeson (decode)
-import Data.ByteString.Lazy (ByteString)
-import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 
 import GHC.Generics (Generic)
@@ -20,8 +17,9 @@ import Plutus.ChainIndex (
   ChainIndexTxOutputs (..),
  )
 
-import Ledger.Crypto (PubKeyHash)
 import Prelude
+
+type TxBodyContent = C.TxBodyContent C.ViewTx C.AlonzoEra
 
 data BalanceInfo = BalanceInfo
   { fromWalletTotalValue :: Value
@@ -39,8 +37,3 @@ data SignInfo = SignInfo
   , witnessDiff :: [C.KeyWitness C.AlonzoEra]
   }
   deriving stock (Show, Eq, Generic)
-
-decodePkh :: ByteString -> PubKeyHash
-decodePkh = fromMaybe theImpossible . decode
-  where
-    theImpossible = error "The impossible happened: failed to decode PKH"

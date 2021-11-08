@@ -22,6 +22,7 @@ import Ledger hiding (value)
 import Ledger.Constraints qualified as Constraints
 
 import Mlabs.IntegrationTest.Types
+import Mlabs.IntegrationTest.Utils
 import Mlabs.IntegrationTest.Wbe.CardanoAPI
 import Mlabs.IntegrationTest.Wbe.Checks hiding (Balanced)
 import Mlabs.IntegrationTest.Wbe.TxBuilder
@@ -99,7 +100,7 @@ testWallet2Wallet connInfo params =
         <$> buildTx @Void (C.localNodeNetworkId connInfo) params mempty txC
     pkh =
       decodePkh
-          "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d2\"}"
+        "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d2\"}"
     txC = Constraints.mustPayToPubKey pkh (adaValueOf 5)
 
 testWallet2WalletEnoughInputs ::
@@ -125,11 +126,11 @@ testWallet2WalletEnoughInputs connInfo params =
         <$> buildTx @Void (C.localNodeNetworkId connInfo) params withInputL withInputC
     pkh =
       decodePkh
-          "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d2\"}"
+        "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d2\"}"
 
     pkhTo =
       decodePkh
-          "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d4\"}"
+        "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d4\"}"
 
     refId =
       fromJust . decode $
@@ -171,11 +172,11 @@ testWallet2WalletNotEnoughInputs connInfo params =
         <$> buildTx @Void (C.localNodeNetworkId connInfo) params withInputL withInputC
     pkh =
       decodePkh
-          "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d2\"}"
+        "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d2\"}"
 
     pkhTo =
       decodePkh
-          "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d4\"}"
+        "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d4\"}"
 
     refId =
       fromJust . decode $
