@@ -19,7 +19,7 @@ module Mlabs.NFT.Contract.Aux (
 import PlutusTx.Prelude hiding (mconcat, (<>))
 import Prelude (mconcat, (<>))
 import Prelude qualified as Hask
-import Text.Printf (printf)
+
 import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right)
 import Data.List qualified as L
 import Data.Map qualified as Map
@@ -100,13 +100,6 @@ getNftDatum nftId appSymbol = do
               )
   Contract.logInfo @Hask.String $ Hask.show $ "Datum Found:" <> Hask.show datums
   Contract.logInfo @Hask.String $ Hask.show $ "Datum length:" <> Hask.show (Hask.length datums)
-  let myDatums = -- :: [Maybe DatumNft] =
-         utxos
-          ^.. traversed . Ledger.ciTxOutValue
---            . _Right
---            . to (PlutusTx.fromBuiltinData @DatumNft . getDatum)
-  Contract.logInfo @Hask.String $ printf "I'm here1 %s %d %s" (Hask.show appSymbol) (length myDatums) (Hask.show myDatums)
-  Contract.logInfo @Hask.String $ printf "I'm here2 %d %s" (length utxos)  (Hask.show utxos)
   case datums of
     [x] ->
       pure $ Just x
@@ -117,9 +110,7 @@ getNftDatum nftId appSymbol = do
       Contract.logError @Hask.String "More than one suitable Datum can be found. This should never happen."
       pure Nothing
 
-
-
-  {- | Gets the Datum of a specific nftId from the Script address, and applies an
+{- | Gets the Datum of a specific nftId from the Script address, and applies an
   extraction function to it.
 -}
 getsNftDatum :: (DatumNft -> b) -> NftId -> NftAppSymbol -> Contract a s Text (Maybe b)
@@ -167,7 +158,6 @@ fstUtxoAt address = do
 -- | Get the Head of the List
 getHead :: NftAppSymbol -> GenericContract (Maybe PointInfo)
 getHead aSym = do
-  getDatumsTxsOrdered aSym >>= \x -> Contract.logInfo @Hask.String $ printf "I'm here 4 %d" $ length x
   headX <- filter (isHead . pi'datum) <$> getDatumsTxsOrdered aSym
   case headX of
     [] -> pure Nothing
@@ -196,7 +186,6 @@ entryToPointInfo (oref, (out, tx)) = case readDatum' @DatumNft out of
 getDatumsTxsOrdered :: NftAppSymbol -> Contract w s Text [PointInfo]
 getDatumsTxsOrdered nftAS = do
   utxos <- Map.toList <$> getAddrValidUtxos nftAS
-  -- Contract.logInfo @Hask.String $ printf "I'm here 3: %s" $ Hask.show $ fmap ( to (PlutusTx.fromBuiltinData @DatumNft . getDatum) $ _ciTxOutDatum $ fst . snd) utxos
   datums <- mapM withDatum utxos
   let sortedDatums = L.sort datums
   return sortedDatums
@@ -209,37 +198,3 @@ getDatumsTxsOrdered nftAS = do
 -- | A hashing function to minimise the data to be attached to the NTFid.
 hashData :: Content -> BuiltinByteString
 hashData (Content b) = sha2_256 b
-
-
---   utxos :: [Ledger.ChainIndexTxOut] <- fmap fst . Map.elems <$> getAddrValidUtxos appSymbol
---   let datums :: [DatumNft] =
---         utxos
---           ^.. traversed . Ledger.ciTxOutDatum
---             . _Right
---             . to (PlutusTx.fromBuiltinData @DatumNft . getDatum)
---             . _Just
---             . filtered
---               ( \case
---                   HeadDatum _ -> False
---                   NodeDatum node ->
---                     let nftId' = info'id . node'information $ node
---                      in nftId' == nftId
---               )
---   Contract.logInfo @Hask.String $ Hask.show $ "Datum Found:" <> Hask.show datums
---   Contract.logInfo @Hask.String $ Hask.show $ "Datum length:" <> Hask.show (Hask.length datums)
---   case datums of
---     [x] ->
---       pure $ Just x
---     [] -> do
---       Contract.logError @Hask.String "No suitable Datum can be found."
---       pure Nothing
---     _ : _ -> do
---       Contract.logError @Hask.String "More than one suitable Datum can be found. This should never happen."
---       pure Nothing
--- 
-
-
-
-
-
-

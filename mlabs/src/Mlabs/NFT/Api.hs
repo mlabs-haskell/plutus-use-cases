@@ -10,7 +10,7 @@ import Data.Monoid (Last (..))
 import Data.Text (Text)
 
 import Playground.Contract (mkSchemaDefinitions)
-import Plutus.Contract (Contract, Endpoint, endpoint, throwError, type (.\/))
+import Plutus.Contract (Contract, Endpoint, endpoint, type (.\/))
 import Prelude as Hask
 
 import Mlabs.NFT.Contract.Buy (buy)
@@ -63,7 +63,7 @@ adminEndpoints =
 
 -- Query Endpoints are used for Querying, with no on-chain tx generation.
 queryEndpoints :: NftAppSymbol -> ApiQueryContract ()
-queryEndpoints appSymbol = -- throwError "FIXME"
+queryEndpoints appSymbol =
   selectForever
     [ endpoint @"query-content-status" (queryContentStatus appSymbol)
     ]

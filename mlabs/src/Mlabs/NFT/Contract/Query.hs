@@ -4,7 +4,7 @@ module Mlabs.NFT.Contract.Query (
 
 import Text.Printf (printf)
 import PlutusTx.Prelude hiding (mconcat, (<>))
-import Prelude qualified as Hask
+import qualified Prelude as Hask
 -- import Prelude (mconcat, (<>))
 -- import Prelude qualified as Hask
 
@@ -16,9 +16,14 @@ import Data.Monoid (Last (..))
 import Data.Text (Text)
 import Plutus.Contract as Contract
 import Mlabs.NFT.Contract.Aux (hashData)
--- import Plutus.Contract qualified as Contract
 import Mlabs.NFT.Contract.Aux (getNftDatum)
-import Mlabs.NFT.Types -- (DatumNft (..), Content, NftListNode, NftAppSymbol, NftId, QueryResponse (..))
+import Mlabs.NFT.Types (
+   DatumNft (..),
+   NftAppSymbol,
+   NftId (..),
+   Content,
+   QueryResponse (..),
+  )
 -- import Plutus.Contract qualified as Contract
 -- import PlutusTx qualified
 
@@ -47,24 +52,17 @@ import Mlabs.NFT.Types -- (DatumNft (..), Content, NftListNode, NftAppSymbol, Nf
 -- import Ledger.Typed.Scripts (validatorScript)
 -- import Ledger.Value as Value (singleton, unAssetClass, valueOf)
 
-import Mlabs.NFT.Types (
-  GenericContract,
-  NftAppSymbol,
-  NftId,
-  QueryResponse,
- )
-
 -- | A contract used exclusively for query actions.
 type QueryContract a = forall s. Contract (Last QueryResponse) s Text a
 
 -- | A contract used for all user actions.
-type UserContract a = forall s. Contract (Last NftId) s Text a
+-- type UserContract a = forall s. Contract (Last NftId) s Text a
 
 {- | Query the current price of a given NFTid. Writes it to the Writer instance
  and also returns it, to be used in other contracts.
 -}
-queryCurrentPrice :: NftId -> NftAppSymbol -> QueryContract QueryResponse
-queryCurrentPrice _ _ = error ()
+-- queryCurrentPrice :: NftId -> NftAppSymbol -> QueryContract QueryResponse
+-- queryCurrentPrice _ _ = error ()
 
 --  price <- wrap <$> getsNftDatum dNft'price nftid
 --  Contract.tell price >> log price >> return price
@@ -77,8 +75,8 @@ queryCurrentPrice _ _ = error ()
 {- | Query the current owner of a given NFTid. Writes it to the Writer instance
  and also returns it, to be used in other contracts.
 -}
-queryCurrentOwner :: NftId -> NftAppSymbol -> QueryContract QueryResponse
-queryCurrentOwner _ _ = error ()
+-- queryCurrentOwner :: NftId -> NftAppSymbol -> QueryContract QueryResponse
+-- queryCurrentOwner _ _ = error ()
 
 --   ownerResp <- wrap <$> getsNftDatum dNft'owner nftid
 --   Contract.tell ownerResp >> log ownerResp >> return ownerResp
@@ -92,16 +90,14 @@ queryCurrentOwner _ _ = error ()
 queryContentStatus :: NftAppSymbol -> Content -> QueryContract QueryResponse
 queryContentStatus appSymbol content = do
   let nftId = NftId . hashData $ content
-  Contract.logInfo @Hask.String $ printf "Content: %s NftId: %s" (Hask.show content) (Hask.show nftId)
   datum <- getNftDatum  nftId appSymbol
   datumNftListNode datum
   where datumNftListNode :: Maybe DatumNft -> QueryContract QueryResponse
         datumNftListNode = \case 
                              Just (NodeDatum nftListNode) -> do let res = QueryContentStatus . Just $ nftListNode
                                                                 Contract.tell . Last . Just $ res
-                                                                Contract.logInfo @Hask.String $ printf "final %s " (Hask.show . Last . Just $ res)
                                                                 return res
-                             Just (HeadDatum _)           -> do Contract.logInfo @Hask.String $ printf "HeadDatum has no information." 
+                             Just (HeadDatum _)           -> do Contract.logError @Hask.String $ printf "HeadDatum has no information." 
                                                                 return . QueryContentStatus $ Nothing
-                             Nothing                      -> do Contract.logInfo @Hask.String "Content didn't find" 
+                             Nothing                      -> do Contract.logError @Hask.String "Content didn't find" 
                                                                 return . QueryContentStatus $ Nothing

@@ -7,3 +7,4 @@ import Mlabs.NFT.Contract.Buy as X
 import Mlabs.NFT.Contract.Init as X
 import Mlabs.NFT.Contract.Mint as X
 import Mlabs.NFT.Contract.SetPrice as X
+import Mlabs.NFT.Contract.Query as X

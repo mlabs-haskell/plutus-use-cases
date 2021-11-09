@@ -1,4 +1,4 @@
-module Test.NFT.Trace (testMint, testMint2, testAny) where
+module Test.NFT.Trace (testMint, testGetContentStatus1, testMint2, testAny, testGetContentStatus2) where
 
 import PlutusTx.Prelude
 import Prelude qualified as Hask
@@ -22,6 +22,8 @@ import Mlabs.NFT.Types
 type AppTraceHandle = Trace.ContractHandle (Last NftId) NFTAppSchema Text
 
 type AppInitHandle = Trace.ContractHandle (Last NftAppSymbol) NFTAppSchema Text
+
+type AppQueryHandle = Trace.ContractHandle (Last QueryResponse) NFTAppSchema Text
 
 -- | Initialise the Application
 appInitTrace :: EmulatorTrace NftAppSymbol
@@ -54,6 +56,81 @@ mint1Trace = do
         , mp'price = Just 5
         }
 
+
+getContentStatusTrace1 :: EmulatorTrace ()
+getContentStatusTrace1 = do
+  aSymb <- appInitTrace
+  let wallet1 = walletFromNumber 1 :: Emulator.Wallet
+  h1  :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
+  callEndpoint @"mint" h1 artwork
+  void $ Trace.waitNSlots 1
+
+  h1' :: AppQueryHandle <- activateContractWallet wallet1 $ queryEndpoints aSymb
+
+  callEndpoint @"query-content-status" h1' $ Content "A painting."
+  void $ Trace.waitNSlots 1
+
+  oState <- Trace.observableState h1'
+  void $ Trace.waitNSlots 1
+  logInfo $ Hask.show oState
+  void $ Trace.waitNSlots 1
+
+  where
+    artwork =
+      MintParams
+        { mp'content = Content "A painting."
+        , mp'title = Title "Fiona Lisa"
+        , mp'share = 1 % 10
+        , mp'price = Just 5
+        }
+
+-- | Two users mint two different artworks.
+getContentStatusTrace2 :: EmulatorTrace ()
+getContentStatusTrace2 = do
+  aSymb <- appInitTrace
+  let wallet1 = walletFromNumber 1 :: Emulator.Wallet
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
+  void $ Trace.waitNSlots 1 
+  h1' :: AppQueryHandle <- activateContractWallet wallet1 $ queryEndpoints aSymb
+  
+
+  callEndpoint @"mint" h1 artwork
+  void $ Trace.waitNSlots 1
+  callEndpoint @"mint" h1 artwork2
+  void $ Trace.waitNSlots 1
+  callEndpoint @"mint" h1 artwork3
+  void $ Trace.waitNSlots 1
+  callEndpoint @"query-content-status" h1' $ Content "A painting."
+  void $ Trace.waitNSlots 1
+  oState <- Trace.observableState h1'
+  void $ Trace.waitNSlots 1
+  logInfo $ Hask.show oState
+  void $ Trace.waitNSlots 1
+
+  where
+    artwork =
+      MintParams
+        { mp'content = Content "A painting."
+        , mp'title = Title "Fiona Lisa"
+        , mp'share = 1 % 10
+        , mp'price = Just 5
+        }
+    artwork2 =
+      MintParams
+        { mp'content = Content "Another painting."
+        , mp'title = Title "Fiona Lisa"
+        , mp'share = 1 % 10
+        , mp'price = Just 5
+        }
+    artwork3 =
+      MintParams
+        { mp'content = Content "Another painting2."
+        , mp'title = Title "Fiona Lisa"
+        , mp'share = 1 % 10
+        , mp'price = Just 5
+        }
+
+
 -- | Two users mint two different artworks.
 mintTrace2 :: EmulatorTrace ()
 mintTrace2 = do
@@ -63,6 +140,7 @@ mintTrace2 = do
   callEndpoint @"mint" h1 artwork
   void $ Trace.waitNSlots 1
   callEndpoint @"mint" h1 artwork2
+  void $ Trace.waitNSlots 1
   where
     artwork =
       MintParams
@@ -213,7 +291,11 @@ testInit = runEmulatorTraceIO $ void appInitTrace
 -- | Test for Minting one token
 testMint = runEmulatorTraceIO mint1Trace
 
+testGetContentStatus2 = runEmulatorTraceIO getContentStatusTrace2
+
 testMint2 = runEmulatorTraceIO mintTrace2
+
+testGetContentStatus1 = runEmulatorTraceIO getContentStatusTrace1
 
 testAny = runEmulatorTraceIO
 
