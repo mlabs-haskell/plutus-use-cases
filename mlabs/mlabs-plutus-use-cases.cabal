@@ -101,9 +101,9 @@ library
     -Wcompat
     -Wincomplete-uni-patterns
     -Wredundant-constraints
-    -Wmissing-export-lists
+--    -Wmissing-export-lists
     -Wmissing-deriving-strategies
-    -Werror
+--    -Werror
     
   hs-source-dirs:
     src/
@@ -165,6 +165,23 @@ library
     Mlabs.NFT.Contract.Aux
     Mlabs.NFT.Contract.SetPrice
     Mlabs.NFT.Contract.Buy
+    Test.Utils
+    Test.NFT.Init
+    Test.NFT.Trace
+    Test.NFT.Contract
+    Test.NFT.QuickCheck
+    Test.NFT.Script.Main
+    Test.NFT.Script.Dealing
+    Test.NFT.Script.Minting
+    Test.NFT.Script.Values
+  
+  Build-depends:
+      tasty
+    , tasty-hunit
+    , tasty-expected-failure
+    , tasty-plutus
+    , tasty-quickcheck
+    , QuickCheck
 
 executable mlabs-plutus-use-cases
   import:  common-imports

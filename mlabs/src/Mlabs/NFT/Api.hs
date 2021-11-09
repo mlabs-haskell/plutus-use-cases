@@ -16,8 +16,9 @@ import Prelude as Hask
 import Mlabs.NFT.Contract.Buy (buy)
 import Mlabs.NFT.Contract.Init (initApp)
 import Mlabs.NFT.Contract.Mint (mint)
+import Mlabs.NFT.Contract.Query (queryContentStatus)
 import Mlabs.NFT.Contract.SetPrice (setPrice)
-import Mlabs.NFT.Types (BuyRequestUser (..), MintParams (..), NftAppSymbol (..), NftId (..), QueryResponse (..), SetPriceParams (..))
+import Mlabs.NFT.Types (BuyRequestUser (..), MintParams (..), NftAppSymbol (..), NftId (..), QueryResponse (..), SetPriceParams (..), Content)
 import Mlabs.Plutus.Contract (selectForever)
 
 -- | A common App schema works for now.
@@ -31,6 +32,7 @@ type NFTAppSchema =
     .\/ Endpoint "query-current-owner" NftId
     .\/ Endpoint "query-current-price" NftId
     .\/ Endpoint "query-authentic-nft" NftId
+    .\/ Endpoint "query-content-status" Content
     -- Admin Endpoint
     .\/ Endpoint "app-init" ()
 
@@ -40,7 +42,7 @@ mkSchemaDefinitions ''NFTAppSchema
 
 type ApiUserContract a = Contract (Last NftId) NFTAppSchema Text a
 type ApiAdminContract a = Contract (Last NftAppSymbol) NFTAppSchema Text a
-type ApiQueryContract a = Contract QueryResponse NFTAppSchema Text a
+type ApiQueryContract a = Contract (Last QueryResponse) NFTAppSchema Text a
 
 -- | User Endpoints .
 endpoints :: NftAppSymbol -> ApiUserContract ()
@@ -60,9 +62,11 @@ adminEndpoints =
     ]
 
 -- Query Endpoints are used for Querying, with no on-chain tx generation.
-queryEndpoints :: ApiQueryContract ()
-queryEndpoints = throwError "FIXME"
-
+queryEndpoints :: NftAppSymbol -> ApiQueryContract ()
+queryEndpoints appSymbol = -- throwError "FIXME"
+  selectForever
+    [ endpoint @"query-content-status" (queryContentStatus appSymbol)
+    ]
 -- selectForever
 --   [ endpoint @"query-current-price" NFTContract.queryCurrentPrice
 --   , endpoint @"query-current-owner" NFTContract.queryCurrentOwner

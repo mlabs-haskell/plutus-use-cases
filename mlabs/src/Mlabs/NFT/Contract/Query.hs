@@ -1,7 +1,10 @@
-module Mlabs.NFT.Contract.Query where
+module Mlabs.NFT.Contract.Query (
+  queryContentStatus
+) where
 
+import Text.Printf (printf)
 import PlutusTx.Prelude hiding (mconcat, (<>))
-
+import Prelude qualified as Hask
 -- import Prelude (mconcat, (<>))
 -- import Prelude qualified as Hask
 
@@ -11,8 +14,11 @@ import PlutusTx.Prelude hiding (mconcat, (<>))
 -- import Data.Map qualified as Map
 import Data.Monoid (Last (..))
 import Data.Text (Text)
-import Plutus.Contract (Contract)
-
+import Plutus.Contract as Contract
+import Mlabs.NFT.Contract.Aux (hashData)
+-- import Plutus.Contract qualified as Contract
+import Mlabs.NFT.Contract.Aux (getNftDatum)
+import Mlabs.NFT.Types -- (DatumNft (..), Content, NftListNode, NftAppSymbol, NftId, QueryResponse (..))
 -- import Plutus.Contract qualified as Contract
 -- import PlutusTx qualified
 
@@ -49,7 +55,7 @@ import Mlabs.NFT.Types (
  )
 
 -- | A contract used exclusively for query actions.
-type QueryContract a = forall s. Contract QueryResponse s Text a
+type QueryContract a = forall s. Contract (Last QueryResponse) s Text a
 
 -- | A contract used for all user actions.
 type UserContract a = forall s. Contract (Last NftId) s Text a
@@ -81,3 +87,21 @@ queryCurrentOwner _ _ = error ()
 --     log owner =
 --       Contract.logInfo @Hask.String $
 --         "Current owner of: " <> Hask.show nftid <> " is: " <> Hask.show owner
+--
+-- | Given an application instance and a `Content` returns the status of the NFT
+queryContentStatus :: NftAppSymbol -> Content -> QueryContract QueryResponse
+queryContentStatus appSymbol content = do
+  let nftId = NftId . hashData $ content
+  Contract.logInfo @Hask.String $ printf "Content: %s NftId: %s" (Hask.show content) (Hask.show nftId)
+  datum <- getNftDatum  nftId appSymbol
+  datumNftListNode datum
+  where datumNftListNode :: Maybe DatumNft -> QueryContract QueryResponse
+        datumNftListNode = \case 
+                             Just (NodeDatum nftListNode) -> do let res = QueryContentStatus . Just $ nftListNode
+                                                                Contract.tell . Last . Just $ res
+                                                                Contract.logInfo @Hask.String $ printf "final %s " (Hask.show . Last . Just $ res)
+                                                                return res
+                             Just (HeadDatum _)           -> do Contract.logInfo @Hask.String $ printf "HeadDatum has no information." 
+                                                                return . QueryContentStatus $ Nothing
+                             Nothing                      -> do Contract.logInfo @Hask.String "Content didn't find" 
+                                                                return . QueryContentStatus $ Nothing

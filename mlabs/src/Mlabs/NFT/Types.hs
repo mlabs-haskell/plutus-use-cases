@@ -140,76 +140,6 @@ data MintAct
   deriving anyclass (ToJSON, FromJSON)
 
 --------------------------------------------------------------------------------
--- ENDPOINTS PARAMETERS --
-
--- | Parameters that need to be submitted when minting a new NFT.
-data MintParams = MintParams
-  { -- | Content to be minted.
-    mp'content :: Content
-  , -- | Title of content.
-    mp'title :: Title
-  , -- | Shares retained by author.
-    mp'share :: Rational
-  , -- | Listing price of the NFT, in Lovelace.
-    mp'price :: Maybe Integer
-  }
-  deriving stock (Hask.Show, Generic, Hask.Eq)
-  deriving anyclass (FromJSON, ToJSON, ToSchema)
-
-PlutusTx.makeLift ''MintParams
-PlutusTx.unstableMakeIsData ''MintParams
-
-instance Eq MintParams where
-  {-# INLINEABLE (==) #-}
-  (MintParams content1 title1 share1 price1) == (MintParams content2 title2 share2 price2) =
-    content1 == content2 && title1 == title2 && share1 == share2 && price1 == price2
-
-data SetPriceParams = SetPriceParams
-  { -- | NFTid of the token which price is set.
-    sp'nftId :: NftId
-  , -- | New price, in Lovelace.
-    sp'price :: Maybe Integer -- todo maybe Natural? are they available here?
-  }
-  deriving stock (Hask.Show, Generic, Hask.Eq)
-  deriving anyclass (FromJSON, ToJSON, ToSchema)
-
-instance Eq SetPriceParams where
-  {-# INLINEABLE (==) #-}
-  (SetPriceParams nftId1 price1) == (SetPriceParams nftId2 price2) =
-    nftId1 == nftId2 && price1 == price2
-
-data BuyRequestUser = BuyRequestUser
-  { -- | nftId to Buy
-    ur'nftId :: NftId
-  , -- | price to buy, in Lovelace.
-    ur'price :: Integer
-  , -- | new price for NFT (Nothing locks NFT), in Lovelace.
-    ur'newPrice :: Maybe Integer
-  }
-  deriving stock (Hask.Show, Generic, Hask.Eq)
-  deriving anyclass (FromJSON, ToJSON, ToSchema)
-PlutusTx.makeLift ''BuyRequestUser
-PlutusTx.unstableMakeIsData ''BuyRequestUser
-
-instance Eq BuyRequestUser where
-  {-# INLINEABLE (==) #-}
-  (BuyRequestUser nftId1 price1 newPrice1) == (BuyRequestUser nftId2 price2 newPrice2) =
-    nftId1 == nftId2 && price1 == price2 && newPrice1 == newPrice2
-
--- | A datatype used by the QueryContract to return a response
-data QueryResponse
-  = QueryCurrentOwner UserId
-  | QueryCurrentPrice (Maybe Integer)
-  deriving stock (Hask.Show, Generic, Hask.Eq)
-  deriving anyclass (FromJSON, ToJSON)
-
-PlutusTx.unstableMakeIsData ''MintAct
-PlutusTx.unstableMakeIsData ''NftId
-
-PlutusTx.makeLift ''MintAct
-PlutusTx.makeLift ''NftId
-
---------------------------------------------------------------------------------
 -- Validation
 
 -- | NFT Information.
@@ -410,6 +340,78 @@ instance Eq UserAct where
   (SetPriceAct newPrice1 symbol1) == (SetPriceAct newPrice2 symbol2) =
     newPrice1 == newPrice2 && symbol1 == symbol2
   _ == _ = False
+
+--------------------------------------------------------------------------------
+-- ENDPOINTS PARAMETERS --
+
+-- | Parameters that need to be submitted when minting a new NFT.
+data MintParams = MintParams
+  { -- | Content to be minted.
+    mp'content :: Content
+  , -- | Title of content.
+    mp'title :: Title
+  , -- | Shares retained by author.
+    mp'share :: Rational
+  , -- | Listing price of the NFT, in Lovelace.
+    mp'price :: Maybe Integer
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
+
+PlutusTx.makeLift ''MintParams
+PlutusTx.unstableMakeIsData ''MintParams
+
+instance Eq MintParams where
+  {-# INLINEABLE (==) #-}
+  (MintParams content1 title1 share1 price1) == (MintParams content2 title2 share2 price2) =
+    content1 == content2 && title1 == title2 && share1 == share2 && price1 == price2
+
+data SetPriceParams = SetPriceParams
+  { -- | NFTid of the token which price is set.
+    sp'nftId :: NftId
+  , -- | New price, in Lovelace.
+    sp'price :: Maybe Integer -- todo maybe Natural? are they available here?
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
+
+instance Eq SetPriceParams where
+  {-# INLINEABLE (==) #-}
+  (SetPriceParams nftId1 price1) == (SetPriceParams nftId2 price2) =
+    nftId1 == nftId2 && price1 == price2
+
+data BuyRequestUser = BuyRequestUser
+  { -- | nftId to Buy
+    ur'nftId :: NftId
+  , -- | price to buy, in Lovelace.
+    ur'price :: Integer
+  , -- | new price for NFT (Nothing locks NFT), in Lovelace.
+    ur'newPrice :: Maybe Integer
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
+PlutusTx.makeLift ''BuyRequestUser
+PlutusTx.unstableMakeIsData ''BuyRequestUser
+
+instance Eq BuyRequestUser where
+  {-# INLINEABLE (==) #-}
+  (BuyRequestUser nftId1 price1 newPrice1) == (BuyRequestUser nftId2 price2 newPrice2) =
+    nftId1 == nftId2 && price1 == price2 && newPrice1 == newPrice2
+
+-- | A datatype used by the QueryContract to return a response
+data QueryResponse
+  = QueryCurrentOwner  UserId
+  | QueryCurrentPrice  (Maybe Integer)
+  | QueryContentStatus (Maybe NftListNode)
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON)
+
+PlutusTx.unstableMakeIsData ''MintAct
+PlutusTx.unstableMakeIsData ''NftId
+
+PlutusTx.makeLift ''MintAct
+PlutusTx.makeLift ''NftId
+
 
 -- OffChain utility types.
 
