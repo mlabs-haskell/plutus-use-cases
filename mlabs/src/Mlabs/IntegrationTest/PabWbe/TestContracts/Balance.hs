@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:debug-context #-}
-
 module Mlabs.IntegrationTest.PabWbe.TestContracts.Balance (
   BalanceAndSignSchema,
   endpoints,
@@ -11,11 +9,13 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
 
+import Ledger.Ada qualified as Ada
 import Ledger.Constraints (mkTx)
 import Ledger.Constraints qualified as Constraints
 
+import Mlabs.IntegrationTest.PabWbe.TxInfo
 import Mlabs.IntegrationTest.PabWbe.Types
-import Mlabs.IntegrationTest.Types
+import Mlabs.IntegrationTest.Utils (decodePkh)
 
 import Plutus.Contract (
   Contract,
@@ -29,7 +29,6 @@ import Plutus.Contract (
   submitBalancedTx,
   throwError,
  )
-import Plutus.V1.Ledger.Ada qualified as Ada
 
 import PlutusTx.Prelude
 
@@ -54,9 +53,7 @@ balanceAndSign = endpoint @"run-balance" $ \() -> do
   case etx of
     Left e -> throwError . Text.pack $ Hask.show e
     Right unbTx -> do
-      balanced <- balanceTx unbTx
-      logInfo @Hask.String $ Hask.show balanced
-      submitted <- submitBalancedTx balanced
-      logInfo @Hask.String $ Hask.show submitted
+      balanced <- getSomeCardanoApiTx =<< balanceTx unbTx
+      _ <- getSomeCardanoApiTx =<< submitBalancedTx (Left balanced)
       -- FIXME
       error ()
