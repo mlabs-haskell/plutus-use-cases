@@ -521,7 +521,7 @@ instance Eq UserAct where
 data QueryResponse
   = QueryCurrentOwner (Maybe UserId)
   | QueryCurrentPrice (Maybe Integer)
-  | QueryContentStatus (Maybe NftListNode)
+  | QueryContent (Maybe InformationNft)
   | QueryListNfts [InformationNft]
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON)

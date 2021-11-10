@@ -17,7 +17,7 @@ import Prelude qualified as Hask
 import Mlabs.Emulator.Scene (checkScene)
 import Mlabs.NFT.Contract.Aux (hashData)
 import Mlabs.NFT.Contract.Mint (mintParamsToInfo)
-import Mlabs.NFT.Contract.Query (queryCurrentOwnerLog, queryCurrentPriceLog, queryListNftsLog)
+import Mlabs.NFT.Contract.Query (queryCurrentOwnerLog, queryCurrentPriceLog, queryListNftsLog, queryContentLog)
 import Mlabs.NFT.Types (
   BuyRequestUser (..),
   InformationNft (..),
@@ -26,6 +26,7 @@ import Mlabs.NFT.Types (
   QueryResponse (..),
   SetPriceParams (..),
   UserId (..),
+  Content (..),
  )
 import Test.NFT.Init (
   artwork1,
@@ -38,6 +39,7 @@ import Test.NFT.Init (
   userQueryListNfts,
   userQueryOwner,
   userQueryPrice,
+  userQueryContent,
   userSetPrice,
   w1,
   w2,
@@ -56,6 +58,7 @@ test =
     , testQueryPrice
     , testQueryOwner
     , testQueryListNfts
+    , testQueryContent
     ]
 
 -- | User 2 buys from user 1
@@ -185,3 +188,22 @@ testQueryListNfts = check "Query list NFTs" assertState w1 script
       _ -> False
       where
         msg = queryListNftsLog nfts
+
+testQueryContent :: TestTree
+testQueryContent = check "Query content" assertState w1 script
+  where
+    script = do
+      nftId <- userMint w1 artwork2
+      userQueryContent w1 $ mp'content artwork2
+
+    assertState = assertInstanceLog (walletInstanceTag w1) (any predicate)
+
+    predicate = \case
+      (EmulatorTimeEvent _ (ContractInstanceLog (ContractLog (String str)) _ _)) ->
+        T.pack msg Hask.== str
+      _ -> False
+      where
+        content = mp'content artwork2
+        msg = queryContentLog content $ QueryContent $ Just infoNft
+        userId = UserId . pubKeyHash . walletPubKey $ w1
+        infoNft = mintParamsToInfo artwork2 userId

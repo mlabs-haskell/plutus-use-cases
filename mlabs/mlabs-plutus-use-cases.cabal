@@ -140,6 +140,19 @@ library
     Mlabs.Lending.Logic.React
     Mlabs.Lending.Logic.State
     Mlabs.Lending.Logic.Types
+    Mlabs.NFT.Api
+    Mlabs.NFT.Contract
+    Mlabs.NFT.Contract.Aux
+    Mlabs.NFT.Contract.Buy
+    Mlabs.NFT.Contract.Init
+    Mlabs.NFT.Contract.Mint
+    Mlabs.NFT.Contract.Query
+    Mlabs.NFT.Contract.SetPrice
+    Mlabs.NFT.Contract.OpenAuction
+    Mlabs.NFT.Contract.CloseAuction
+    Mlabs.NFT.Contract.BidAuction
+    Mlabs.NFT.Types
+    Mlabs.NFT.Validation
     Mlabs.Nft.Contract
     Mlabs.Nft.Contract.Api
     Mlabs.Nft.Contract.Emulator.Client
@@ -155,17 +168,7 @@ library
     Mlabs.Plutus.PAB
     Mlabs.System.Console.PrettyLogger
     Mlabs.System.Console.Utils
-    Mlabs.Utils.Wallet 
-    Mlabs.NFT.Types
-    Mlabs.NFT.Contract
-    Mlabs.NFT.Validation
-    Mlabs.NFT.Api
-    Mlabs.NFT.Contract.Query
-    Mlabs.NFT.Contract.Init
-    Mlabs.NFT.Contract.Mint
-    Mlabs.NFT.Contract.Aux
-    Mlabs.NFT.Contract.SetPrice
-    Mlabs.NFT.Contract.Buy
+    Mlabs.Utils.Wallet
 
 executable mlabs-plutus-use-cases
   import:  common-imports
