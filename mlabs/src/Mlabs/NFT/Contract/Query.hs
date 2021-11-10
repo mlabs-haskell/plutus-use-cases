@@ -15,13 +15,12 @@ import Text.Printf (printf)
 import Data.Monoid (Last (..), mconcat)
 import Data.Text (Text)
 import GHC.Base (join)
-import Mlabs.NFT.Contract.Aux (hashData, getNftDatum)
-import Mlabs.NFT.Contract (getDatumsTxsOrdered, getsNftDatum)
+import Mlabs.NFT.Contract.Aux (getDatumsTxsOrdered, getsNftDatum, hashData, getNftDatum)
 import Mlabs.NFT.Types (
   DatumNft (..),
   InformationNft (..),
   NftAppSymbol,
-  NftId,
+  NftId (..),
   NftListNode (..),
   PointInfo (..),
   QueryResponse (..),
@@ -100,9 +99,9 @@ queryContentStatus appSymbol content = do
   where datumNftListNode :: Maybe DatumNft -> QueryContract QueryResponse
         datumNftListNode = \case
                              Just (NodeDatum nftListNode) -> do let res = QueryContentStatus . Just $ nftListNode
-                                                                Contract.tell . Last . Just $ res
+                                                                Contract.tell . Last . Just . Right $ res
                                                                 return res
-                             Just (HeadDatum _)           -> do Contract.logError @Hask.String $ printf "HeadDatum has no information."
+                             Just (HeadDatum _)           -> do Contract.logError @String $ printf "HeadDatum has no information."
                                                                 return . QueryContentStatus $ Nothing
-                             Nothing                      -> do Contract.logError @Hask.String "Content didn't find"
+                             Nothing                      -> do Contract.logError @String "Content didn't find"
                                                                 return . QueryContentStatus $ Nothing

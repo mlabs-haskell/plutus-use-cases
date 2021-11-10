@@ -14,7 +14,7 @@ module Mlabs.NFT.Api (
 import Control.Monad (void)
 
 import Playground.Contract (mkSchemaDefinitions)
-import Plutus.Contract (Contract, Endpoint, endpoint, type (.\/))
+import Plutus.Contract (Endpoint, endpoint, type (.\/))
 import Prelude as Hask
 
 import Mlabs.NFT.Contract.Buy (buy)
@@ -22,7 +22,7 @@ import Mlabs.NFT.Contract.Init (initApp)
 import Mlabs.NFT.Contract.Mint (mint)
 import Mlabs.NFT.Contract.Query (queryCurrentOwner, queryCurrentPrice, queryListNfts, queryContentStatus)
 import Mlabs.NFT.Contract.SetPrice (setPrice)
-import Mlabs.NFT.Types (AdminContract, BuyRequestUser (..), MintParams (..), NftAppSymbol (..), NftId (..), SetPriceParams (..), UserContract, QueryResponse (..), Content)
+import Mlabs.NFT.Types (AdminContract, BuyRequestUser (..), MintParams (..), NftAppSymbol (..), NftId (..), SetPriceParams (..), UserContract, Content)
 import Mlabs.NFT.Types ()
 import Mlabs.Plutus.Contract (selectForever)
 
@@ -47,7 +47,7 @@ mkSchemaDefinitions ''NFTAppSchema
 
 type ApiUserContract a = UserContract NFTAppSchema a
 type ApiAdminContract a = AdminContract NFTAppSchema a
-type ApiQueryContract a = Contract (Last QueryResponse) NFTAppSchema Text a
+--type ApiQueryContract a = Contract (Last QueryResponse) NFTAppSchema Text a
 
 -- | User Endpoints .
 endpoints :: NftAppSymbol -> ApiUserContract ()
@@ -73,5 +73,5 @@ queryEndpoints appSymbol =
     [ endpoint @"query-current-price" (void . queryCurrentPrice appSymbol)
     , endpoint @"query-current-owner" (void . queryCurrentOwner appSymbol)
     , endpoint @"query-list-nfts" (void . const (queryListNfts appSymbol))
-    , endpoint @"query-content-status" (queryContentStatus appSymbol)
+    , endpoint @"query-content-status" (void . queryContentStatus appSymbol)
     ]

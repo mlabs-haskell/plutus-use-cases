@@ -95,7 +95,7 @@ getContentStatusTrace1 = do
   callEndpoint @"mint" h1 artwork
   void $ Trace.waitNSlots 1
 
-  h1' :: AppQueryHandle <- activateContractWallet wallet1 $ queryEndpoints aSymb
+  h1' :: AppTraceHandle <- activateContractWallet wallet1 $ queryEndpoints aSymb
 
   callEndpoint @"query-content-status" h1' $ Content "A painting."
   void $ Trace.waitNSlots 1
@@ -121,7 +121,7 @@ getContentStatusTrace2 = do
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
   h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
   void $ Trace.waitNSlots 1
-  h1' :: AppQueryHandle <- activateContractWallet wallet1 $ queryEndpoints aSymb
+  h1' :: AppTraceHandle <- activateContractWallet wallet1 $ queryEndpoints aSymb
 
 
   callEndpoint @"mint" h1 artwork

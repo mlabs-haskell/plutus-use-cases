@@ -140,16 +140,6 @@ library
     Mlabs.Lending.Logic.React
     Mlabs.Lending.Logic.State
     Mlabs.Lending.Logic.Types
-    Mlabs.NFT.Api
-    Mlabs.NFT.Contract
-    Mlabs.NFT.Contract.Aux
-    Mlabs.NFT.Contract.Buy
-    Mlabs.NFT.Contract.Init
-    Mlabs.NFT.Contract.Mint
-    Mlabs.NFT.Contract.Query
-    Mlabs.NFT.Contract.SetPrice
-    Mlabs.NFT.Types
-    Mlabs.NFT.Validation
     Mlabs.Nft.Contract
     Mlabs.Nft.Contract.Api
     Mlabs.Nft.Contract.Emulator.Client
