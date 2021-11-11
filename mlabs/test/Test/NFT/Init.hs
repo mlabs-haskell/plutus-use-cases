@@ -28,8 +28,8 @@ import Control.Monad.Freer.Extras.Log (LogMsg)
 import Control.Monad.Reader (ReaderT, ask, lift, runReaderT, void)
 import Data.Map qualified as M
 import Data.Monoid (Last (..))
-import Ledger.Contexts (pubKeyHash)
-import Plutus.Contract.Test (CheckOptions, TracePredicate, Wallet (..), checkPredicateOptions, defaultCheckOptions, emulatorConfig, walletPubKey)
+import Plutus.Contract.Test (CheckOptions, TracePredicate, Wallet (..), checkPredicateOptions, defaultCheckOptions, emulatorConfig, walletPubKeyHash)
+import Plutus.Trace.Effects.Assert (Assert)
 import Plutus.Trace.Effects.EmulatedWalletAPI (EmulatedWalletAPI)
 import Plutus.Trace.Effects.EmulatorControl (EmulatorControl)
 import Plutus.Trace.Effects.RunContract (RunContract)
@@ -87,6 +87,7 @@ type ScriptM a =
     NftAppSymbol
     ( Eff
         '[ RunContract
+         , Assert
          , Waiting
          , EmulatorControl
          , EmulatedWalletAPI
@@ -102,7 +103,7 @@ checkOptions :: CheckOptions
 checkOptions = defaultCheckOptions & emulatorConfig . initialChainState .~ Left initialDistribution
 
 toUserId :: Wallet -> UserId
-toUserId = UserId . pubKeyHash . walletPubKey
+toUserId = UserId . walletPubKeyHash
 
 {- | Script runner. It inits NFT by user 1 and provides nft id to all sequent
  endpoint calls.
