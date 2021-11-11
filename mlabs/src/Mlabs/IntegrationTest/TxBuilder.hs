@@ -1,4 +1,4 @@
-module Mlabs.IntegrationTest.Wbe.TxBuilder (
+module Mlabs.IntegrationTest.TxBuilder (
   buildTx,
   buildWbeTx,
   simpleAdaToWallet,
@@ -13,7 +13,8 @@ import Data.Fixed (Micro)
 import Data.Maybe (fromJust)
 import Data.Void (Void)
 
-import Mlabs.IntegrationTest.Wbe.Types (WbeError (..), WbeExportTx (..))
+import Mlabs.IntegrationTest.Types
+import Mlabs.IntegrationTest.Wbe.Types
 
 import Ledger.Constraints qualified as Constraints
 import Ledger.Constraints.OffChain (MkTxError (..), UnbalancedTx, mkTx)
@@ -33,9 +34,8 @@ simpleAdaToWallet ::
   C.NetworkId ->
   C.ProtocolParameters ->
   Micro ->
-  Either WbeError WbeExportTx
-simpleAdaToWallet netId params ada =
-  WbeExportTx <$> buildTx @Void netId params Hask.mempty txC
+  Either TestError WbeExportTx
+simpleAdaToWallet netId params ada = buildTx @Void netId params Hask.mempty txC
   where
     pkh :: PubKeyHash =
       -- TODO check if we can do it w/o JSON decoding (was broken in earlier versions)
@@ -48,7 +48,8 @@ simpleAdaToWallet netId params ada =
 
 -- Building transactions --
 
--- | Build an 'WbeExportTx' from arbitrary lookups and transactions constraints
+-- | Build an 'ExportTx' from arbitrary lookups and transactions constraints
+-- TODO delete me
 buildWbeTx ::
   ( FromData (DatumType a)
   , ToData (DatumType a)
@@ -58,8 +59,8 @@ buildWbeTx ::
   C.ProtocolParameters ->
   Constraints.ScriptLookups a ->
   Constraints.TxConstraints (RedeemerType a) (DatumType a) ->
-  Either WbeError WbeExportTx
-buildWbeTx netId pparams lookups = fmap WbeExportTx . buildTx netId pparams lookups
+  Either TestError WbeExportTx
+buildWbeTx = buildTx
 
 -- | Build an 'ExportTx' from arbitrary lookups and transactions constraints
 buildTx ::
@@ -72,14 +73,14 @@ buildTx ::
   C.ProtocolParameters ->
   Constraints.ScriptLookups a ->
   Constraints.TxConstraints (RedeemerType a) (DatumType a) ->
-  Either WbeError ExportTx
+  Either TestError ExportTx
 buildTx netId protoParams lookups = buildTxFrom netId protoParams . mkTx @a lookups
 
 buildTxFrom ::
   C.NetworkId ->
   C.ProtocolParameters ->
   Either MkTxError UnbalancedTx ->
-  Either WbeError ExportTx
+  Either TestError ExportTx
 buildTxFrom netId protoParams =
   either (Left . TxError) (first CardanoError . exp)
   where

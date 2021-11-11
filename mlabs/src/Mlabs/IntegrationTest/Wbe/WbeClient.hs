@@ -16,6 +16,7 @@ import Data.Bifunctor (first)
 import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
 
+import Mlabs.IntegrationTest.Types
 import Mlabs.IntegrationTest.Wbe.Types
 
 import Network.HTTP.Req ((/:))
