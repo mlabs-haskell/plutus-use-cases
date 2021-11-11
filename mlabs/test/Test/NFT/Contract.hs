@@ -206,5 +206,5 @@ testQueryContent = check "Query content" assertState w1 script
       where
         content = mp'content artwork2
         msg = queryContentLog content $ QueryContent $ Just infoNft
-        userId = UserId . pubKeyHash . walletPubKey $ w1
+        userId = UserId . walletPubKeyHash $ w1
         infoNft = mintParamsToInfo artwork2 userId
