@@ -1,5 +1,3 @@
-{-# LANGUAGE TypeApplications #-}
-
 module Mlabs.NFT.PAB.Simulator (
   handlers,
   runSimulator,
