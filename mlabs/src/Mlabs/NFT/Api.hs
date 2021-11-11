@@ -6,6 +6,7 @@ module Mlabs.NFT.Api (
   endpoints,
   queryEndpoints,
   adminEndpoints,
+  nftMarketUserEndpoints,
 ) where
 
 --import Data.Monoid (Last (..))
@@ -74,11 +75,26 @@ adminEndpoints =
     [ endpoint @"app-init" $ Hask.const initApp
     ]
 
--- Query Endpoints are used for Querying, with no on-chain tx generation.
+-- | Query Endpoints are used for Querying, with no on-chain tx generation.
 queryEndpoints :: NftAppSymbol -> ApiUserContract ()
 queryEndpoints appSymbol =
   selectForever
     [ endpoint @"query-current-price" (void . queryCurrentPrice appSymbol)
+    , endpoint @"query-current-owner" (void . queryCurrentOwner appSymbol)
+    , endpoint @"query-list-nfts" (void . const (queryListNfts appSymbol))
+    ]
+
+-- | Endpoints for NFT marketplace user - combination of user and query endpoints.
+nftMarketUserEndpoints :: NftAppSymbol -> ApiUserContract ()
+nftMarketUserEndpoints appSymbol =
+  selectForever
+    [ endpoint @"mint" (mint appSymbol)
+    , endpoint @"buy" (buy appSymbol)
+    , endpoint @"set-price" (setPrice appSymbol)
+    , endpoint @"auction-open" (openAuction appSymbol)
+    , endpoint @"auction-close" (closeAuction appSymbol)
+    , endpoint @"auction-bid" (bidAuction appSymbol)
+    , endpoint @"query-current-price" (void . queryCurrentPrice appSymbol)
     , endpoint @"query-current-owner" (void . queryCurrentOwner appSymbol)
     , endpoint @"query-list-nfts" (void . const (queryListNfts appSymbol))
     ]
