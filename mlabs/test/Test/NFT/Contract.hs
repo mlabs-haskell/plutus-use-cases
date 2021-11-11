@@ -137,12 +137,7 @@ testQueryPrice = check "Query price" assertState w1 script
       nftId <- userMint w1 artwork2
       userQueryPrice w1 nftId
 
-    assertState = assertInstanceLog (walletInstanceTag w1) (any predicate)
-
-    predicate = \case
-      (EmulatorTimeEvent _ (ContractInstanceLog (ContractLog (String str)) _ _)) ->
-        T.pack msg Hask.== str
-      _ -> False
+    assertState = assertInstanceLog (walletInstanceTag w1) (any $ queryLogPredicate msg)
       where
         nftId = NftId . hashData . mp'content $ artwork2
         price = QueryCurrentPrice . mp'price $ artwork2
@@ -155,12 +150,7 @@ testQueryOwner = check "Query owner" assertState w1 script
       nftId <- userMint w1 artwork2
       userQueryOwner w1 nftId
 
-    assertState = assertInstanceLog (walletInstanceTag w1) (any predicate)
-
-    predicate = \case
-      (EmulatorTimeEvent _ (ContractInstanceLog (ContractLog (String str)) _ _)) ->
-        T.pack msg Hask.== str
-      _ -> False
+    assertState = assertInstanceLog (walletInstanceTag w1) (any $ queryLogPredicate msg)
       where
         nftId = NftId . hashData . mp'content $ artwork2
         owner = QueryCurrentOwner . Just . UserId . walletPubKeyHash $ w1
@@ -174,7 +164,9 @@ testQueryListNfts = check "Query list NFTs" assertState w1 script
       mapM_ (userMint w1) artworks
       userQueryListNfts w1
 
-    assertState = assertInstanceLog (walletInstanceTag w1) (any predicate)
+    assertState = assertInstanceLog (walletInstanceTag w1) (any $ queryLogPredicate msg)
+      where
+        msg = queryListNftsLog nfts
 
     artworks = [artwork1, artwork2]
 
@@ -183,13 +175,6 @@ testQueryListNfts = check "Query list NFTs" assertState w1 script
         . fmap (\mp -> mintParamsToInfo mp (UserId . walletPubKeyHash $ w1))
         $ artworks
 
-    predicate = \case
-      (EmulatorTimeEvent _ (ContractInstanceLog (ContractLog (String str)) _ _)) ->
-        T.pack msg Hask.== str
-      _ -> False
-      where
-        msg = queryListNftsLog nfts
-
 testQueryContent :: TestTree
 testQueryContent = check "Query content" assertState w1 script
   where
@@ -197,14 +182,17 @@ testQueryContent = check "Query content" assertState w1 script
       nftId <- userMint w1 artwork2
       userQueryContent w1 $ mp'content artwork2
 
-    assertState = assertInstanceLog (walletInstanceTag w1) (any predicate)
-
-    predicate = \case
-      (EmulatorTimeEvent _ (ContractInstanceLog (ContractLog (String str)) _ _)) ->
-        T.pack msg Hask.== str
-      _ -> False
+    assertState = assertInstanceLog (walletInstanceTag w1) (any $ queryLogPredicate msg)
       where
         content = mp'content artwork2
         msg = queryContentLog content $ QueryContent $ Just infoNft
         userId = UserId . walletPubKeyHash $ w1
         infoNft = mintParamsToInfo artwork2 userId
+
+{- | Predicate that checks that the last logged mesage by the contract is the
+ same as a given mesage.
+-}
+queryLogPredicate :: Hask.String -> EmulatorTimeEvent ContractInstanceLog -> Bool
+queryLogPredicate msg = \case
+  (EmulatorTimeEvent _ (ContractInstanceLog (ContractLog (String str)) _ _)) -> T.pack msg Hask.== str
+  _ -> False
