@@ -56,11 +56,11 @@ import Ledger (
   TxOutRef,
  )
 
+import Data.OpenApi.Schema qualified as OpenApi
 import Ledger.Value (TokenName (..), unAssetClass)
 import Plutus.ChainIndex (ChainIndexTx)
 import PlutusTx qualified
 import Schema (ToSchema)
-import Data.OpenApi.Schema qualified as OpenApi
 
 --------------------------------------------------------------------------------
 -- ON-CHAIN TYPES --

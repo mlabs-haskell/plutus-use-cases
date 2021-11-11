@@ -1,23 +1,23 @@
-{-# LANGUAGE DataKinds          #-}
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE FlexibleContexts   #-}
-{-# LANGUAGE LambdaCase         #-}
-{-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE RankNTypes         #-}
-{-# LANGUAGE TypeApplications   #-}
-{-# LANGUAGE TypeFamilies       #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Mlabs.NFT.PAB.MarketplaceContract (
-  MarketplaceContracts(..)
+  MarketplaceContracts (..),
 ) where
 
 import PlutusTx.Prelude
 import Prelude qualified as Hask
 
 import Data.Aeson (
-  FromJSON, 
+  FromJSON,
   ToJSON,
  )
 import Data.OpenApi.Schema qualified as OpenApi
@@ -32,19 +32,19 @@ import Plutus.PAB.Effects.Contract.Builtin (HasDefinitions (..), SomeBuiltin (..
 import Plutus.PAB.Effects.Contract.Builtin qualified as Builtin
 import Plutus.PAB.Run.PSGenerator (HasPSTypes (..))
 
-import Mlabs.NFT.Types (NftAppSymbol (..))
 import Mlabs.NFT.Api qualified as Contract.NFT
+import Mlabs.NFT.Types (NftAppSymbol (..))
 
-import  Plutus.V1.Ledger.Value (CurrencySymbol(..))
+import Plutus.V1.Ledger.Value (CurrencySymbol (..))
 
--- | Contracts available through PAB.
--- For concrete endpoints see `getContract`
-data MarketplaceContracts 
+{- | Contracts available through PAB.
+ For concrete endpoints see `getContract`
+-}
+data MarketplaceContracts
   = NftAdminContract
   | UserContract NftAppSymbol
   deriving stock (Hask.Eq, Hask.Ord, Hask.Show, Generic)
   deriving anyclass (FromJSON, ToJSON, OpenApi.ToSchema)
-
 
 instance Pretty MarketplaceContracts where
   pretty = viaShow
@@ -57,18 +57,16 @@ instance HasPSTypes MarketplaceContracts where
 instance HasDefinitions MarketplaceContracts where
   getDefinitions =
     [ NftAdminContract
-    , UserContract someAppSymbol 
+    , UserContract someAppSymbol
     ]
     where
       someAppSymbol = NftAppSymbol $ CurrencySymbol "ff"
-      -- ^ just to generate some definition (helps to see how to call activation)
-      -- see /api/contract/definitions
 
   getContract = \case
-    NftAdminContract 
-      -> SomeBuiltin Contract.NFT.adminEndpoints
-    UserContract appSymbol 
-      -> SomeBuiltin $ Contract.NFT.nftMarketUserEndpoints appSymbol
+    NftAdminContract ->
+      SomeBuiltin Contract.NFT.adminEndpoints
+    UserContract appSymbol ->
+      SomeBuiltin $ Contract.NFT.nftMarketUserEndpoints appSymbol
 
   getSchema = \case
     NftAdminContract -> Builtin.endpointsToSchemas @Contract.NFT.NFTAppSchema

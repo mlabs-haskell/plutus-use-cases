@@ -6,12 +6,12 @@ module Mlabs.NFT.PAB.Simulator (
 ) where
 
 -- import PlutusTx.Prelude
-import Prelude 
+import Prelude
 
-import Data.Default(Default (def))
 import Control.Monad (void)
-import Control.Monad.Freer 
+import Control.Monad.Freer
 import Control.Monad.IO.Class (MonadIO (..))
+import Data.Default (Default (def))
 
 import Plutus.PAB.Effects.Contract.Builtin (Builtin, BuiltinHandler (..))
 import Plutus.PAB.Effects.Contract.Builtin qualified as Builtin
@@ -23,8 +23,9 @@ import Mlabs.NFT.PAB.MarketplaceContract (MarketplaceContracts)
 
 -- | Start PAB simulator for NFT contracts
 runSimulator :: IO ()
-runSimulator = void $ Simulator.runSimulationWith handlers $ do
-    logString @(Builtin MarketplaceContracts) 
+runSimulator = void $
+  Simulator.runSimulationWith handlers $ do
+    logString @(Builtin MarketplaceContracts)
       "Starting NFT marketplace simulated PAB webserver. Press enter to exit."
     shutdown <- PAB.Server.startServerDebug
     _ <- liftIO getLine
@@ -33,5 +34,5 @@ runSimulator = void $ Simulator.runSimulationWith handlers $ do
 -- | Simulator handlers for NFT contracts
 handlers :: SimulatorEffectHandlers (Builtin MarketplaceContracts)
 handlers =
-    Simulator.mkSimulatorHandlers def def
-    $ interpret (contractHandler Builtin.handleBuiltin)
+  Simulator.mkSimulatorHandlers def def $
+    interpret (contractHandler Builtin.handleBuiltin)
