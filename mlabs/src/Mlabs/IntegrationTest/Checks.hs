@@ -1,35 +1,41 @@
-module Mlabs.IntegrationTest.Wbe.Checks (
+{-# LANGUAGE GADTs #-}
+
+module Mlabs.IntegrationTest.Checks (
   Reportable (..),
+  AnyCheck (..),
   Check (..),
+  CheckContext (..),
   Balanced (..),
+  Fee (..),
+  Inputs (..),
+  InsOutsChanged (..),
   WitnessesAdded (..),
+  cNot,
+  asIs,
+  witnessesMustBeAdded,
   mustBeBalanced,
+  mustBeMintBalanced,
   feeMustBeAdded,
   inputsMustBeAdded,
   unbalancedInsOutsShouldNotChange,
-  mustBeMintBalanced,
-  cNot,
-  witnessesMustBeAdded,
 ) where
 
 import Prelude
 
-import Cardano.Ledger.Coin (Coin (..))
-
 import Data.List qualified as L
-import Data.Maybe (isJust)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
-import Data.Text qualified as Text
 
 import Ledger (TxIn, Value)
+import Ledger.Ada qualified as Ada
+import Ledger.Value qualified as Value
 
 import Mlabs.IntegrationTest.Types
+import Mlabs.IntegrationTest.Utils
 
 import Plutus.ChainIndex (ChainIndexTxOutputs (..))
-import Plutus.V1.Ledger.Ada (fromValue, lovelaceValueOf)
-import Plutus.V1.Ledger.Value (symbols)
 
 import PlutusTx.Prelude qualified as PP
 
@@ -37,10 +43,13 @@ class Reportable a where
   report :: a -> Text --todo color coding?
   say :: (Bool -> Bool) -> a -> Text
 
-data CheckContext = Success | Fail
+data AnyCheck where
+  AnyCheck :: forall a. Reportable (Check a) => Check a -> AnyCheck
 
 -- TODO maybe Tx id should be included here
 data Check a = Check CheckContext a
+
+data CheckContext = Success | Fail
 
 data Balanced
   = Balanced
@@ -78,29 +87,7 @@ instance Reportable (Check Balanced) where
         Check _ Balanced -> True
         Check _ (Unbalanced _ _) -> False
 
-mustBeBalanced :: BalanceInfo -> Check Balanced
-mustBeBalanced BalanceInfo {..}
-  | valueIsBalanced = Check Success Balanced
-  | otherwise = Check Fail (Unbalanced totalInputsValue totalOutsValue)
-  where
-    valueIsBalanced = totalInputsValue PP.== totalOutsValue PP.+ feeLovelaces
-    totalInputsValue = fromWalletTotalValue
-    feeLovelaces = maybe mempty (lovelaceValueOf . unCoin) fee
-
-mustBeMintBalanced :: BalanceInfo -> Check Balanced
-mustBeMintBalanced BalanceInfo {..}
-  | valueMinted && balancedOnAda = Check Success Balanced
-  | otherwise = Check Fail (Unbalanced totalInputsValue totalOutsValue)
-  where
-    insAda = fromValue totalInputsValue
-    outsAda = fromValue totalBalancedValue
-    balancedOnAda = insAda PP.== outsAda
-    totalBalancedValue = totalOutsValue PP.+ feeLovelaces
-    totalInputsValue = fromWalletTotalValue
-    feeLovelaces = maybe mempty (lovelaceValueOf . unCoin) fee
-    valueMinted = any (`L.notElem` symbols totalInputsValue) (symbols totalBalancedValue)
-
-newtype Fee = Fee (Maybe Coin)
+newtype Fee = Fee (Maybe Value)
   deriving newtype (Show)
 
 instance Reportable (Check Fee) where
@@ -125,11 +112,6 @@ instance Reportable (Check Fee) where
       "has fee"
     | otherwise =
       "has no fee"
-
-feeMustBeAdded :: BalanceInfo -> Check Fee
-feeMustBeAdded BalanceInfo {..}
-  | isJust fee = Check Success (Fee fee)
-  | otherwise = Check Fail (Fee fee)
 
 data Inputs
   = NotAdded
@@ -163,11 +145,6 @@ instance Reportable (Check Inputs) where
         NotAdded -> False
         Added _ -> True
 
-inputsMustBeAdded :: BalanceInfo -> Check Inputs
-inputsMustBeAdded BalanceInfo {..}
-  | Set.null txInFromWallet = Check Fail NotAdded
-  | otherwise = Check Success (Added txInFromWallet)
-
 data InsOutsChanged
   = Changed
   | NotChanged
@@ -200,21 +177,6 @@ instance Reportable (Check InsOutsChanged) where
         Changed -> True
         NotChanged -> False
 
-unbalancedInsOutsShouldNotChange :: BalanceInfo -> Check InsOutsChanged
-unbalancedInsOutsShouldNotChange BalanceInfo {..}
-  | insNotChanged && outsNotChanged =
-    Check Success NotChanged
-  | otherwise =
-    Check Fail Changed
-  where
-    (unbIns, unbOuts) = unbalancedIsOuts
-    (bcdIns, bcdOuts) = balancedIsOuts
-    insNotChanged = all (`Set.member` bcdIns) unbIns
-    outsNotChanged = case (unbOuts, bcdOuts) of
-      (InvalidTx, InvalidTx) -> True
-      (ValidTx unbOuts', ValidTx bcdOuts') -> all (`L.elem` bcdOuts') unbOuts'
-      _ -> False
-
 data WitnessesAdded
   = WitnessesAdded
   | NoWitnessesAdded
@@ -245,6 +207,15 @@ instance Reportable (Check WitnessesAdded) where
         WitnessesAdded -> True
         NoWitnessesAdded -> False
 
+cNot :: Check a -> Check a
+cNot = \case
+  Check Success a -> Check Fail a
+  Check Fail a -> Check Success a
+
+asIs :: a -> a
+asIs = id
+
+--Individual checks------------------------------------------------------------
 witnessesMustBeAdded :: SignInfo -> Check WitnessesAdded
 witnessesMustBeAdded SignInfo {..}
   | diffNotNull && moreWitnessesAfterSigning = Check Success WitnessesAdded
@@ -254,13 +225,50 @@ witnessesMustBeAdded SignInfo {..}
     moreWitnessesAfterSigning =
       length signedWitnesses > length balancedWitnesses
 
-cNot :: Check a -> Check a
-cNot = \case
-  Check Success a -> Check Fail a
-  Check Fail a -> Check Success a
+mustBeBalanced :: BalanceInfo -> Check Balanced
+mustBeBalanced BalanceInfo {..}
+  | valueIsBalanced = Check Success Balanced
+  | otherwise = Check Fail (Unbalanced totalInsValue totalOutsValue)
+  where
+    valueIsBalanced =
+      totalInsValue PP.== totalOutsValue
+        PP.+ fromMaybe mempty fee
 
-asIs :: a -> a
-asIs = id
+mustBeMintBalanced :: BalanceInfo -> Check Balanced
+mustBeMintBalanced BalanceInfo {..}
+  | valueMinted && balancedOnAda = Check Success Balanced
+  | otherwise = Check Fail (Unbalanced totalInsValue totalOutsValue)
+  where
+    insAda = Ada.fromValue totalInsValue
+    outsAda = Ada.fromValue totalBalancedValue
+    balancedOnAda = insAda PP.== outsAda
+    totalBalancedValue = totalOutsValue PP.+ fromMaybe mempty fee
+    valueMinted =
+      any
+        (`L.notElem` Value.symbols totalInsValue)
+        (Value.symbols totalBalancedValue)
 
-tshow :: Show a => a -> Text
-tshow = Text.pack . show
+feeMustBeAdded :: BalanceInfo -> Check Fee
+feeMustBeAdded BalanceInfo {..}
+  | isJust fee = Check Success (Fee fee)
+  | otherwise = Check Fail (Fee fee)
+
+inputsMustBeAdded :: BalanceInfo -> Check Inputs
+inputsMustBeAdded BalanceInfo {..}
+  | Set.null txInFromWallet = Check Fail NotAdded
+  | otherwise = Check Success (Added txInFromWallet)
+
+unbalancedInsOutsShouldNotChange :: BalanceInfo -> Check InsOutsChanged
+unbalancedInsOutsShouldNotChange BalanceInfo {..}
+  | insNotChanged && outsNotChanged =
+    Check Success NotChanged
+  | otherwise =
+    Check Fail Changed
+  where
+    (unbIns, unbOuts) = unbalancedInsOuts
+    (bcdIns, bcdOuts) = balancedInsOuts
+    insNotChanged = all (`Set.member` bcdIns) unbIns
+    outsNotChanged = case (unbOuts, bcdOuts) of
+      (InvalidTx, InvalidTx) -> True
+      (ValidTx unbOuts', ValidTx bcdOuts') -> all (`L.elem` bcdOuts') unbOuts'
+      _ -> False

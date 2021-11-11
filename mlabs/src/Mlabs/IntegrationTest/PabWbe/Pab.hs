@@ -1,4 +1,4 @@
-module Mlabs.IntegrationTest.PabWbe.TestContracts (
+module Mlabs.IntegrationTest.PabWbe.Pab (
   TestContracts (..),
 ) where
 
@@ -15,17 +15,22 @@ import Data.Aeson (
   genericParseJSON,
  )
 import Data.OpenApi.Schema qualified as OpenApi
-import Data.Text.Prettyprint.Doc (Pretty (pretty), viaShow)
+import Data.Row (Empty)
 
 import GHC.Generics (Generic)
 
-import Language.PureScript.Bridge (equal, genericShow, mkSumType, argonaut)
+import Language.PureScript.Bridge (argonaut, equal, genericShow, mkSumType)
 
-import Mlabs.IntegrationTest.PabWbe.TestContracts.Balance qualified as Contract.Balance
+import Mlabs.IntegrationTest.PabWbe.TestStand qualified as TestStand
 
-import Plutus.PAB.Effects.Contract.Builtin (HasDefinitions (..), SomeBuiltin (..))
+import Plutus.PAB.Effects.Contract.Builtin (
+  HasDefinitions (..),
+  SomeBuiltin (..),
+ )
 import Plutus.PAB.Effects.Contract.Builtin qualified as Builtin
 import Plutus.PAB.Run.PSGenerator (HasPSTypes (..))
+
+import Prettyprinter (Pretty (pretty), viaShow)
 
 data TestContracts = BalanceAndSignContract
   deriving stock (Hask.Eq, Hask.Ord, Hask.Show, Generic)
@@ -34,7 +39,7 @@ data TestContracts = BalanceAndSignContract
 instance FromJSON TestContracts where
   parseJSON x =
     genericParseJSON
-      defaultOptions {sumEncoding = TaggedObject "tag" (Hask.show x)}
+      defaultOptions {sumEncoding = TaggedObject "tag" $ Hask.show x}
       x
 
 instance Pretty TestContracts where
@@ -46,13 +51,8 @@ instance HasPSTypes TestContracts where
     ]
 
 instance HasDefinitions TestContracts where
-  getDefinitions =
-    [ BalanceAndSignContract
-    ]
+  getDefinitions = [BalanceAndSignContract]
 
-  getContract BalanceAndSignContract =
-    SomeBuiltin Contract.Balance.endpoints
+  getContract _ = SomeBuiltin TestStand.runTests
 
-  getSchema BalanceAndSignContract =
-    Builtin.endpointsToSchemas
-      @Contract.Balance.BalanceAndSignSchema
+  getSchema _ = Builtin.endpointsToSchemas @Empty

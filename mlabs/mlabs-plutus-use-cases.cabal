@@ -171,20 +171,20 @@ library
     Mlabs.NFT.Types
     Mlabs.NFT.Contract
     Mlabs.NFT.Validation
+    Mlabs.IntegrationTest.TxBuilder
     Mlabs.IntegrationTest.Types
+    Mlabs.IntegrationTest.Checks
     Mlabs.IntegrationTest.Utils
     Mlabs.IntegrationTest.Wbe.TxRead
     Mlabs.IntegrationTest.Wbe.WbeClient
     Mlabs.IntegrationTest.Wbe.TestStand
     Mlabs.IntegrationTest.Wbe.Types
-    Mlabs.IntegrationTest.Wbe.TxBuilder
     Mlabs.IntegrationTest.Wbe.TxInfo
     Mlabs.IntegrationTest.Wbe.CardanoAPI
-    Mlabs.IntegrationTest.Wbe.Checks
     Mlabs.IntegrationTest.Wbe.TestCase
-    Mlabs.IntegrationTest.PabWbe.Run
-    Mlabs.IntegrationTest.PabWbe.TestContracts
-    Mlabs.IntegrationTest.PabWbe.TestContracts.Balance
+    Mlabs.IntegrationTest.PabWbe.Pab
+    Mlabs.IntegrationTest.PabWbe.TestCase
+    Mlabs.IntegrationTest.PabWbe.TestStand
     Mlabs.IntegrationTest.PabWbe.TxInfo
     Mlabs.IntegrationTest.PabWbe.Types
     Mlabs.NFT.Api
@@ -242,6 +242,15 @@ executable lendex-demo
   import:  common-ghc-options  
 
   main-is: lendex-demo/Main.hs
+  build-depends: mlabs-plutus-use-cases
+
+executable pab-integration-test
+  import:  common-imports
+  import:  common-language
+  import:  common-configs
+  import:  common-ghc-options
+
+  main-is: pab-integration-test/Main.hs
   build-depends: mlabs-plutus-use-cases
 
 Test-suite mlabs-plutus-use-cases-tests
