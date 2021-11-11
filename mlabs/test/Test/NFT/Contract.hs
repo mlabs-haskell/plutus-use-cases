@@ -17,16 +17,16 @@ import Prelude qualified as Hask
 import Mlabs.Emulator.Scene (checkScene)
 import Mlabs.NFT.Contract.Aux (hashData)
 import Mlabs.NFT.Contract.Mint (mintParamsToInfo)
-import Mlabs.NFT.Contract.Query (queryCurrentOwnerLog, queryCurrentPriceLog, queryListNftsLog, queryContentLog)
+import Mlabs.NFT.Contract.Query (queryContentLog, queryCurrentOwnerLog, queryCurrentPriceLog, queryListNftsLog)
 import Mlabs.NFT.Types (
   BuyRequestUser (..),
+  Content (..),
   InformationNft (..),
   MintParams (..),
   NftId (..),
   QueryResponse (..),
   SetPriceParams (..),
   UserId (..),
-  Content (..),
  )
 import Test.NFT.Init (
   artwork1,
@@ -36,10 +36,10 @@ import Test.NFT.Init (
   ownsAda,
   userBuy,
   userMint,
+  userQueryContent,
   userQueryListNfts,
   userQueryOwner,
   userQueryPrice,
-  userQueryContent,
   userSetPrice,
   w1,
   w2,

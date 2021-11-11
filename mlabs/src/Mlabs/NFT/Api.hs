@@ -23,19 +23,20 @@ import Mlabs.NFT.Contract.CloseAuction (closeAuction)
 import Mlabs.NFT.Contract.Init (initApp)
 import Mlabs.NFT.Contract.Mint (mint)
 import Mlabs.NFT.Contract.OpenAuction (openAuction)
-import Mlabs.NFT.Contract.Query (queryCurrentOwner, queryCurrentPrice, queryListNfts, queryContent)
+import Mlabs.NFT.Contract.Query (queryContent, queryCurrentOwner, queryCurrentPrice, queryListNfts)
 import Mlabs.NFT.Contract.SetPrice (setPrice)
 import Mlabs.NFT.Types (
-  AdminContract, AuctionBidParams (..),
+  AdminContract,
+  AuctionBidParams (..),
   AuctionCloseParams (..),
   AuctionOpenParams (..),
   BuyRequestUser (..),
+  Content,
   MintParams (..),
   NftAppSymbol (..),
   NftId (..),
   SetPriceParams (..),
   UserContract,
-  Content
  )
 import Mlabs.Plutus.Contract (selectForever)
 
@@ -64,6 +65,7 @@ mkSchemaDefinitions ''NFTAppSchema
 
 type ApiUserContract a = UserContract NFTAppSchema a
 type ApiAdminContract a = AdminContract NFTAppSchema a
+
 --type ApiQueryContract a = Contract (Last QueryResponse) NFTAppSchema Text a
 
 -- | User Endpoints .
@@ -73,7 +75,6 @@ endpoints appSymbol =
     [ endpoint @"mint" (mint appSymbol)
     , endpoint @"buy" (buy appSymbol)
     , endpoint @"set-price" (setPrice appSymbol)
-    --, endpoint @"query-authentic-nft" NFTContract.queryAuthenticNFT
     , endpoint @"auction-open" (openAuction appSymbol)
     , endpoint @"auction-close" (closeAuction appSymbol)
     , endpoint @"auction-bid" (bidAuction appSymbol)
@@ -94,4 +95,5 @@ queryEndpoints appSymbol =
     , endpoint @"query-current-owner" (void . queryCurrentOwner appSymbol)
     , endpoint @"query-list-nfts" (void . const (queryListNfts appSymbol))
     , endpoint @"query-content" (void . queryContent appSymbol)
+    --, endpoint @"query-authentic-nft" NFTContract.queryAuthenticNFT
     ]

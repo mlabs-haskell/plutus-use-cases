@@ -15,8 +15,9 @@ import Control.Monad ()
 import Data.Monoid (Last (..), mconcat)
 import Data.Text (Text)
 import GHC.Base (join)
-import Mlabs.NFT.Contract.Aux (getDatumsTxsOrdered, getsNftDatum, hashData, getNftDatum)
+import Mlabs.NFT.Contract.Aux (getDatumsTxsOrdered, getNftDatum, getsNftDatum, hashData)
 import Mlabs.NFT.Types (
+  Content,
   DatumNft (..),
   InformationNft (..),
   NftAppSymbol,
@@ -25,7 +26,6 @@ import Mlabs.NFT.Types (
   PointInfo (..),
   QueryResponse (..),
   UserWriter,
-  Content
  )
 import Plutus.Contract (Contract)
 import Plutus.Contract qualified as Contract
@@ -94,7 +94,7 @@ queryListNftsLog infos = mconcat ["Available NFTs: ", show infos]
 queryContent :: NftAppSymbol -> Content -> QueryContract QueryResponse
 queryContent appSymbol content = do
   let nftId = NftId . hashData $ content
-  datum <- getNftDatum  nftId appSymbol
+  datum <- getNftDatum nftId appSymbol
   status <- wrap $ getStatus datum
   Contract.tell (Last . Just . Right $ status)
   log status
@@ -103,8 +103,8 @@ queryContent appSymbol content = do
     wrap = return . QueryContent
     getStatus :: Maybe DatumNft -> Maybe InformationNft
     getStatus = \case
-          Just (NodeDatum nftListNode) -> Just $ node'information nftListNode
-          _                            -> Nothing
+      Just (NodeDatum nftListNode) -> Just $ node'information nftListNode
+      _ -> Nothing
     log status = Contract.logInfo @String $ queryContentLog content status
 
 -- | Log of status of a content. Used in testing as well.

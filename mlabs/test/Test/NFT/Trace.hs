@@ -90,12 +90,11 @@ mint1Trace = do
         , mp'price = Just 5
         }
 
-
 getContentTrace1 :: EmulatorTrace ()
 getContentTrace1 = do
   aSymb <- appInitTrace
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
-  h1  :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
   callEndpoint @"mint" h1 artwork
   void $ Trace.waitNSlots 1
 
@@ -108,7 +107,6 @@ getContentTrace1 = do
   void $ Trace.waitNSlots 1
   logInfo $ Hask.show oState
   void $ Trace.waitNSlots 1
-
   where
     artwork =
       MintParams
@@ -127,7 +125,6 @@ getContentTrace2 = do
   void $ Trace.waitNSlots 1
   h1' :: AppTraceHandle <- activateContractWallet wallet1 $ queryEndpoints aSymb
 
-
   callEndpoint @"mint" h1 artwork
   void $ Trace.waitNSlots 1
   callEndpoint @"mint" h1 artwork2
@@ -140,7 +137,6 @@ getContentTrace2 = do
   void $ Trace.waitNSlots 1
   logInfo $ Hask.show oState
   void $ Trace.waitNSlots 1
-
   where
     artwork =
       MintParams
@@ -163,7 +159,6 @@ getContentTrace2 = do
         , mp'share = 1 % 10
         , mp'price = Just 5
         }
-
 
 -- | Two users mint two different artworks.
 mintTrace2 :: EmulatorTrace ()
@@ -365,9 +360,9 @@ testMint2 = runEmulatorTraceIO mintTrace2
 testAny :: EmulatorTrace () -> Hask.IO ()
 testAny = runEmulatorTraceIO
 
-testGetContent1 :: Hask.IO()
+testGetContent1 :: Hask.IO ()
 testGetContent1 = runEmulatorTraceIO getContentTrace1
-testGetContent2 :: Hask.IO()
+testGetContent2 :: Hask.IO ()
 testGetContent2 = runEmulatorTraceIO getContentTrace2
 
 auctionTrace1 :: EmulatorTrace ()

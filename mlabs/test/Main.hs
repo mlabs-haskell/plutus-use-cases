@@ -18,7 +18,7 @@ import Test.Nft.Contract qualified as Nft.Contract
 import Test.Nft.Logic qualified as Nft.Logic
 
 main :: IO ()
-main = 
+main =
   defaultMain $
     testGroup
       "tests"
