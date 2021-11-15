@@ -10,6 +10,8 @@ module Mlabs.Data.LinkedList (
   node'key,
   node'info,
   node'next,
+  _HeadLList,
+  _NodeLList,
 ) where
 
 import Control.Lens
@@ -39,6 +41,7 @@ data LList key headInfo nodeInfo
 PlutusTx.unstableMakeIsData ''LList
 PlutusTx.makeLift ''LList
 makeLenses ''LList
+makePrisms ''LList
 
 nextNode :: forall a b c. LList a b c -> Maybe a
 nextNode = \case

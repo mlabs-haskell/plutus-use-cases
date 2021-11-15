@@ -9,41 +9,26 @@ import Prelude (mconcat, (<>))
 import Prelude qualified as Hask
 
 import Control.Monad (void)
+import Data.Monoid (Last (..))
 import Data.Text (Text, pack)
 import Text.Printf (printf)
 
+import Ledger (AssetClass, scriptCurrencySymbol)
+import Ledger.Constraints qualified as Constraints
 import Ledger.Typed.Scripts (validatorHash)
+import Ledger.Value as Value (singleton)
 import Plutus.Contract (Contract, mapError, ownPubKeyHash)
 import Plutus.Contract qualified as Contract
-
 import Plutus.Contracts.Currency (CurrencyError, mintContract)
 import Plutus.Contracts.Currency qualified as MC
 import Plutus.V1.Ledger.Value (TokenName (..), assetClass, assetClassValue)
 
---import Ledger.Typed.Scripts (validatorHash)
-import Ledger (
-  AssetClass,
-  scriptCurrencySymbol,
- )
-
-import Ledger.Constraints qualified as Constraints
-import Ledger.Value as Value (singleton)
-
-import Mlabs.NFT.Types (
-  GenericContract,
-  MintAct (..),
-  NftAppInstance (..),
-  NftAppSymbol (..),
-  NftListHead (..),
- )
-
-import Data.Monoid (Last (..))
-
-import Mlabs.NFT.Contract.Aux
-import Mlabs.NFT.Validation
-
---import Mlabs.NFT.Contract.Aux (toDatum)
-import Mlabs.NFT.Governance
+import Mlabs.Data.LinkedList (LList (..))
+import Mlabs.NFT.Contract.Aux (toDatum)
+import Mlabs.NFT.Governance.Types (GovAct (..), GovDatum (..), GovLHead (..))
+import Mlabs.NFT.Governance.Validation (govMintPolicy, govScrAddress, govScript)
+import Mlabs.NFT.Types (GenericContract, MintAct (..), NftAppInstance (..), NftAppSymbol (..), NftListHead (..))
+import Mlabs.NFT.Validation (DatumNft (..), NftTrade, asRedeemer, curSymbol, mintPolicy, txPolicy, txScrAddress)
 
 {- | The App Symbol is written to the Writter instance of the Contract to be
  recovered for future opperations, and ease of use in Trace.
@@ -66,14 +51,13 @@ initApp = do
 createListHead :: GenericContract NftAppInstance
 createListHead = do
   uniqueToken <- generateUniqueToken
-  let appInstance = NftAppInstance txScrAddress uniqueToken govScrAddress
-  mintListHead appInstance uniqueToken
-  return appInstance
+  mintListHead $ NftAppInstance txScrAddress uniqueToken govScrAddress
   where
     -- Mint the Linked List Head and its associated token.
-    mintListHead :: NftAppInstance -> AssetClass -> GenericContract ()
-    mintListHead appInstance uniqueToken = do
+    mintListHead :: NftAppInstance -> GenericContract NftAppInstance
+    mintListHead appInstance = do
       let -- Unique Token
+          uniqueToken = appInstance'AppAssetClass appInstance
           uniqueTokenValue = assetClassValue uniqueToken 1
           emptyTokenName = TokenName PlutusTx.Prelude.emptyByteString
       let -- Script Head Specific Information
@@ -103,6 +87,7 @@ createListHead = do
             )
       void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
       Contract.logInfo @Hask.String $ printf "Forged Script Head & Governance Head for %s" (Hask.show appInstance)
+      return appInstance
 
     -- Contract that mints a unique token to be used in the minting of the head
     generateUniqueToken :: GenericContract AssetClass

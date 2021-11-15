@@ -4,11 +4,11 @@ module Mlabs.NFT.Governance.Types (
   GovLNode (..),
   GovLList,
   GovDatum (..),
-  module Mlabs.Data.LinkedList,
+  LList (..),
 ) where
 
-import Mlabs.Data.LinkedList
-import Mlabs.NFT.Types
+import Mlabs.Data.LinkedList (LList (..))
+import Mlabs.NFT.Types (UserId)
 import Prelude qualified as Hask
 
 import PlutusTx qualified

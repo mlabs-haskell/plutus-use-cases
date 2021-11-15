@@ -7,12 +7,25 @@ module Mlabs.NFT.Governance.Validation (
 
 --import Prelude qualified as Hask
 
-import Ledger
-import Ledger.Typed.Scripts
-import Mlabs.NFT.Governance.Types
-import Mlabs.NFT.Types
+import Ledger (
+  Address,
+  MintingPolicy,
+  ScriptContext,
+  mkMintingPolicyScript,
+ )
+import Ledger.Typed.Scripts (
+  TypedValidator,
+  ValidatorTypes (..),
+  mkTypedValidator,
+  validatorAddress,
+  wrapMintingPolicy,
+  wrapValidator,
+ )
+
+import Mlabs.NFT.Governance.Types (GovAct (..), GovDatum)
+import Mlabs.NFT.Types (NftAppInstance)
 import PlutusTx qualified
-import PlutusTx.Prelude
+import PlutusTx.Prelude (Bool (True), ($), (.))
 
 data GovManage
 instance ValidatorTypes GovManage where
