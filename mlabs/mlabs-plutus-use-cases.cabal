@@ -209,6 +209,7 @@ library
     Mlabs.IntegrationTest.PabWbe.TestStand
     Mlabs.IntegrationTest.PabWbe.TxInfo
     Mlabs.IntegrationTest.PabWbe.Types
+    Mlabs.IntegrationTest.PabWbe.Contracts.Payment
 
 executable mlabs-plutus-use-cases
   import:  common-imports
