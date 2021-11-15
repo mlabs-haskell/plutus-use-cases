@@ -54,7 +54,7 @@ validate !stateAddr (NftId token !oref) _ !ctx =
     hasNftToken Contexts.TxOut {..} =
       txOutAddress == stateAddr
         && txOutValue == 
-          alue.singleton (Contexts.ownCurrencySymbol ctx) token 1
+          Value.singleton (Contexts.ownCurrencySymbol ctx) token 1
 
 -------------------------------------------------------------------------------
 

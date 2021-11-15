@@ -12,7 +12,8 @@ import Data.Aeson (FromJSON, Result (Success), encode, fromJSON)
 import Data.Functor (void)
 import Data.Monoid (Last (..))
 
-import Mlabs.Governance.Contract.Api (Deposit (..), QueryBalance (..), Withdraw (..))
+import Mlabs.Governance.Contract.Api 
+  (Deposit (..), QueryBalance (..), Withdraw (..))
 import Mlabs.Governance.Contract.Simulator.Handler (GovernanceContracts (..))
 import Mlabs.Governance.Contract.Simulator.Handler qualified as Handler
 import Mlabs.Governance.Contract.Validation (AssetClassGov (..))
@@ -36,13 +37,15 @@ import Mlabs.System.Console.Utils (logAction, logBalance, logMlabs)
 main :: IO ()
 main = void $
   Simulator.runSimulationWith Handler.handlers $ do
-    Simulator.logString @(Builtin GovernanceContracts) "Starting Governance PAB webserver"
+    Simulator.logString @(Builtin GovernanceContracts) 
+      "Starting Governance PAB webserver"
     shutdown <- PWS.startServerDebug
     let simWallets = Handler.wallets
         (wallet1 : wallet2 : wallet3 : _) = simWallets
     (cids, gov) <-
       subscript
-        "Initializing contracts\nWallet 1 mints and distributes initial GOV tokens"
+        "Initializing contracts\nWallet 1 mints and distributes initial\
+        \ GOV tokens"
         simWallets
         (itializeContracts wallet1)
     let [wCid1, wCid2, wCid3] = cids
@@ -82,7 +85,8 @@ main = void $
       simWallets
       $ getBalance wCid3 wallet3
 
-    Simulator.logString @(Builtin GovernanceContracts) "Scripted part is over\nPress Enter to stop and exit"
+    Simulator.logString @(Builtin GovernanceContracts) 
+      "Scripted part is over\nPress Enter to stop and exit"
     void $ liftIO getLine
     shutdown
   where
@@ -106,7 +110,8 @@ itializeContracts admin = do
   govCs <- waitForLast cidInit
   void $ Simulator.waitUntilFinished cidInit
   let gov = AssetClassGov govCs Handler.govTokenName
-  cids <- forM Handler.wallets $ \w -> Simulator.activateContract w (Governance gov)
+  cids <- forM Handler.wallets $ 
+    \w -> Simulator.activateContract w (Governance gov)
   return (cids, gov)
 
 -- shortcits for endpoint calls
