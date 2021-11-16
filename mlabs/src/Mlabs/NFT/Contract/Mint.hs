@@ -8,7 +8,7 @@ module Mlabs.NFT.Contract.Mint (
 ) where
 
 import PlutusTx.Prelude hiding (mconcat, mempty, (<>))
-import Prelude (mconcat)
+-- import Prelude (mconcat)
 import Prelude qualified as Hask
 
 import Control.Monad (void)
@@ -54,8 +54,8 @@ mint symbol params = do
       (InsertPoint lNode rNode) <- findInsertPoint symbol newNode
       (lLk, lCx) <- updateNodePointer appInstance symbol lNode newNode
       (nLk, nCx) <- mintNode symbol nftPolicy newNode rNode
-      let lookups = mconcat [lLk, nLk]
-          tx = mconcat [lCx, nCx]
+      let lookups = Hask.mconcat [lLk, nLk]
+          tx = Hask.mconcat [lCx, nCx]
       void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
       Contract.tell . Last . Just . info'id . node'information $ newNode
       Contract.logInfo @Hask.String $ printf "mint successful!"
@@ -110,13 +110,13 @@ mint symbol params = do
         mintRedeemer = asRedeemer . Mint . NftId . getDatumValue . NodeDatum $ newNode
 
         lookups =
-          mconcat
+          Hask.mconcat
             [ Constraints.typedValidatorLookups txPolicy
             , Constraints.otherScript (validatorScript txPolicy)
             , Constraints.mintingPolicy mintingP
             ]
         tx =
-          mconcat
+          Hask.mconcat
             [ Constraints.mustPayToTheScript newTokenDatum newTokenValue
             , Constraints.mustMintValueWithRedeemer mintRedeemer newTokenValue
             ]
@@ -151,14 +151,14 @@ mint symbol params = do
               NodeDatum $ NftListNode i (Just newPointer) a
 
         lookups =
-          mconcat
+          Hask.mconcat
             [ Constraints.typedValidatorLookups txPolicy
             , Constraints.otherScript (validatorScript txPolicy)
             , Constraints.unspentOutputs $ 
                 Map.singleton (pi'TOR insertPoint) (pi'CITxO insertPoint)
             ]
         tx =
-          mconcat
+          Hask.mconcat
             [ case oldDatum of
                 NodeDatum _ -> Constraints.mustPayToTheScript newDatum token
                 HeadDatum _ -> 

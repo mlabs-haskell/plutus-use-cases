@@ -5,7 +5,7 @@ module Mlabs.NFT.Contract.Buy (
 ) where
 
 import PlutusTx.Prelude hiding (mconcat, mempty, (<>))
-import Prelude (mconcat)
+-- import Prelude (mconcat)
 import Prelude qualified as Hask
 
 import Control.Lens ((^.))
@@ -62,7 +62,7 @@ buy symbol BuyRequestUser {..} = do
                   , act'symbol = symbol
                   }
               lookups =
-                mconcat
+                Hask.mconcat
                   [ Constraints.unspentOutputs userUtxos
                   , Constraints.unspentOutputs $ Map.fromList [ownOrefTxOut]
                   , Constraints.unspentOutputs $ 
@@ -71,7 +71,7 @@ buy symbol BuyRequestUser {..} = do
                   , Constraints.otherScript (validatorScript txPolicy)
                   ]
               tx =
-                mconcat
+                Hask.mconcat
                   [ Constraints.mustPayToTheScript nftDatum nftVal
                   , Constraints.mustIncludeDatum 
                       (Datum . PlutusTx.toBuiltinData $ nftDatum)

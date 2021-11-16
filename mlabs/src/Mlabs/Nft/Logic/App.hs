@@ -19,7 +19,7 @@ module Mlabs.Nft.Logic.App (
 ) where
 
 import PlutusTx.Prelude
-import Prelude qualified as Hask (uncurry)
+import Prelude qualified as Hask -- (uncurry)
 
 import Data.Map.Strict qualified as M
 import Playground.Contract (TxOutRef (..))

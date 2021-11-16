@@ -5,7 +5,7 @@ module Mlabs.Nft.Contract.Simulator.Handler (
   runSimulator,
 ) where
 
-import Prelude
+import Prelude qualified as Hask
 
 -- FIXME
 -- handler related imports commented out with `-- !` to disable compilation 
@@ -57,7 +57,7 @@ data NftContracts
     StartNft
   | -- | we read NftId and instantiate schema for the user actions
     User NftId
-  deriving stock (Show, Generic)
+  deriving stock (Hask.Show, Generic)
   deriving anyclass (FromJSON, ToJSON, OpenApi.ToSchema)
 
 instance Pretty NftContracts where
@@ -83,7 +83,7 @@ instance Pretty NftContracts where
 
 -- FIXME
 handlers :: Nft.StartParams -> SimulatorEffectHandlers (Builtin NftContracts)
-handlers = error "Fix required after Plutus update"
+handlers = Hask.error "Fix required after Plutus update"
 
 -- handlers sp =
 -- Simulator.mkSimulatorHandlers @(Builtin NftContracts) def def $
@@ -96,16 +96,16 @@ handlers = error "Fix required after Plutus update"
 -- Nft.startNft startParams
 
 -- | Runs simulator for NFT
-runSimulator :: Nft.StartParams -> Sim () -> IO ()
+runSimulator :: Nft.StartParams -> Sim () -> Hask.IO ()
 runSimulator sp = withSimulator (handlers sp)
 
 withSimulator :: Simulator.SimulatorEffectHandlers (Builtin NftContracts) 
-              -> Simulation (Builtin NftContracts) () -> IO ()
-withSimulator hs act = void $
-  Simulator.runSimulationWith hs $ do
+              -> Simulation (Builtin NftContracts) () -> Hask.IO ()
+withSimulator hs act = void Hask.$
+  Simulator.runSimulationWith hs Hask.$ do
     Simulator.logString @(Builtin NftContracts) 
       "Starting PAB webserver. Press enter to exit."
     shutdown <- PAB.Server.startServerDebug
     void act
-    void $ liftIO getLine
+    void Hask.$ liftIO Hask.getLine
     shutdown

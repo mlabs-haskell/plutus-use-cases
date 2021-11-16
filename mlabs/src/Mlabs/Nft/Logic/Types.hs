@@ -30,7 +30,7 @@ import GHC.Generics (Generic)
 import Playground.Contract (ToSchema, TxOutRef)
 import Plutus.V1.Ledger.Value (TokenName (..))
 import PlutusTx qualified
-import Prelude qualified as Hask (Eq, Show)
+import Prelude qualified as Hask -- (Eq, Show)
 
 import Mlabs.Emulator.Types (UserId (..))
 

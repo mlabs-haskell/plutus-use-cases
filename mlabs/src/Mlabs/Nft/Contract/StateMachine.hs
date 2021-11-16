@@ -23,7 +23,7 @@ module Mlabs.Nft.Contract.StateMachine (
 
 import PlutusTx.Prelude hiding (Applicative (..), Monoid (..), Semigroup (..), 
   check)
-import Prelude qualified as Hask (String)
+import Prelude qualified as Hask -- (String)
 
 import Control.Monad.State.Strict (runStateT)
 import Data.Functor (void)

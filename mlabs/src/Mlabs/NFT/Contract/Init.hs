@@ -3,7 +3,7 @@ module Mlabs.NFT.Contract.Init (
 ) where
 
 import PlutusTx.Prelude hiding (mconcat, (<>))
-import Prelude (mconcat, (<>))
+-- import Prelude (mconcat, (<>))
 import Prelude qualified as Hask
 
 import Control.Monad (void)
@@ -75,13 +75,13 @@ createListHead = do
             Value.singleton (scriptCurrencySymbol headPolicy) emptyTokenName 1
           initRedeemer = asRedeemer Initialise
           (lookups, tx) =
-            ( mconcat
+            ( Hask.mconcat
                 [ Constraints.typedValidatorLookups txPolicy
                 , Constraints.mintingPolicy headPolicy
                 ]
-            , mconcat
+            , Hask.mconcat
                 [ Constraints.mustPayToTheScript headDatum 
-                    (proofTokenValue <> uniqueTokenValue)
+                    (proofTokenValue Hask.<> uniqueTokenValue)
                 , Constraints.mustMintValueWithRedeemer initRedeemer 
                     proofTokenValue
                 ]

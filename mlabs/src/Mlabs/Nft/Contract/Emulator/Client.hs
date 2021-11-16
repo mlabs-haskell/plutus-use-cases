@@ -4,7 +4,7 @@ module Mlabs.Nft.Contract.Emulator.Client (
   callStartNft,
 ) where
 
-import Prelude
+import Prelude qualified as Hask
 
 import Data.Functor (void)
 import Data.Monoid (Last (..))
@@ -24,7 +24,7 @@ import Mlabs.Plutus.Contract (callEndpoint')
 callUserAct :: Types.NftId -> Wallet -> Types.UserAct -> EmulatorTrace ()
 callUserAct nid wal act = do
   hdl <- activateContractWallet wal (userEndpoints nid)
-  void $ case act of
+  void Hask.$ case act of
     Types.BuyAct {..} -> callEndpoint' hdl (Buy act'price act'newPrice)
     Types.SetPriceAct {..} -> callEndpoint' hdl (SetPrice act'newPrice)
 
@@ -32,9 +32,9 @@ callUserAct nid wal act = do
 callStartNft :: Wallet -> StartParams -> EmulatorTrace Types.NftId
 callStartNft wal sp = do
   hdl <- activateContractWallet wal authorEndpoints
-  void $ callEndpoint' hdl sp
-  void $ waitNSlots 10
+  void Hask.$ callEndpoint' hdl sp
+  void Hask.$ waitNSlots 10
   Last nid <- observableState hdl
-  maybe err pure nid
+  Hask.maybe err Hask.pure nid
   where
-    err = throwError $ GenericError "No NFT started in emulator"
+    err = throwError Hask.$ GenericError "No NFT started in emulator"

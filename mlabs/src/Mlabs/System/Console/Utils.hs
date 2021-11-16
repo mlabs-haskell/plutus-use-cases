@@ -5,7 +5,7 @@ module Mlabs.System.Console.Utils (
   logMlabs,
 ) where
 
-import Prelude
+import Prelude -- qualified as Hask
 
 import Control.Monad.IO.Class (MonadIO)
 import Plutus.V1.Ledger.Value qualified as Value

@@ -9,7 +9,7 @@ module Mlabs.Nft.Contract.Server (
   startNft,
 ) where
 
-import Prelude (String, (<>))
+import Prelude qualified as Hask -- (String, (<>))
 
 import Control.Lens (preview)
 import Control.Monad (forever)
@@ -62,7 +62,7 @@ userAction nid input = do
   inputDatum <- findInputStateDatum nid
   let lookups =
         mintingPolicy (SM.nftPolicy nid)
-          <> ownPubKeyHash pkh
+          Hask.<> ownPubKeyHash pkh
       constraints = mustIncludeDatum inputDatum
   SM.runStepWith nid act lookups constraints
 
@@ -73,14 +73,14 @@ startNft :: StartParams -> AuthorContract ()
 startNft StartParams {..} = do
   orefs <- M.keys <$> (utxosAt . pubKeyAddress =<< ownPubKey)
   case orefs of
-    [] -> logError @String "No UTXO found"
+    [] -> logError @Hask.String "No UTXO found"
     oref : _ -> do
       let nftId = toNftId oref sp'content
           val = SM.nftValue nftId
           lookups = mintingPolicy $ SM.nftPolicy nftId
           tx =
             mustMintValue val
-              <> mustSpendPubKeyOutput oref
+              Hask.<> mustSpendPubKeyOutput oref
       authorId <- ownUserId
       SM.runInitialiseWith nftId 
         (initNft oref authorId sp'content sp'share sp'price) val lookups tx

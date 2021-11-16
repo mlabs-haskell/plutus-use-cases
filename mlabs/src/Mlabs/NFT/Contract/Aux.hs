@@ -17,7 +17,7 @@ module Mlabs.NFT.Contract.Aux (
 ) where
 
 import PlutusTx.Prelude hiding (mconcat, (<>))
-import Prelude (mconcat, (<>))
+-- import Prelude (mconcat, (<>))
 import Prelude qualified as Hask
 
 import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right)
@@ -103,9 +103,9 @@ getNftDatum nftId appSymbol = do
                      in nftId' == nftId
               )
   Contract.logInfo @Hask.String $ Hask.show $ 
-    "Datum Found:" <> Hask.show datums
+    "Datum Found:" Hask.<> Hask.show datums
   Contract.logInfo @Hask.String $ Hask.show $ 
-    "Datum length:" <> Hask.show (Hask.length datums)
+    "Datum length:" Hask.<> Hask.show (Hask.length datums)
   case datums of
     [x] ->
       pure $ Just x
@@ -131,14 +131,14 @@ findNft nftId cSymbol = do
   utxos <- getAddrValidUtxos cSymbol
   case findData utxos of
     [v] -> do
-      Contract.logInfo @Hask.String $ Hask.show $ "NFT Found:" <> Hask.show v
+      Contract.logInfo @Hask.String $ Hask.show $ "NFT Found:" Hask.<> Hask.show v
       pure $ pointInfo v
-    [] -> Contract.throwError $ "DatumNft not found for " <> 
+    [] -> Contract.throwError $ "DatumNft not found for " Hask.<> 
       (pack . Hask.show) nftId
     _ ->
       Contract.throwError $
         "Should not happen! More than one DatumNft found for "
-          <> (pack . Hask.show) nftId
+          Hask.<> (pack . Hask.show) nftId
   where
     findData =
       L.filter hasCorrectNft -- filter only datums with desired NftId
@@ -179,7 +179,7 @@ getHead aSym = do
     _ -> do
       utxos <- getDatumsTxsOrdered aSym
       Contract.throwError $
-        mconcat
+        Hask.mconcat
           [ "This should have not happened! More than one Head Datums. \
             \Datums are: "
           , pack . Hask.show . fmap pi'datum $ utxos
