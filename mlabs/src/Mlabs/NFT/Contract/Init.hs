@@ -4,14 +4,12 @@ module Mlabs.NFT.Contract.Init (
   createListHead,
 ) where
 
-import PlutusTx.Prelude hiding (mconcat, (<>))
-import Prelude (mconcat, (<>))
-import Prelude qualified as Hask
-
 import Control.Monad (void)
 import Data.Monoid (Last (..))
 import Data.Text (Text, pack)
 import Text.Printf (printf)
+import Prelude (mconcat, (<>))
+import Prelude qualified as Hask
 
 import Ledger (AssetClass, scriptCurrencySymbol)
 import Ledger.Constraints qualified as Constraints
@@ -22,12 +20,13 @@ import Plutus.Contract qualified as Contract
 import Plutus.Contracts.Currency (CurrencyError, mintContract)
 import Plutus.Contracts.Currency qualified as MC
 import Plutus.V1.Ledger.Value (TokenName (..), assetClass, assetClassValue)
+import PlutusTx.Prelude hiding (mconcat, (<>))
 
 import Mlabs.Data.LinkedList (LList (..))
 import Mlabs.NFT.Contract.Aux (toDatum)
 import Mlabs.NFT.Governance.Types (GovAct (..), GovDatum (..), GovLHead (..))
 import Mlabs.NFT.Governance.Validation (govMintPolicy, govScrAddress, govScript)
-import Mlabs.NFT.Types (GenericContract, MintAct (..), NftAppInstance (..), NftAppSymbol (..), NftListHead (..))
+import Mlabs.NFT.Types (GenericContract, MintAct (..), NftAppInstance (..), NftAppSymbol (..), NftListHead (..), UserId (..))
 import Mlabs.NFT.Validation (DatumNft (..), NftTrade, asRedeemer, curSymbol, mintPolicy, txPolicy, txScrAddress)
 
 {- | The App Symbol is written to the Writter instance of the Contract to be
@@ -38,9 +37,9 @@ type InitContract a = forall s. Contract (Last NftAppSymbol) s Text a
 --------------------------------------------------------------------------------
 -- Init --
 
-initApp :: InitContract ()
-initApp = do
-  appInstance <- createListHead
+initApp :: [UserId] -> InitContract ()
+initApp admins = do
+  appInstance <- createListHead admins
   let appSymbol = getAppSymbol appInstance
   Contract.tell . Last . Just $ appSymbol
   Contract.logInfo @Hask.String $ printf "Finished Initialisation: App symbol: %s" (Hask.show appSymbol)
@@ -48,10 +47,10 @@ initApp = do
 {- | Initialise the application at the address of the script by creating the
  HEAD of the list, and coupling the one time token with the Head of the list.
 -}
-createListHead :: GenericContract NftAppInstance
-createListHead = do
+createListHead :: [UserId] -> GenericContract NftAppInstance
+createListHead admins = do
   uniqueToken <- generateUniqueToken
-  mintListHead $ NftAppInstance txScrAddress uniqueToken govScrAddress
+  mintListHead $ NftAppInstance txScrAddress uniqueToken govScrAddress admins
   where
     -- Mint the Linked List Head and its associated token.
     mintListHead :: NftAppInstance -> GenericContract NftAppInstance
