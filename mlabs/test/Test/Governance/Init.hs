@@ -21,12 +21,12 @@ import PlutusTx.Prelude
 -- import Prelude ()
 
 import Control.Lens ((&), (.~))
-import Data.Coerce (coerce)
-import Data.Map (Map)
+-- import Data.Coerce (coerce)
+-- import Data.Map (Map)
 import Data.Map qualified as M
 
-import Mlabs.Governance.Contract.Api qualified as Api
-import Mlabs.Governance.Contract.Server qualified as Gov
+-- import Mlabs.Governance.Contract.Api qualified as Api
+-- import Mlabs.Governance.Contract.Server qualified as Gov
 import Mlabs.Governance.Contract.Validation qualified as Gov
 
 import Ledger (Address, CurrencySymbol, Value)
@@ -47,7 +47,7 @@ import Plutus.Trace.Emulator (initialChainState)
 import Plutus.V1.Ledger.Ada (adaSymbol, adaToken)
 import Plutus.V1.Ledger.Value qualified as Value (singleton)
 
-import Test.Utils (next)
+-- import Test.Utils (next)
 
 acGOV :: Gov.AssetClassGov
 acGOV = Gov.AssetClassGov "ff" "GOVToken"

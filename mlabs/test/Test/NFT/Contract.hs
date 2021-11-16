@@ -4,7 +4,7 @@ module Test.NFT.Contract (
 
 import PlutusTx.Prelude hiding (check, mconcat)
 import Test.Tasty (TestTree, testGroup)
-import Prelude (mconcat)
+import Prelude qualified as Hask -- (mconcat)
 
 import Mlabs.Emulator.Scene (checkScene)
 import Mlabs.NFT.Types
@@ -33,7 +33,7 @@ testBuyOnce = check "Buy once" (checkScene scene) w1 script
       userBuy w2 $ BuyRequestUser nft1 1_000_000 Nothing
       userSetPrice w2 $ SetPriceParams nft1 (Just 2_000_000)
     scene =
-      mconcat
+      Hask.mconcat
         [ w1 `ownsAda` 1_000_000
         , w2 `ownsAda` (-1_000_000)
         ]
@@ -52,7 +52,7 @@ testBuyTwice = check "Buy twice" (checkScene scene) w1 script
       userSetPrice w2 $ SetPriceParams nft1 (Just 2_000_000)
       userBuy w3 $ BuyRequestUser nft1 2_000_000 Nothing
     scene =
-      mconcat
+      Hask.mconcat
         [ w1 `ownsAda` 1_200_000
         , w2 `ownsAda` 800_000
         , w3 `ownsAda` (-2_000_000)
@@ -69,7 +69,7 @@ testChangePriceWithoutOwnership =
         userBuy w2 $ BuyRequestUser nft1 1_000_000 Nothing
         userSetPrice w1 $ SetPriceParams nft1 (Just 2_000_000)
       scene =
-        mconcat
+        Hask.mconcat
           [ w1 `ownsAda` 1_000_000
           , w2 `ownsAda` (-1_000_000)
           ]
