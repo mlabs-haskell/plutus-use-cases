@@ -188,6 +188,7 @@ library
     Mlabs.IntegrationTest.PabWbe.TxInfo
     Mlabs.IntegrationTest.PabWbe.Types
     Mlabs.IntegrationTest.PabWbe.Contracts.Payment
+    Mlabs.IntegrationTest.PabWbe.Contracts.Mint
     Mlabs.NFT.Api
     Mlabs.NFT.Contract.Init
     Mlabs.NFT.Contract.Mint
