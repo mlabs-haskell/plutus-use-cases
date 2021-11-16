@@ -1,7 +1,7 @@
 module Mlabs.Deploy.Nft (serializeNft) where
 
 import PlutusTx.Prelude hiding (error)
-import Prelude (IO, String)
+import Prelude qualified as Hask -- (IO, String)
 
 import Mlabs.Emulator.Types (UserId (..))
 import Mlabs.Nft.Contract.Forge as F
@@ -19,8 +19,8 @@ serializeNft ::
   Integer ->
   BuiltinByteString ->
   BuiltinByteString ->
-  String ->
-  IO ()
+  Hask.String ->
+  Hask.IO ()
 serializeNft txId txIx ownerPkh content outDir = do
   let txOutRef =
         Plutus.TxOutRef

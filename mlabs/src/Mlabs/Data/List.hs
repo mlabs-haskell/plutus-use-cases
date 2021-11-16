@@ -11,7 +11,7 @@ module Mlabs.Data.List (
 ) where
 
 import PlutusTx.Prelude hiding (mapM_, take)
-import Prelude qualified as Hask (Monad, seq)
+import Prelude qualified as Hask -- (Monad, seq)
 
 import Mlabs.Data.Ord (comparing)
 

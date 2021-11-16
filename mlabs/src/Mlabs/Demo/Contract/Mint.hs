@@ -30,7 +30,7 @@ module Mlabs.Demo.Contract.Mint (
 ) where
 
 import PlutusTx.Prelude hiding (Semigroup (..))
-import Prelude (Semigroup (..))
+import Prelude qualified as Hask -- (Semigroup (..))
 
 import Control.Monad (forever, void)
 import Data.Aeson (FromJSON, ToJSON)
@@ -129,7 +129,7 @@ mintContract (MintParams tn amt) = do
           burnValHash
           (Datum $ PlutusTx.toBuiltinData ())
           payVal
-          <> Constraints.mustMintValue forgeVal
+          Hask.<> Constraints.mustMintValue forgeVal
   ledgerTx <- submitTxConstraintsWith @Void lookups tx
   void $ awaitTxConfirmed $ Ledger.txId ledgerTx
 

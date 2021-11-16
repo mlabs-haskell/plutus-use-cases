@@ -6,7 +6,7 @@ module Mlabs.Deploy.Utils (
 ) where
 
 import PlutusTx.Prelude hiding (error)
-import Prelude (FilePath, IO, String, error, print)
+import Prelude qualified as Hask -- (FilePath, IO, String, error, print)
 
 import Data.Aeson as Json (encode)
 import Data.ByteString.Lazy qualified as LB
@@ -30,7 +30,7 @@ import Plutus.V1.Ledger.Api (Validator)
 import Plutus.V1.Ledger.Api qualified as Plutus
 import PlutusTx (ToData, toData)
 
-validatorToPlutus :: FilePath -> Validator -> IO ()
+validatorToPlutus :: Hask.FilePath -> Validator -> Hask.IO ()
 validatorToPlutus file validator = do
   -- taken from here
   -- https://github.com/input-output-hk/Alonzo-testnet/blob/main/resources
@@ -40,7 +40,7 @@ validatorToPlutus file validator = do
     Just m ->
       let getAlonzoData d = case toAlonzoData d of
             Alonzo.Data pData -> pData
-            _ -> error "Should not happen"
+            _ -> Hask.error "Should not happen"
           (logout, e) =
             Plutus.evaluateScriptCounting
               Plutus.Verbose
@@ -48,17 +48,18 @@ validatorToPlutus file validator = do
               validatorAsSBS
               [getAlonzoData (ScriptDataNumber 42)]
        in do
-            print ("Log output" :: String) >> print logout
+            Hask.print ("Log output" :: Hask.String) >> Hask.print logout
             case e of
-              Left evalErr -> print ("Eval Error" :: String) >> print evalErr
-              Right exbudget -> print ("Ex Budget" :: String) >> print exbudget
-    Nothing -> error "defaultCostModelParams failed"
+              Left evalErr -> Hask.print ("Eval Error" :: Hask.String) >> Hask.print evalErr
+              Right exbudget -> Hask.print ("Ex Budget" :: Hask.String) 
+                >> Hask.print exbudget
+    Nothing -> Hask.error "defaultCostModelParams failed"
   result <- writeFileTextEnvelope file Nothing validatorPurpleScript
   case result of
-    Left err -> print $ displayError err
+    Left err -> Hask.print $ displayError err
     Right () -> return ()
 
-policyToPlutus :: FilePath -> Plutus.MintingPolicy -> IO ()
+policyToPlutus :: Hask.FilePath -> Plutus.MintingPolicy -> Hask.IO ()
 policyToPlutus file policy =
   validatorToPlutus
     file
@@ -74,7 +75,7 @@ serializeValidator validator =
       purpleScript = PlutusScriptSerialised sbs
    in (purpleScript, sbs)
 
-writeData :: ToData a => FilePath -> a -> IO ()
+writeData :: ToData a => Hask.FilePath -> a -> Hask.IO ()
 writeData file isData = LB.writeFile file (toSchemeJson isData)
 
 toSchemeJson :: ToData a => a -> LB.ByteString

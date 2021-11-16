@@ -7,7 +7,7 @@ module Main (
   startParams,
 ) where
 
-import Prelude
+import Prelude qualified as Hask
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Functor (void)
