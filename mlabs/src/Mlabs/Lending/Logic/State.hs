@@ -65,7 +65,7 @@ module Mlabs.Lending.Logic.State (
 ) where
 
 import PlutusTx.Prelude
-import Prelude qualified as Hask (Show, uncurry)
+import Prelude qualified as Hask -- (Show, uncurry)
 
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.State.Strict (MonadState (get, put), gets, modify')

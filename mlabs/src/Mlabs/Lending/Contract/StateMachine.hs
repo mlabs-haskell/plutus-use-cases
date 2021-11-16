@@ -16,7 +16,7 @@ import Ledger.TimeSlot qualified as
 import PlutusTx.Prelude hiding 
   (Applicative (..), Monoid (..), Semigroup (..), check)
 import PlutusTx.Prelude qualified as Plutus
-import Prelude qualified as Hask (String)
+import Prelude qualified as Hask -- (String)
 
 import Control.Monad.State.Strict (runStateT)
 import Data.Default (Default (def))

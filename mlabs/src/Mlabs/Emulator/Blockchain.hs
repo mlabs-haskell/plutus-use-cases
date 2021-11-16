@@ -30,7 +30,7 @@ import Data.Maybe (fromMaybe, maybe)
 import Ledger.Constraints (mustMintValue, mustPayToPubKey)
 import Plutus.Contract.StateMachine (TxConstraints, Void)
 import Plutus.V1.Ledger.Value (Value, assetClassValue)
-import Prelude qualified as Hask (Eq, Show)
+import Prelude qualified as Hask -- (Eq, Show)
 
 import Mlabs.Emulator.Types (Coin, UserId (..))
 

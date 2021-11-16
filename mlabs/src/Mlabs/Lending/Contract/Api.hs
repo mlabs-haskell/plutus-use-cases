@@ -55,7 +55,7 @@ import GHC.Generics (Generic)
 import Playground.Contract (FromJSON, ToJSON, ToSchema)
 import Plutus.Contract (type (.\/))
 import Plutus.V1.Ledger.Crypto (PubKeyHash)
-import Prelude qualified as Hask (Eq, Show)
+import Prelude qualified as Hask -- (Eq, Show)
 
 import Mlabs.Lending.Logic.Types qualified as Types
 import Mlabs.Plutus.Contract (Call, IsEndpoint (..))

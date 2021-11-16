@@ -6,7 +6,7 @@ module Mlabs.Lending.Contract.Simulator.Handler (
   runSimulator,
 ) where
 
-import Prelude
+import Prelude qualified as Hask
 
 -- handler related imports commented out with `-- !` to disable compilation 
 -- warnings
@@ -67,7 +67,7 @@ data LendexContracts
     Admin
   | -- | Query actions
     Query
-  deriving stock (Show, Generic)
+  deriving stock (Hask.Show, Generic)
   deriving anyclass (FromJSON, ToJSON, OpenApi.ToSchema)
 
 instance Pretty LendexContracts where
@@ -105,23 +105,23 @@ type InitContract =
 -- FIXME
 handlers :: LendexId -> InitContract 
          -> SimulatorEffectHandlers (Builtin LendexContracts)
-handlers = error "Fix required after Plutus update"
+handlers = Hask.error "Fix required after Plutus update"
 
 -- handlers lid initContract =
 -- Simulator.mkSimulatorHandlers @(Builtin LendexContracts) def [] $
 --   interpret (handleLendexContracts lid initContract)
 
 -- | Runs simulator for Lendex
-runSimulator :: LendexId -> InitContract -> Sim () -> IO ()
+runSimulator :: LendexId -> InitContract -> Sim () -> Hask.IO ()
 runSimulator lid initContract = withSimulator (handlers lid initContract)
 
 withSimulator :: Simulator.SimulatorEffectHandlers (Builtin LendexContracts) 
-              -> Simulation (Builtin LendexContracts) () -> IO ()
-withSimulator hs act = void $
-  Simulator.runSimulationWith hs $ do
+              -> Simulation (Builtin LendexContracts) () -> Hask.IO ()
+withSimulator hs act = void Hask.$
+  Simulator.runSimulationWith hs Hask.$ do
     Simulator.logString @(Builtin LendexContracts) 
       "Starting PAB webserver. Press enter to exit."
     shutdown <- PAB.Server.startServerDebug
     void act
-    void $ liftIO getLine
+    void Hask.$ liftIO Hask.getLine
     shutdown

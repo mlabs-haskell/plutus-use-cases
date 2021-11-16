@@ -66,7 +66,7 @@ import Plutus.V1.Ledger.Value (AssetClass (..), CurrencySymbol (..),
 import PlutusTx qualified
 import PlutusTx.AssocMap (Map)
 import PlutusTx.AssocMap qualified as M
-import Prelude qualified as Hask (Eq, Show)
+import Prelude qualified as Hask -- (Eq, Show)
 
 import Mlabs.Emulator.Types (Coin, UserId (..), adaCoin)
 import PlutusTx.Ratio qualified as R

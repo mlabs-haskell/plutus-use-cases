@@ -17,7 +17,7 @@ module Mlabs.Emulator.App (
 ) where
 
 import PlutusTx.Prelude
-import Prelude qualified as Hask (Show, print, uncurry)
+import Prelude qualified as Hask -- (Show, print, uncurry)
 
 import Control.Monad.State.Strict (foldM)
 import Data.List (foldl')

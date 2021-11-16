@@ -17,7 +17,7 @@ module Mlabs.Emulator.Scene (
 ) where
 
 import PlutusTx.Prelude hiding (Monoid, Semigroup, mempty, (<>))
-import Prelude (Monoid, Semigroup, mempty, (<>))
+import Prelude qualified as Hask -- (Monoid, Semigroup, mempty, (<>))
 
 import Control.Applicative (Alternative (..))
 
@@ -55,27 +55,27 @@ data Scene = Scene
     scene'appAddress :: Maybe Address
   }
 
-instance Semigroup Scene where
+instance Hask.Semigroup Scene where
   Scene us1 e1 maddr1 <> Scene us2 e2 maddr2 =
-    Scene (M.unionWith (<>) us1 us2) (e1 <> e2) (maddr1 <|> maddr2)
+    Scene (M.unionWith (Hask.<>) us1 us2) (e1 Hask.<> e2) (maddr1 <|> maddr2)
 
-instance Monoid Scene where
-  mempty = Scene mempty mempty Nothing
+instance Hask.Monoid Scene where
+  mempty = Scene Hask.mempty Hask.mempty Nothing
 
 -- | Creates scene with single user in it that owns so many coins, app owns 
 -- zero coins.
 owns :: Wallet -> [(Coin, Integer)] -> Scene
 owns wal ds = Scene {scene'users = M.singleton wal (coinDiff ds), 
-                    scene'appValue = mempty, scene'appAddress = Nothing}
+                    scene'appValue = Hask.mempty, scene'appAddress = Nothing}
 
 -- | Creates scene with no users and app owns given amount of coins.
 appOwns :: [(Coin, Integer)] -> Scene
-appOwns v = Scene {scene'users = mempty, scene'appValue = coinDiff v, 
+appOwns v = Scene {scene'users = Hask.mempty, scene'appValue = coinDiff v, 
                   scene'appAddress = Nothing}
 
 -- | Creates scene with no users and app owns given amount of coins.
 appAddress :: Address -> Scene
-appAddress addr = Scene {scene'users = mempty, scene'appValue = mempty, 
+appAddress addr = Scene {scene'users = Hask.mempty, scene'appValue = Hask.mempty, 
                         scene'appAddress = Just addr}
 
 -- | Turns scene to plutus checks. Every user ownership turns into 

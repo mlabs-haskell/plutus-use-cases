@@ -19,7 +19,7 @@ module Mlabs.Governance.Contract.Simulator.Handler (
 
 import Control.Monad (forM_, when)
 import PlutusTx.Prelude
-import Prelude (Show, show)
+import Prelude qualified as Hask -- (Show, show)
 
 import Mlabs.Governance.Contract.Api (GovernanceSchema)
 import Mlabs.Governance.Contract.Server (governanceEndpoints)
@@ -73,7 +73,7 @@ govAmount = 100
 data GovernanceContracts
   = Bootstrap
   | Governance AssetClassGov
-  deriving stock (Show, Generic)
+  deriving stock (Hask.Show, Generic)
   deriving anyclass (FromJSON, ToJSON, OpenApi.ToSchema)
 
 instance Pretty GovernanceContracts where
@@ -130,7 +130,7 @@ bootstrapGovernance = do
           tx <- submitTx $ mustPayToPubKey pkh govPerWallet
           awaitTxConfirmed $ txId tx
 
-    toText = pack . show
+    toText = pack . Hask.show
 
 walletPKH :: Wallet -> PubKeyHash
 walletPKH = pubKeyHash . walletPubKey

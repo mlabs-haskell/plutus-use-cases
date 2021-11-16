@@ -25,7 +25,7 @@ module Mlabs.Lending.Logic.App (
 ) where
 
 import PlutusTx.Prelude hiding ((%))
-import Prelude qualified as Hask (uncurry)
+import Prelude qualified as Hask -- (uncurry)
 
 import Data.Map.Strict qualified as M
 import Plutus.V1.Ledger.Crypto (PubKeyHash (..))

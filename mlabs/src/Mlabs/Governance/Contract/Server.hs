@@ -7,7 +7,7 @@ module Mlabs.Governance.Contract.Server (
 ) where
 
 import PlutusTx.Prelude hiding (toList, uncurry)
-import Prelude (String, show, uncurry)
+import Prelude qualified as Hask -- (String, show, uncurry)
 
 import Control.Lens ((^.), (^?))
 import Control.Monad (void)
@@ -102,7 +102,7 @@ deposit gov (Api.Deposit amnt) = do
   ledgerTx <- Contract.submitTxConstraintsWith 
                 @Validation.Governance lookups tx
   void $ Contract.awaitTxConfirmed $ txId ledgerTx
-  Contract.logInfo @String $ printf "deposited %s GOV tokens" (show amnt)
+  Contract.logInfo @Hask.String $ printf "deposited %s GOV tokens" (Hask.show amnt)
 
 withdraw :: AssetClassGov -> Api.Withdraw -> GovernanceContract ()
 withdraw gov (Api.Withdraw assets) = do
@@ -138,8 +138,8 @@ withdraw gov (Api.Withdraw assets) = do
 
   ledgerTx <- Contract.submitTxConstraintsWith @Validation.Governance lookups tx
   void $ Contract.awaitTxConfirmed $ txId ledgerTx
-  Contract.logInfo @String $ 
-    printf "withdrew %s GOV tokens" (show . sum $ map snd assets)
+  Contract.logInfo @Hask.String $ 
+    printf "withdrew %s GOV tokens" (Hask.show . sum $ map snd assets)
 
 -- TODO fix (works but transaction sizes are HUGE)
 provideRewards :: AssetClassGov -> Api.ProvideRewards -> GovernanceContract ()
@@ -162,7 +162,7 @@ provideRewards gov (Api.ProvideRewards val) = do
           props
 
   let aux = \case
-        Just x -> Just $ uncurry Constraints.mustPayToPubKey x
+        Just x -> Just $ Hask.uncurry Constraints.mustPayToPubKey x
         Nothing -> Nothing
   tx <- maybe err pure $ foldMap aux dispatch
 
@@ -174,7 +174,7 @@ provideRewards gov (Api.ProvideRewards val) = do
   ledgerTx <- Contract.submitTxConstraintsWith 
                 @Validation.Governance lookups tx
   void $ Contract.awaitTxConfirmed $ txId ledgerTx
-  Contract.logInfo @String $ printf "Provided rewards to all xGOV holders"
+  Contract.logInfo @Hask.String $ printf "Provided rewards to all xGOV holders"
   where
     err = Contract.throwError "Could not find PublicKeyHash."
 

@@ -20,7 +20,7 @@ import GHC.Generics (Generic)
 import Playground.Contract (FromJSON, ToJSON, ToSchema)
 import Plutus.Contract (type (.\/))
 import PlutusTx.Prelude (BuiltinByteString, Integer, Maybe, Rational)
-import Prelude qualified as Hask (Eq, Show)
+import Prelude qualified as Hask -- (Eq, Show)
 
 import Mlabs.Nft.Logic.Types (UserAct (BuyAct, SetPriceAct))
 import Mlabs.Plutus.Contract (Call, IsEndpoint (..))
