@@ -3,7 +3,7 @@ module Test.Nft.Contract (
 ) where
 
 import PlutusTx.Prelude hiding (foldMap, mconcat, (<>))
-import Prelude (foldMap, mconcat, (<>))
+import Prelude qualified as Hask -- (foldMap, mconcat, (<>))
 
 import Plutus.Contract.Test (Wallet (..), checkPredicateOptions)
 import Test.Nft.Init (Script, adaCoin, checkOptions, runScript, userAct, 
@@ -35,7 +35,7 @@ ownsAda :: Wallet -> Integer -> Scene
 ownsAda wal amount = wal `owns` [(adaCoin, amount)]
 
 noChangesScene :: Scene
-noChangesScene = foldMap (`ownsAda` 0) [w1, w2, w3]
+noChangesScene = Hask.foldMap (`ownsAda` 0) [w1, w2, w3]
 
 -- | 3 users deposit 50 coins to lending app. Each of them uses different coin.
 buyScript :: Script
@@ -46,7 +46,7 @@ buyScript = do
 
 buyScene :: Scene
 buyScene =
-  mconcat
+  Hask.mconcat
     [ w1 `ownsAda` 110
     , w2 `ownsAda` (-110)
     ]
@@ -63,10 +63,10 @@ buyTwiceScript = do
   userAct w3 $ BuyAct 500 (Just 1000)
 
 buyTwiceScene :: Scene
-buyTwiceScene = buyScene <> buyTwiceChange
+buyTwiceScene = buyScene Hask.<> buyTwiceChange
   where
     buyTwiceChange =
-      mconcat
+      Hask.mconcat
         [ w1 `ownsAda` 50
         , w2 `ownsAda` 500
         , w3 `ownsAda` (-550)

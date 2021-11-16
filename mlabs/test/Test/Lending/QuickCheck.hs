@@ -10,17 +10,8 @@
 module Test.Lending.QuickCheck where
 
 import PlutusTx.Prelude hiding (fmap, length, (<$>), (<*>))
-import Prelude (
-  Int,
-  Show,
-  abs,
-  drop,
-  fmap,
-  length,
-  zip3,
-  (<$>),
-  (<*>),
- )
+import Prelude qualified as Hask
+--   (Int, Show, abs, drop, fmap, length, zip3, (<$>), (<*>),)
 
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -41,13 +32,13 @@ allUsers :: [UserId]
 allUsers = [Self, user1, user2, user3]
 
 users :: [UserId]
-users = drop 1 allUsers
+users = Hask.drop 1 allUsers
 
 coins :: [Coin]
 coins = [adaCoin, coin1, coin2, coin3]
 
 nonNativeCoins :: [Coin]
-nonNativeCoins = drop 1 coins
+nonNativeCoins = Hask.drop 1 coins
 
 aToken :: Coin -> Value.TokenName
 aToken (Value.AssetClass (_, Value.TokenName tn)) = Value.TokenName ("a" <> tn)
@@ -56,28 +47,28 @@ aCoin :: Coin -> Coin
 aCoin coin = fromToken (aToken coin)
 
 -- Various integer generators
-smallGenSize :: Int
+smallGenSize :: Hask.Int
 smallGenSize = 100
 
-bigGenSize :: Int
+bigGenSize :: Hask.Int
 bigGenSize = 1_000_000_000_000_000_000
 
 positiveSmallInteger :: QC.Gen Integer
-positiveSmallInteger = fmap QC.getPositive (QC.resize smallGenSize QC.arbitrary)
+positiveSmallInteger = Hask.fmap QC.getPositive (QC.resize smallGenSize QC.arbitrary)
 
 positiveBigInteger :: QC.Gen Integer
-positiveBigInteger = (*) <$> gen <*> gen
+positiveBigInteger = (*) Hask.<$> gen Hask.<*> gen
   where
-    gen = fmap QC.getPositive (QC.resize bigGenSize QC.arbitrary)
+    gen = Hask.fmap QC.getPositive (QC.resize bigGenSize QC.arbitrary)
 
 nonPositiveSmallInteger :: QC.Gen Integer
 nonPositiveSmallInteger = 
-  fmap (negate . abs) (QC.resize smallGenSize QC.arbitrary)
+  Hask.fmap (negate . Hask.abs) (QC.resize smallGenSize QC.arbitrary)
 
 nonPositiveBigInteger :: QC.Gen Integer
-nonPositiveBigInteger = (\x y -> negate (abs (x * y))) <$> gen <*> gen
+nonPositiveBigInteger = (\x y -> negate (Hask.abs (x * y))) Hask.<$> gen Hask.<*> gen
   where
-    gen = fmap negate (QC.resize bigGenSize QC.arbitrary)
+    gen = Hask.fmap negate (QC.resize bigGenSize QC.arbitrary)
 
 positiveInteger :: QC.Gen Integer
 positiveInteger = 
@@ -90,7 +81,7 @@ nonPositiveInteger =
 -- | Contains parameters that deposit test cases can be generalized over
 newtype DepositTestInput = DepositTestInput
   {deposits :: [(UserId, Coin, Integer)]}
-  deriving (Show)
+  deriving stock (Hask.Show)
 
 -- | Construct a `Script`
 createDepositScript :: DepositTestInput -> Script
@@ -106,7 +97,7 @@ someErrorsProp = not . noErrorsProp
 hasWallet :: App st act -> UserId -> BchWallet -> Bool
 hasWallet app uid wal = lookupAppWallet uid app == Just wal
 
-checkWalletsProp :: (Show act, Show st) => 
+checkWalletsProp :: (Hask.Show act, Hask.Show st) => 
   [(UserId, BchWallet)] -> App st act -> Bool
 checkWalletsProp wals app = all (uncurry $ hasWallet app) wals
 
@@ -152,9 +143,10 @@ testWalletsProp' d =
 
 depositInputGen :: QC.Gen Integer -> QC.Gen DepositTestInput
 depositInputGen integerGen =
-  fmap (DepositTestInput . zip3 users nonNativeCoins) (QC.vectorOf n integerGen)
+  Hask.fmap (DepositTestInput . Hask.zip3 users nonNativeCoins) 
+    (QC.vectorOf n integerGen)
   where
-    n = length users
+    n = Hask.length users
 
 testDepositLogic :: QC.Property
 testDepositLogic = 
