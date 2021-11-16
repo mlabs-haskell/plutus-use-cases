@@ -3,7 +3,7 @@ module Main where
 import PlutusTx.Prelude hiding (error)
 import System.Environment (getArgs)
 import System.Exit (die)
-import Prelude (IO, String, error, print, undefined)
+import Prelude qualified as Hask -- (IO, String, error, print, undefined)
 
 import Mlabs.Emulator.Types (UserId (..))
 import Mlabs.Nft.Contract.Forge as F
@@ -28,7 +28,7 @@ import Data.ByteString as DB
 import Mlabs.Deploy.Governance
 import Mlabs.Deploy.Nft
 
-main :: IO ()
+main :: Hask.IO ()
 main = do
   args <- getArgs
   case args of

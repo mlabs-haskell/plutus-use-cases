@@ -10,7 +10,7 @@ module Main (
   toCoin,
 ) where
 
-import Prelude
+import Prelude qualified as Hask
 
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -40,7 +40,7 @@ import Mlabs.Utils.Wallet (walletFromNumber)
 import PlutusTx.Ratio qualified as R
 
 -- | Console demo for Lendex with simulator
-main :: IO ()
+main :: Hask.IO ()
 main = Handler.runSimulator lendexId initContract $ do
   cur <- activateInit wAdmin
   Simulator.waitNSlots 10

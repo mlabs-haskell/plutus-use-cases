@@ -4,7 +4,7 @@ module Main (
 ) where
 
 import PlutusTx.Prelude
-import Prelude (IO, getLine, show, undefined)
+import Prelude qualified as Hask -- (IO, getLine, show, undefined)
 
 import Control.Monad (forM, forM_, when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -122,12 +122,12 @@ withdraw cid wallet amount = call cid $ Withdraw [(walletPKH wallet, amount)]
 getBalance cid wallet = do
   call cid $ QueryBalance $ walletPKH wallet
   govBalance :: Integer <- waitForLast cid
-  logAction $ "Balance is " ++ show govBalance
+  logAction $ "Balance is " ++ Hask.show govBalance
 
 printBalance :: Wallet -> Simulation (Builtin schema) ()
 printBalance wallet = do
   v <- Simulator.valueAt $ walletAddress wallet
-  logBalance ("WALLET " <> show wallet) v
+  logBalance ("WALLET " <> Hask.show wallet) v
 
 walletPKH = pubKeyHash . walletPubKey
 
