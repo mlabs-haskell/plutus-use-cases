@@ -27,7 +27,7 @@ import Cardano.Api.Shelley (
 import Cardano.Ledger.Alonzo.Data qualified as Alonzo
 import Codec.Serialise (serialise)
 import Plutus.V1.Ledger.Api (Validator)
-import Plutus.V1.Ledger.Api qualified as Plutus
+import Plutus.V1.Ledger.Api qualified as Ledger
 import PlutusTx (ToData, toData)
 
 validatorToPlutus :: Hask.FilePath -> Validator -> Hask.IO ()
@@ -36,14 +36,14 @@ validatorToPlutus file validator = do
   -- https://github.com/input-output-hk/Alonzo-testnet/blob/main/resources
   -- /plutus-sources/plutus-example/app/plutus-minting-purple-example.hs
   let (validatorPurpleScript, validatorAsSBS) = serializeValidator validator
-  case Plutus.defaultCostModelParams of
+  case Ledger.defaultCostModelParams of
     Just m ->
       let getAlonzoData d = case toAlonzoData d of
             Alonzo.Data pData -> pData
             _ -> Hask.error "Should not happen"
           (logout, e) =
-            Plutus.evaluateScriptCounting
-              Plutus.Verbose
+            Ledger.evaluateScriptCounting
+              Ledger.Verbose
               m
               validatorAsSBS
               [getAlonzoData (ScriptDataNumber 42)]
@@ -59,11 +59,11 @@ validatorToPlutus file validator = do
     Left err -> Hask.print $ displayError err
     Right () -> return ()
 
-policyToPlutus :: Hask.FilePath -> Plutus.MintingPolicy -> Hask.IO ()
+policyToPlutus :: Hask.FilePath -> Ledger.MintingPolicy -> Hask.IO ()
 policyToPlutus file policy =
   validatorToPlutus
     file
-    $ Plutus.Validator $ Plutus.unMintingPolicyScript policy
+    $ Ledger.Validator $ Ledger.unMintingPolicyScript policy
 
 serializeValidator :: Validator -> (PlutusScript PlutusScriptV1, 
                                     SBS.ShortByteString)

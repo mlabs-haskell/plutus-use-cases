@@ -10,7 +10,7 @@ import Mlabs.Nft.Logic.Types
 
 -- import Data.ByteString.Lazy qualified as LB
 import Ledger.Typed.Scripts.Validators as VS
-import Plutus.V1.Ledger.Api qualified as Plutus
+import Plutus.V1.Ledger.Api qualified as Ledger
 
 import Mlabs.Deploy.Utils
 
@@ -23,10 +23,10 @@ serializeNft ::
   Hask.IO ()
 serializeNft txId txIx ownerPkh content outDir = do
   let txOutRef =
-        Plutus.TxOutRef
-          (Plutus.TxId txId)
+        Ledger.TxOutRef
+          (Ledger.TxId txId)
           txIx
-      userId = UserId $ Plutus.PubKeyHash ownerPkh
+      userId = UserId $ Ledger.PubKeyHash ownerPkh
       initNftDatum = initNft txOutRef userId content (1 % 2) (Just 1000)
       nftId = nft'id initNftDatum
       typedValidator = SM.scriptInstance nftId

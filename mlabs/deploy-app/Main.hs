@@ -17,7 +17,7 @@ import Cardano.Ledger.Alonzo.Data qualified as Alonzo
 import Codec.Serialise
 import Ledger.Typed.Scripts.Validators as VS
 import Plutus.V1.Ledger.Api (MintingPolicy, TxOutRef, Validator)
-import Plutus.V1.Ledger.Api qualified as Plutus
+import Plutus.V1.Ledger.Api qualified as Ledger
 import PlutusTx
 
 import Data.Aeson as Json
