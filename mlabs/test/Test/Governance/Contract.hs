@@ -8,7 +8,7 @@ module Test.Governance.Contract (
 import Data.Functor (void)
 import Data.Text (Text)
 import PlutusTx.Prelude hiding (error)
-import Prelude (Show (..), error)
+import Prelude qualified as Hask -- (Show (..), error)
 
 -- import Data.Monoid ((<>), mempty)
 
@@ -249,7 +249,7 @@ testPartialWithdraw =
     ?
 -}
 testCantWithdrawMoreThandeposited :: TestTree
-testCantWithdrawMoreThandeposited = error "TBD"
+testCantWithdrawMoreThandeposited = Hask.error "TBD"
 
 testCantWithdrawNegativeAmount :: TestTree
 testCantWithdrawNegativeAmount =
@@ -276,4 +276,4 @@ testCantWithdrawNegativeAmount =
           next
 
 testCanWithdrawOnlyxGov :: TestTree
-testCanWithdrawOnlyxGov = error "TBD"
+testCanWithdrawOnlyxGov = Hask."TBD"

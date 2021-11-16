@@ -8,7 +8,7 @@ import PlutusTx.Prelude hiding (fmap, length, mconcat, unless, (<$>), (<*>),
 import Test.QuickCheck qualified as QC
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.QuickCheck (testProperty)
-import Prelude (div, fmap, (<$>), (<*>), (==))
+-- import Prelude (div, fmap, (<$>), (<*>), (==))
 import Prelude qualified as Hask
 
 import Mlabs.NFT.Api

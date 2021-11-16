@@ -20,7 +20,13 @@ module Mlabs.System.Console.PrettyLogger (
   padRight,
 ) where
 
-import Prelude
+-- Note: Originally this module does not use Plutus Prelude at all. When trying
+-- to qualify the base Prelude and switching to Plutus Prelude, since the 
+-- underlying numeric system is different, padLeft & padRight might need to be
+-- taken extra care.
+
+-- import PlutusTx.Prelude
+import Prelude qualified as Hask
 
 import Control.Monad.IO.Class (MonadIO (..))
 import System.Console.ANSI (
@@ -37,7 +43,7 @@ import System.Console.ANSI (
 data LogStyle = LogStyle
   { bgColor :: LogColor
   , color :: LogColor
-  , isBold :: Bool
+  , isBold :: Hask.Bool
   }
 
 data LogColor
@@ -47,22 +53,22 @@ data LogColor
 
 defLogStyle :: LogStyle
 defLogStyle =
-  LogStyle {bgColor = DefaultColor, color = DefaultColor, isBold = False}
+  LogStyle {bgColor = DefaultColor, color = DefaultColor, isBold = Hask.False}
 
 -------------------------------------------------------------------------------
 
-logPretty :: MonadIO m => String -> m ()
+logPretty :: MonadIO m => Hask.String -> m ()
 logPretty = logPrettyStyled defLogStyle
 
-logPrettyStyled :: MonadIO m => LogStyle -> String -> m ()
-logPrettyStyled style string = liftIO $ do
-  setSGR . foldMap ($ style) $
-    [ getColorList . color
-    , getBgColorList . bgColor
-    , getConsoleIntensityList . isBold
+logPrettyStyled :: MonadIO m => LogStyle -> Hask.String -> m ()
+logPrettyStyled style string = liftIO Hask.$ do
+  setSGR Hask.. Hask.foldMap (Hask.$ style) Hask.$
+    [ getColorList Hask.. color
+    , getBgColorList Hask.. bgColor
+    , getConsoleIntensityList Hask.. isBold
     ]
 
-  putStr string
+  Hask.putStr string
   setSGR [Reset]
   where
     getColorList color = case color of
@@ -78,33 +84,34 @@ logPrettyStyled style string = liftIO $ do
 
 -- Convenience functions ------------------------------------------------------
 
-logPrettyColor :: MonadIO m => LogColor -> String -> m ()
+logPrettyColor :: MonadIO m => LogColor -> Hask.String -> m ()
 logPrettyColor color = logPrettyStyled defLogStyle {color = color}
 
-logPrettyBgColor :: MonadIO m => Int -> LogColor -> LogColor -> String -> m ()
+logPrettyBgColor :: MonadIO m => Hask.Int -> LogColor -> LogColor 
+  -> Hask.String -> m ()
 logPrettyBgColor minWidth bgColor color str =
   logPrettyStyled
     defLogStyle {bgColor = bgColor, color = color}
     (padRight ' ' minWidth str)
 
-logPrettyColorBold :: MonadIO m => LogColor -> String -> m ()
+logPrettyColorBold :: MonadIO m => LogColor -> Hask.String -> m ()
 logPrettyColorBold color =
-  logPrettyStyled defLogStyle {color = color, isBold = True}
+  logPrettyStyled defLogStyle {color = color, isBold = Hask.True}
 
-withNewLines :: String -> String
-withNewLines string = "\n" ++ string ++ "\n"
+withNewLines :: Hask.String -> Hask.String
+withNewLines string = "\n" Hask.++ string Hask.++ "\n"
 
 logNewLine :: MonadIO m => m ()
 logNewLine = logPretty "\n"
 
 logDivider :: MonadIO m => m ()
 logDivider =
-  logPretty $
+  logPretty Hask.$
     "-----------------------------------------------------------"
-      ++ "\n"
+      Hask.++ "\n"
 
-padLeft :: Char -> Int -> String -> String
-padLeft char len txt = replicate (len - length txt) char <> txt
+padLeft :: Hask.Char -> Hask.Int -> Hask.String -> Hask.String
+padLeft char len txt = Hask.replicate (len Hask.- Hask.length txt) char Hask.<> txt
 
-padRight :: Char -> Int -> String -> String
-padRight char len txt = txt <> replicate (len - length txt) char
+padRight :: Hask.Char -> Hask.Int -> Hask.String -> Hask.String
+padRight char len txt = txt Hask.<> Hask.replicate (len Hask.- Hask.length txt) char

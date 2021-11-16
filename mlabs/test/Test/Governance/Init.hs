@@ -18,7 +18,7 @@ module Test.Governance.Init (
 ) where
 
 import PlutusTx.Prelude
-import Prelude ()
+-- import Prelude ()
 
 import Control.Lens ((&), (.~))
 import Data.Coerce (coerce)

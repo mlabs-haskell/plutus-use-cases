@@ -1,7 +1,7 @@
 module Main (main) where
 
 import PlutusTx.Prelude
-import Prelude -- qualified as Hask -- (IO)
+import Prelude qualified as Hask -- (IO)
 
 import Test.Tasty (defaultMain, testGroup)
 import Test.Tasty.ExpectedFailure (ignoreTest)
@@ -17,7 +17,7 @@ import Test.NFT.Script.Main qualified as NFT.Script
 import Test.Nft.Contract qualified as Nft.Contract
 import Test.Nft.Logic qualified as Nft.Logic
 
-main :: IO ()
+main :: Hask.IO ()
 main =
   defaultMain $
     testGroup

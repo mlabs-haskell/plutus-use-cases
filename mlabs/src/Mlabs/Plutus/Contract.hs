@@ -14,7 +14,7 @@ module Mlabs.Plutus.Contract (
 ) where
 
 import PlutusTx.Prelude
-import Prelude (String)
+import Prelude qualified as Hask -- (String)
 
 import Control.Lens (view, (^?))
 import Control.Monad (forever)
@@ -94,7 +94,7 @@ getEndpoint ::
   Contract.Promise w s e b
 getEndpoint = Contract.endpoint @(EndpointSymbol a)
 
-endpointName :: forall a. IsEndpoint a => a -> String
+endpointName :: forall a. IsEndpoint a => a -> Hask.String
 endpointName a = symbolVal (toProxy a)
   where
     toProxy :: a -> Proxy (EndpointSymbol a)
