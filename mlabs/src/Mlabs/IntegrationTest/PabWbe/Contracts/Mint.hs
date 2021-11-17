@@ -23,7 +23,7 @@ import Mlabs.IntegrationTest.Utils
 
 import Playground.Contract qualified as Playground
 
-import Plutus.Contract (Contract, Endpoint, awaitTxConfirmed, submitTxConstraintsWith)
+import Plutus.Contract (Contract, Endpoint, awaitTxConfirmed, submitTxConstraintsWith, throwError)
 import Plutus.Contracts.Currency (
   OneShotCurrency (..),
   curPolicy,
@@ -52,8 +52,7 @@ mintToken Mint {..} = do
       . PubKey.pubKeyContract pkh
       $ Ada.adaValueOf 10
   case mciTxOut of
-    -- TODO
-    Nothing -> error ()
+    Nothing -> throwError "No 'ChainIndexTxOut's found for minting"
     Just citxOut -> do
       let theCurrency = mkCurrency txOutRef amounts
           utxos = Map.singleton txOutRef citxOut

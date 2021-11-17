@@ -14,6 +14,8 @@ import GHC.Generics (Generic)
 
 import Language.PureScript.Bridge (argonaut, equal, genericShow, mkSumType)
 
+import Mlabs.IntegrationTest.PabWbe.Contracts.Mint (Mint, MintSchema)
+import Mlabs.IntegrationTest.PabWbe.Contracts.Mint qualified as Mint
 import Mlabs.IntegrationTest.PabWbe.Contracts.Payment (Payment, PaymentSchema)
 import Mlabs.IntegrationTest.PabWbe.Contracts.Payment qualified as Payment
 import Mlabs.IntegrationTest.PabWbe.TestStand qualified as TestStand
@@ -30,6 +32,7 @@ import Prettyprinter (Pretty (pretty), viaShow)
 data TestContracts
   = BalanceAndSignContract
   | PaymentContract Payment
+  | MintContract Mint
   deriving stock (Hask.Eq, Hask.Ord, Hask.Show, Generic)
   deriving anyclass (FromJSON, ToJSON, Schema.ToSchema)
 
@@ -47,7 +50,9 @@ instance HasDefinitions TestContracts where
   getContract = \case
     BalanceAndSignContract -> SomeBuiltin TestStand.runTests
     PaymentContract payment -> SomeBuiltin $ Payment.payFromTo payment
+    MintContract mint -> SomeBuiltin $ Mint.mintToken mint
 
   getSchema = \case
     BalanceAndSignContract -> Builtin.endpointsToSchemas @Empty
     PaymentContract {} -> Builtin.endpointsToSchemas @PaymentSchema
+    MintContract {} -> Builtin.endpointsToSchemas @MintSchema
