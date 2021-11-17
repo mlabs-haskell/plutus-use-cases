@@ -205,12 +205,11 @@ library
     Mlabs.IntegrationTest.Wbe.CardanoAPI
     Mlabs.IntegrationTest.Wbe.TestCase
     Mlabs.IntegrationTest.PabWbe.Pab
-    Mlabs.IntegrationTest.PabWbe.TestCase
-    Mlabs.IntegrationTest.PabWbe.TestStand
     Mlabs.IntegrationTest.PabWbe.TxInfo
     Mlabs.IntegrationTest.PabWbe.Types
     Mlabs.IntegrationTest.PabWbe.Contracts.Payment
     Mlabs.IntegrationTest.PabWbe.Contracts.Mint
+    Mlabs.IntegrationTest.PabWbe.Contracts.IntegrationTest
 
 executable mlabs-plutus-use-cases
   import:  common-imports
