@@ -23,7 +23,7 @@ import Mlabs.IntegrationTest.Utils
 
 import Playground.Contract qualified as Playground
 
-import Plutus.Contract (Contract, Endpoint, awaitTxConfirmed, submitTxConstraintsWith, throwError)
+import Plutus.Contract (Contract, Endpoint, awaitTxConfirmed, logInfo, submitTxConstraintsWith, throwError)
 import Plutus.Contracts.Currency (
   OneShotCurrency (..),
   curPolicy,
@@ -63,9 +63,15 @@ mintToken Mint {..} = do
           mintTx =
             Constraints.mustSpendPubKeyOutput txOutRef
               Hask.<> Constraints.mustMintValue (mintedValue theCurrency)
-      tx <- submitTxConstraintsWith @Scripts.Any lookups mintTx
-      void . awaitTxConfirmed $ getCardanoTxId tx
+      txId <-
+        getCardanoTxId
+          <$> submitTxConstraintsWith @Scripts.Any lookups mintTx
+      logInfo @Hask.String $ "Awaiting tx completion: " <> Hask.show txId
+      void . awaitTxConfirmed $ txId
+      logInfo @Hask.String "Tx confirmed, minting complete"
   where
+    -- Taken from Plutus.Contracts.Currency.hs in plutus-use-cases
+    -- (not exported)
     mkCurrency :: TxOutRef -> [(TokenName, Integer)] -> OneShotCurrency
     mkCurrency (TxOutRef h i) amts =
       OneShotCurrency
