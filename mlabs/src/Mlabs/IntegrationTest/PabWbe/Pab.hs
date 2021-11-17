@@ -12,13 +12,18 @@ import Data.Row (Empty)
 
 import GHC.Generics (Generic)
 
-import Language.PureScript.Bridge (argonaut, equal, genericShow, mkSumType)
+import Language.PureScript.Bridge (
+  argonaut,
+  equal,
+  genericShow,
+  mkSumType,
+ )
 
+import Mlabs.IntegrationTest.PabWbe.Contracts.IntegrationTest qualified as IntegrationTest
 import Mlabs.IntegrationTest.PabWbe.Contracts.Mint (Mint, MintSchema)
 import Mlabs.IntegrationTest.PabWbe.Contracts.Mint qualified as Mint
 import Mlabs.IntegrationTest.PabWbe.Contracts.Payment (Payment, PaymentSchema)
 import Mlabs.IntegrationTest.PabWbe.Contracts.Payment qualified as Payment
-import Mlabs.IntegrationTest.PabWbe.TestStand qualified as TestStand
 
 import Plutus.PAB.Effects.Contract.Builtin (
   HasDefinitions (..),
@@ -48,7 +53,7 @@ instance HasDefinitions TestContracts where
   getDefinitions = [BalanceAndSignContract]
 
   getContract = \case
-    BalanceAndSignContract -> SomeBuiltin TestStand.runTests
+    BalanceAndSignContract -> SomeBuiltin IntegrationTest.runTests
     PaymentContract payment -> SomeBuiltin $ Payment.payFromTo payment
     MintContract mint -> SomeBuiltin $ Mint.mintToken mint
 

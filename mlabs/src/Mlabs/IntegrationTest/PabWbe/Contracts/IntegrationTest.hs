@@ -1,7 +1,5 @@
-module Mlabs.IntegrationTest.PabWbe.TestCase (
-  TestCase (..),
-  Test (..),
-  getTestCases,
+module Mlabs.IntegrationTest.PabWbe.Contracts.IntegrationTest (
+  runTests,
 ) where
 
 import Cardano.Api qualified as C
@@ -13,6 +11,7 @@ import Control.Monad.Except (MonadError (throwError), liftEither)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Ratio ((%))
+import Data.Row (Empty)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Void (Void)
@@ -35,12 +34,29 @@ import Mlabs.IntegrationTest.PabWbe.Types
 import Mlabs.IntegrationTest.Utils
 
 import Plutus.ChainIndex (ChainIndexTx, citxInputs)
-import Plutus.Contract (Contract, balanceTx, submitBalancedTx, txOutFromRef)
 import Plutus.Contract.Wallet (ExportTx (..), export)
 
-import PlutusTx.Prelude hiding ((%))
+import Plutus.Contract (
+  Contract,
+  balanceTx,
+  handleError,
+  logError,
+  logInfo,
+  ownPubKeyHash,
+  submitBalancedTx,
+  txOutFromRef,
+ )
 
-import Prelude qualified as Hask
+import PlutusTx.Prelude hiding (
+  Applicative (..),
+  Monoid (..),
+  Semigroup (..),
+  check,
+  mconcat,
+  (%),
+ )
+
+import Prelude (Applicative (..), Monoid (..), Semigroup (..))
 
 data TestCase = TestCase
   { description :: Text
@@ -52,6 +68,26 @@ data Test = Test
   , checks :: [AnyCheck]
   }
 
+runTests :: Contract () Empty Text ()
+runTests = do
+  pkh <- ownPubKeyHash
+  logInfo @Text $ "Running tests contracts with PKH: " <> tshow pkh
+
+  handleError testCaseFailed $
+    getTestCases >>= traverse_ runTestCase
+  where
+    testCaseFailed :: Text -> Contract () Empty Text ()
+    testCaseFailed err = logError @Text $ "Test failed with: " <> err
+
+    runTestCase :: TestCase -> Contract () Empty Text ()
+    runTestCase TestCase {test = Test {..}, ..} = do
+      logInfo @Text $ "Running test: " <> description
+      logInfo @Text $ "Check for Tx [id]:" <> exTxId
+      for_ checks $ \(AnyCheck check) -> logInfo @Text $ report check
+      where
+        exTxId :: Text
+        exTxId = tshow $ getExportTxId transaction
+
 getTestCases :: Contract () s Text [TestCase]
 getTestCases =
   sequence
@@ -62,7 +98,7 @@ getTestCases =
 
 wallet2Wallet :: Contract () s Text TestCase
 wallet2Wallet = do
-  PabResults {..} <- pabResultsFromTx Hask.mempty txC
+  PabResults {..} <- pabResultsFromTx mempty txC
   pure
     . TestCase "Transaction from wallet to wallet w/o inputs"
     $ Test
