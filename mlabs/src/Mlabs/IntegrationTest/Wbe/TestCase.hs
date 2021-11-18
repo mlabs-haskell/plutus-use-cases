@@ -19,18 +19,17 @@ import Data.Text (Text)
 import Data.Void (Void)
 
 import Ledger hiding (value)
+import Ledger.Ada (adaValueOf)
 import Ledger.Constraints qualified as Constraints
 
+import Mlabs.IntegrationTest.Checks hiding (Balanced)
+import Mlabs.IntegrationTest.TxBuilder
 import Mlabs.IntegrationTest.Types
 import Mlabs.IntegrationTest.Utils
 import Mlabs.IntegrationTest.Wbe.CardanoAPI
-import Mlabs.IntegrationTest.Wbe.Checks hiding (Balanced)
-import Mlabs.IntegrationTest.Wbe.TxBuilder
 import Mlabs.IntegrationTest.Wbe.TxInfo
 import Mlabs.IntegrationTest.Wbe.Types
 import Mlabs.IntegrationTest.Wbe.WbeClient qualified as WbeClient
-
-import Plutus.V1.Ledger.Ada (adaValueOf)
 
 import Prelude
 
@@ -50,9 +49,6 @@ data WbeResults = WbeResults
   , signed :: WbeTx 'Signed
   , signedInfo :: SignInfo
   }
-
-data AnyCheck where
-  AnyCheck :: forall a. Reportable (Check a) => Check a -> AnyCheck
 
 getTestCases ::
   C.LocalNodeConnectInfo C.CardanoMode ->
@@ -96,10 +92,9 @@ testWallet2Wallet connInfo params =
         ]
   where
     mkTx =
-      WbeExportTx
-        <$> buildTx @Void (C.localNodeNetworkId connInfo) params mempty txC
+      buildTx @Void (C.localNodeNetworkId connInfo) params mempty txC
     pkh =
-      decodePkh
+      unsafeDecodePkh
         "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d2\"}"
     txC = Constraints.mustPayToPubKey pkh (adaValueOf 5)
 
@@ -122,14 +117,13 @@ testWallet2WalletEnoughInputs connInfo params =
         ]
   where
     mkTx =
-      WbeExportTx
-        <$> buildTx @Void (C.localNodeNetworkId connInfo) params withInputL withInputC
+      buildTx @Void (C.localNodeNetworkId connInfo) params withInputL withInputC
     pkh =
-      decodePkh
+      unsafeDecodePkh
         "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d2\"}"
 
     pkhTo =
-      decodePkh
+      unsafeDecodePkh
         "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d4\"}"
 
     refId =
@@ -168,14 +162,13 @@ testWallet2WalletNotEnoughInputs connInfo params =
         ]
   where
     mkTx =
-      WbeExportTx
-        <$> buildTx @Void (C.localNodeNetworkId connInfo) params withInputL withInputC
+      buildTx @Void (C.localNodeNetworkId connInfo) params withInputL withInputC
     pkh =
-      decodePkh
+      unsafeDecodePkh
         "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d2\"}"
 
     pkhTo =
-      decodePkh
+      unsafeDecodePkh
         "{\"getPubKeyHash\" : \"5030c2607444fdf06cdd6da1da0c3d5f95f40d5b7ffc61a23dd523d4\"}"
 
     refId =

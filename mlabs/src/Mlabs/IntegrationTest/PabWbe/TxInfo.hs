@@ -1,29 +1,27 @@
--- |
 module Mlabs.IntegrationTest.PabWbe.TxInfo (
   analyzeBalanced,
   analyzeSigned,
-  getBodyAndWitnesses,
+  getTxAndWitnesses,
   getSomeCardanoApiTx,
 ) where
 
 import Cardano.Api qualified as C
-import Cardano.Ledger.Coin (Coin (Coin))
 
 import Control.Lens ((^.))
 
 import Data.Text (Text)
-import Data.Text qualified as Text
 
-import Ledger (CardanoTx, SomeCardanoApiTx (..))
+import Ledger (
+  CardanoTx,
+  ChainIndexTxOut,
+  SomeCardanoApiTx (..),
+  ciTxOutValue,
+ )
 
-import Mlabs.IntegrationTest.PabWbe.Types
 import Mlabs.IntegrationTest.Types
 import Mlabs.IntegrationTest.Utils
 
-import Plutus.ChainIndex (
-  ChainIndexTx,
-  citxCardanoTx,
- )
+import Plutus.ChainIndex (ChainIndexTx, citxCardanoTx)
 import Plutus.Contract (Contract, throwError)
 import Plutus.Contract.CardanoAPI (fromCardanoTx)
 
@@ -32,26 +30,34 @@ import PlutusTx.Prelude
 import Prelude qualified as Hask
 
 analyzeBalanced ::
+  -- Tx before balancing
   ChainIndexTx ->
+  -- Tx after balancing
   ChainIndexTx ->
+  -- All tx outs from balanced tx inputs
+  [ChainIndexTxOut] ->
+  -- Body content from balanced tx
   TxBodyContent ->
-  PabBalanceInfo
-analyzeBalanced initial balanced C.TxBodyContent {..} =
-  PabBalanceInfo
-    { fee = balancedTxFee
+  BalanceInfo
+analyzeBalanced initial balanced citxOuts bodyContent =
+  BalanceInfo
+    { fee = feeFromBodyContent bodyContent
     , totalOutsValue = chainIndexTxVal balanced
+    , totalInsValue = mconcat $ (^. ciTxOutValue) <$> citxOuts
     , unbalancedInsOuts = getInsOuts initial
     , balancedInsOuts = getInsOuts balanced
+    , txInFromWallet = inputsDifference initial balanced
     }
-  where
-    balancedTxFee :: Maybe Coin
-    balancedTxFee = case txFee of
-      C.TxFeeExplicit _ (C.Lovelace ll) -> Just $ Coin ll
-      C.TxFeeImplicit _ -> Nothing
 
-analyzeSigned :: ChainIndexTx -> ChainIndexTx -> Maybe SignInfo
-analyzeSigned balanced signed = mkSignInfo <$> getTx balanced <*> getTx signed
+analyzeSigned :: ChainIndexTx -> ChainIndexTx -> Either TestError SignInfo
+analyzeSigned balanced signed =
+  maybe (Left conversionFailed) Right $
+    mkSignInfo <$> getTx balanced <*> getTx signed
   where
+    conversionFailed :: TestError
+    conversionFailed =
+      ConversionError "Failed to convert 'ChainIndexTx's to 'Tx AlonzoEra's"
+
     getTx :: ChainIndexTx -> Maybe (C.Tx C.AlonzoEra)
     getTx = (getCardanoTx =<<) . (^. citxCardanoTx)
 
@@ -59,17 +65,14 @@ analyzeSigned balanced signed = mkSignInfo <$> getTx balanced <*> getTx signed
     getCardanoTx (SomeTx tx C.AlonzoEraInCardanoMode) = Just tx
     getCardanoTx _ = Nothing
 
-getBodyAndWitnesses ::
+getTxAndWitnesses ::
   SomeCardanoApiTx ->
-  Contract w s Text (TxBodyContent, ChainIndexTx, [C.KeyWitness C.AlonzoEra])
-getBodyAndWitnesses = \case
-  SomeTx tx@(C.Tx _ wits) mode@C.AlonzoEraInCardanoMode -> case C.getTxBody tx of
+  Contract w s Text (TxBodyContent, ChainIndexTx)
+getTxAndWitnesses = \case
+  SomeTx tx@(C.Tx _ _) mode@C.AlonzoEraInCardanoMode -> case C.getTxBody tx of
     C.TxBody txbc -> case fromCardanoTx mode tx of
-      Right t -> pure (txbc, t, wits)
-      Left e ->
-        throwError $
-          "Failed to get 'ChainIndexTx': "
-            Hask.<> Text.pack (Hask.show e)
+      Right t -> pure (txbc, t)
+      Left e -> throwError $ "Failed to get 'ChainIndexTx': " Hask.<> tshow e
   _ -> throwError "Failed to get tx information"
 
 getSomeCardanoApiTx :: CardanoTx -> Contract w s Text SomeCardanoApiTx
