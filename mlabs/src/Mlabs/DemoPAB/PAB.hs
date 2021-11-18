@@ -21,15 +21,13 @@ import Plutus.PAB.Effects.Contract.Builtin (HasDefinitions (..), SomeBuiltin (..
 import Plutus.PAB.Effects.Contract.Builtin qualified as Builtin
 import Plutus.PAB.Run.PSGenerator (HasPSTypes (..))
 
-import Mlabs.NFT.Api qualified as Contract.NFT
 
-import Plutus.V1.Ledger.Value (CurrencySymbol (..))
 import Mlabs.DemoPAB.DemoContract qualified as DemoContract
 import Ledger (PubKeyHash(..))
 
-
 data DemoPABContracts
-  = PayToContract PubKeyHash
+  = DebugLog
+  | PayToContract PubKeyHash
   deriving stock (Hask.Eq, Hask.Ord, Hask.Show, Generic)
   deriving anyclass (FromJSON, ToJSON, OpenApi.ToSchema)
 
@@ -44,13 +42,17 @@ instance HasPSTypes DemoPABContracts where
 instance HasDefinitions DemoPABContracts where
   getDefinitions =
     [ PayToContract somePkh
+    , DebugLog
     ]
     where
       somePkh = PubKeyHash "ff"
 
   getContract = \case
     PayToContract pkh ->
-      SomeBuiltin $ DemoContract.demoEndpoints pkh
+      SomeBuiltin $ DemoContract.demoParamEndpoints pkh
+    DebugLog ->  SomeBuiltin $ DemoContract.demoEndpoints
+    
 
   getSchema = \case
     PayToContract _ -> Builtin.endpointsToSchemas @DemoContract.DemoSchema
+    DebugLog -> Builtin.endpointsToSchemas @DemoContract.DemoSchema

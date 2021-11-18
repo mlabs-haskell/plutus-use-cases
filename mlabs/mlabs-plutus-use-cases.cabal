@@ -176,6 +176,7 @@ library
     Mlabs.Utils.Wallet
     Mlabs.DemoPAB.PAB
     Mlabs.DemoPAB.DemoContract
+    Mlabs.DemoPAB.Simulator
 
 executable mlabs-plutus-use-cases
   import:  common-imports
