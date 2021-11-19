@@ -31,7 +31,7 @@ runSimulator = void $
     shutdown <- PAB.Server.startServerDebug
     let wallet = knownWallet 1
         walletPkh = walletPubKeyHash wallet
-        mintContract = MintContract $ Mint walletPkh [("TestToken", 10)]
+        mintContract = MintContract $ Mint walletPkh ("TestToken", 10)
     cidInit  <- Simulator.activateContract wallet mintContract
     _ <- liftIO getLine
     shutdown

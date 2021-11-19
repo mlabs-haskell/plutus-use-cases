@@ -57,12 +57,12 @@ instance HasDefinitions TestContracts where
      , MintContract someMint
      ]
      where
-       someMint = Mint.Mint (PubKeyHash "ff") [("testToken", 10)]
+       someMint = Mint.Mint (PubKeyHash "ff") ("testToken", 10)
 
   getContract = \case
     BalanceAndSignContract -> SomeBuiltin IntegrationTest.runTests
     PaymentContract payment -> SomeBuiltin $ Payment.payFromTo payment
-    MintContract mint -> SomeBuiltin $ Mint.mintToken mint
+    MintContract mint -> SomeBuiltin $ Mint.runMintTest mint
 
   getSchema = \case
     BalanceAndSignContract -> Builtin.endpointsToSchemas @Empty
