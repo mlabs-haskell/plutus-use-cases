@@ -183,6 +183,7 @@ library
     Mlabs.IntegrationTest.Wbe.CardanoAPI
     Mlabs.IntegrationTest.Wbe.TestCase
     Mlabs.IntegrationTest.PabWbe.Pab
+    Mlabs.IntegrationTest.PabWbe.Simulator
     Mlabs.IntegrationTest.PabWbe.TxInfo
     Mlabs.IntegrationTest.PabWbe.Types
     Mlabs.IntegrationTest.PabWbe.Contracts.Payment

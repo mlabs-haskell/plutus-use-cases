@@ -18,6 +18,7 @@ import Ledger.Ada qualified as Ada
 import Ledger.Constraints qualified as Constraints
 import Ledger.Tx (getCardanoTxId)
 import Ledger.Typed.Scripts qualified as Scripts
+import Ledger.Scripts (unitRedeemer)
 
 import Mlabs.IntegrationTest.Utils
 
@@ -47,7 +48,7 @@ type MintSchema = Endpoint "mint" Mint
 
 mintToken :: Mint -> Contract () MintSchema Text ()
 mintToken Mint {..} = do
-  (txOutRef, mciTxOut, _) <-
+  (txOutRef, mciTxOut, pkScript) <-
     mapTShowableErr @PubKey.PubKeyError
       . PubKey.pubKeyContract pkh
       $ Ada.adaValueOf 10
@@ -57,11 +58,14 @@ mintToken Mint {..} = do
       let theCurrency = mkCurrency txOutRef amounts
           utxos = Map.singleton txOutRef citxOut
           curVali = curPolicy theCurrency
-          lookups =
-            Constraints.mintingPolicy curVali
-              Hask.<> Constraints.unspentOutputs utxos
+          lookups = 
+            Hask.mconcat 
+              [ Constraints.mintingPolicy curVali
+              , Constraints.unspentOutputs utxos
+              , Constraints.otherScript  (Scripts.validatorScript pkScript)
+              ]
           mintTx =
-            Constraints.mustSpendPubKeyOutput txOutRef
+            Constraints.mustSpendScriptOutput txOutRef unitRedeemer
               Hask.<> Constraints.mustMintValue (mintedValue theCurrency)
       txId <-
         getCardanoTxId
