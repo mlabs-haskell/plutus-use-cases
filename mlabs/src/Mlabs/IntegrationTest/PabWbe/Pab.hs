@@ -12,6 +12,8 @@ import Data.Row (Empty)
 
 import GHC.Generics (Generic)
 
+import Ledger (PubKeyHash(..))
+
 import Language.PureScript.Bridge (
   argonaut,
   equal,
@@ -50,7 +52,12 @@ instance HasPSTypes TestContracts where
     ]
 
 instance HasDefinitions TestContracts where
-  getDefinitions = [BalanceAndSignContract]
+  getDefinitions = 
+     [ BalanceAndSignContract
+     , MintContract someMint
+     ]
+     where
+       someMint = Mint.Mint (PubKeyHash "ff") [("testToken", 10)]
 
   getContract = \case
     BalanceAndSignContract -> SomeBuiltin IntegrationTest.runTests
