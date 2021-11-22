@@ -24,7 +24,7 @@ import PlutusTx.Prelude hiding (mconcat, (<>))
 
 import Mlabs.Data.LinkedList (LList (..))
 import Mlabs.NFT.Contract.Aux (toDatum)
-import Mlabs.NFT.Governance.Types (GovAct (..), GovDatum (..), GovLHead (..))
+import Mlabs.NFT.Governance.Types (GovAct (..), GovDatum (..), GovLHead (..), UniqueToken (..))
 import Mlabs.NFT.Governance.Validation (govMintPolicy, govScrAddress, govScript)
 import Mlabs.NFT.Types (GenericContract, MintAct (..), NftAppInstance (..), NftAppSymbol (..), NftListHead (..), UserId (..))
 import Mlabs.NFT.Validation (DatumNft (..), NftTrade, asRedeemer, curSymbol, mintPolicy, txPolicy, txScrAddress)
@@ -50,7 +50,7 @@ initApp admins = do
 createListHead :: [UserId] -> GenericContract NftAppInstance
 createListHead admins = do
   uniqueToken <- generateUniqueToken
-  mintListHead $ NftAppInstance txScrAddress uniqueToken govScrAddress admins
+  mintListHead $ NftAppInstance txScrAddress uniqueToken (govScrAddress . UniqueToken $ uniqueToken) admins
   where
     -- Mint the Linked List Head and its associated token.
     mintListHead :: NftAppInstance -> GenericContract NftAppInstance
@@ -79,7 +79,7 @@ createListHead admins = do
                 ]
             , mconcat
                 [ Constraints.mustPayToTheScript headDatum (proofTokenValue <> uniqueTokenValue)
-                , Constraints.mustPayToOtherScript (validatorHash govScript) (toDatum govHeadDatum) (govProofTokenValue <> uniqueTokenValue)
+                , Constraints.mustPayToOtherScript (validatorHash $ govScript . UniqueToken $ uniqueToken) (toDatum govHeadDatum) (govProofTokenValue <> uniqueTokenValue)
                 , Constraints.mustMintValueWithRedeemer initRedeemer proofTokenValue
                 , Constraints.mustMintValueWithRedeemer govInitRedeemer govProofTokenValue
                 ]
@@ -110,7 +110,7 @@ createListHead admins = do
     govHeadInit =
       GovDatum $
         HeadLList
-          { _head'info = GovLHead
+          { _head'info = GovLHead 1000000 -- 1 ADA fee
           , _head'next = Nothing
           }
 

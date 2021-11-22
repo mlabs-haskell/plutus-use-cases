@@ -5,19 +5,22 @@ module Mlabs.NFT.Governance.Types (
   GovLList,
   GovDatum (..),
   LList (..),
+  UniqueToken (..),
 ) where
 
 import Mlabs.Data.LinkedList (LList (..))
 import Mlabs.NFT.Types (UserId)
 import Prelude qualified as Hask
 
+import Plutus.V1.Ledger.Value (AssetClass (..))
+import PlutusTx.Prelude
 import PlutusTx qualified
 
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 
 -- | Datum for utxo containing GovLList Head token.
-data GovLHead = GovLHead
+data GovLHead = GovLHead Integer
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
 
@@ -39,6 +42,11 @@ newtype GovDatum = GovDatum {gov'list :: GovLList}
   deriving anyclass (ToJSON, FromJSON)
 PlutusTx.unstableMakeIsData ''GovDatum
 PlutusTx.makeLift ''GovDatum
+
+newtype UniqueToken = UniqueToken {uniqueToken'assetClass :: AssetClass}
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (ToJSON, FromJSON)
+PlutusTx.makeLift ''UniqueToken
 
 data GovAct
   = -- | Mint Governance Tokens

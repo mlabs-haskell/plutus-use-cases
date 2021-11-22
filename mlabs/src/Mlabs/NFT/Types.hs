@@ -86,7 +86,7 @@ instance Eq Title where
   (Title t1) == (Title t2) = t1 == t2
 
 newtype UserId = UserId {getUserId :: PubKeyHash}
-  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving stock (Hask.Show, Generic, Hask.Eq, Hask.Ord)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 PlutusTx.unstableMakeIsData ''UserId
 PlutusTx.makeLift ''UserId
@@ -94,6 +94,10 @@ PlutusTx.makeLift ''UserId
 instance Eq UserId where
   {-# INLINEABLE (==) #-}
   (UserId u1) == (UserId u2) = u1 == u2
+
+instance Ord UserId where
+  {-# INLINEABLE compare #-}
+  compare (UserId u1) (UserId u2) = compare u1 u2
 
 {- | Unique identifier of NFT.
  The NftId contains a human readable title, the hashed information of the
