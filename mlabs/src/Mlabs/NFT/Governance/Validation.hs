@@ -45,10 +45,16 @@ import Mlabs.NFT.Governance.Types (
   GovLHead (..),
   GovLNode (..),
   GovDatum (..),
-  UniqueToken (..),
   GovLList,
   )
-import Mlabs.NFT.Types (NftAppInstance, appInstance'Address, UserId (..))
+
+import Mlabs.NFT.Types (
+  NftAppInstance,
+  appInstance'Address,
+  UserId (..),
+  UniqueToken (..),
+  )
+
 import PlutusTx qualified
 import PlutusTx.Prelude
 import Plutus.V1.Ledger.Value (
@@ -85,7 +91,7 @@ mkGovMintPolicy appInstance act ctx =
       && traceIfFalse "Fee must be paid to the list head." checkFeeToTheListHead
       && traceIfFalse "Equal amounts of xGov and Gov tokens must be minted/burned." checkGovxGovEquality
       && traceIfFalse "Only allowd to mint/burn xGov and Gov" checkOnlyGovxGovMinted
-      && traceIfFalse "The minted amount must be equal to the fee." checkGovEqualToFee
+      && traceIfFalse "The minted/burned amount must be equal to the fee." checkGovEqualToFee
 --        && traceIfFalse "A new node must be inserted to the linked list correctly" checkNewNodeInsertedCorrectly
       && traceIfFalse "Gov tokens must be sent to the new node" checkAllGovToAddress
 
@@ -106,7 +112,7 @@ mkGovMintPolicy appInstance act ctx =
       && traceIfFalse "Equal amounts of xGov and Gov tokens must be burned." checkGovxGovEquality
       && traceIfFalse "Maximum fee number of lovelace is allowed to remove from the list head." checkFeeFromTheListHead
       && traceIfFalse "Only allowd to mint/burn xGov and Gov" checkOnlyGovxGovMinted
-      && traceIfFalse "The minted amount must be equal to the fee." checkGovEqualToNegFee
+      && traceIfFalse "The minted/burned amount must be equal to the fee." checkGovEqualToNegFee
 
       -- makes sure that Gov/xGov is removed and the Gov linked list is
       -- updated accordingly.
@@ -452,7 +458,7 @@ mkGovScript ut datum act ctx =
           (_, txO) <- getMaybeOne outputsWithHeadDatum
           return $ txOutValue txO `geq` (uniqueToken <> govProofToken)
         where
-          uniqueToken = assetClassValue (uniqueToken'assetClass ut) 1
+          uniqueToken = assetClassValue ut 1
           govProofToken = assetClassValue (asset emptyByteString) 1
 
       checkGovIsPaid =
@@ -485,7 +491,7 @@ mkGovScript ut datum act ctx =
                 case value of
                   Nothing -> traceError "Own input wasn't find!"
                   Just v -> fmap fst3 $ flattenValue v
-              validSymbols = [fst . unAssetClass . uniqueToken'assetClass $ ut, adaSymbol]
+              validSymbols = [fst . unAssetClass $ ut, adaSymbol]
               otherSymbols = filter (\s -> not . elem s $ validSymbols) allCurrencySymbols
 
       asset tn = AssetClass (ownCurrencySymbol', TokenName tn)
@@ -504,7 +510,7 @@ mkGovScript ut datum act ctx =
           $ allMinted
 
       govMinted = assetClassValueOf valueMinted gov
-      tokenPresent txO = 1 == (assetClassValueOf (txOutValue txO) $ uniqueToken'assetClass ut)
+      tokenPresent txO = 1 == (assetClassValueOf (txOutValue txO) ut)
 
 
       -- makes sure that the correct fees are paid, and the correct amount

@@ -17,7 +17,7 @@ import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 
 -- | Datum for utxo containing GovLList Head token.
-data GovLHead = GovLHead Integer
+data GovLHead = GovLHead Hask.Integer
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
 
