@@ -3,15 +3,15 @@ module Mlabs.NFT.Governance.Validation (
   govMintPolicy,
   govScrAddress,
   GovManage,
+  findCurrSym,
 ) where
-
---import Prelude qualified as Hask
 
 import Ledger (
   Address,
   MintingPolicy,
   ScriptContext,
   mkMintingPolicyScript,
+  -- ownCurrencySymbol,
  )
 import Ledger.Typed.Scripts (
   TypedValidator,
@@ -22,10 +22,24 @@ import Ledger.Typed.Scripts (
   wrapValidator,
  )
 
-import Mlabs.NFT.Governance.Types (GovAct (..), GovDatum)
-import Mlabs.NFT.Types (NftAppInstance, UniqueToken)
+-- import Plutus.V1.Ledger.Value (AssetClass (unAssetClass),)
 import PlutusTx qualified
-import PlutusTx.Prelude (Bool (True), ($), (.))
+import PlutusTx.Prelude (
+  Bool (..),
+  Maybe (..),
+  -- fromMaybe,
+  -- fst,
+  -- traceError,
+  traceIfFalse,
+  ($),
+  (&&),
+  (.),
+  -- (==),
+  (||),
+ )
+
+import Mlabs.NFT.Governance.Types (GovAct (..), GovDatum, GovernanceToken)
+import Mlabs.NFT.Types (NftAppInstance (..), UniqueToken)
 
 data GovManage
 instance ValidatorTypes GovManage where
@@ -37,18 +51,57 @@ instance ValidatorTypes GovManage where
 -- | Minting policy for GOV and xGOV tokens.
 mkGovMintPolicy :: NftAppInstance -> GovAct -> ScriptContext -> Bool
 mkGovMintPolicy _ act _ =
-  case act of
-    InitialiseGov ->
-      True
-    MintGov ->
-      True -- makes sure that 1:1 Gov/xGov tokens are minted with the amount of
-      -- lovelace paid at the Treasury address. Makes sure that the Gov is
-      -- inserted to the linked list (correctly).
-    Proof ->
-      True -- does nothing (i.e. makes sure nothing gets minted)
-    ProofAndBurn ->
-      True -- makes sure that Gov/xGov is removed and the Gov linked list is
-      -- updated accordingly.
+  let
+   in -- ut = appInstance'AppAssetClass appInst
+      -- err1 = traceError "Cannot find Governance AssetClass. Has List been initiated?"
+      -- gToken = fromMaybe err1 $ findCurrSym ut sc
+      traceIfFalse "Incorrect Minting Policy used." True -- (correctMintingPolicy gToken)
+        && case act of
+          InitialiseGov ->
+            traceIfFalse "Only one head can be minted" singleHead
+              && traceIfFalse "Head is not correctly managed." headSentToAddress
+          MintGov ->
+            traceIfFalse "List head is not present." headIsPresent
+              && traceIfFalse
+                "List node incorrectly minted or updated"
+                (nodeCanBeUpdated && nodeCorrectlyUpdated)
+                || (nodeCanBeInserted && nodeCorrectlyInserted)
+              && traceIfFalse "Incorrect quantities minted." equalQuantities
+              && traceIfFalse "List Nodes are not correctly managed." manageMint
+          Proof ->
+            traceIfFalse "Proof cannot mint or burn a token!" False
+          ProofAndBurn ->
+            traceIfFalse "List updated incorrectly" burnUpdate
+  where
+    singleHead = True
+
+    -- correctMintingPolicy :: GovernanceToken -> Bool
+    -- correctMintingPolicy = (ownCurrencySymbol sc ==) . fst . unAssetClass
+
+    headIsPresent :: Bool
+    headIsPresent = True
+
+    -- Mint Gov
+
+    nodeCanBeUpdated = True
+
+    nodeCorrectlyUpdated = True
+
+    equalQuantities = True
+
+    nodeCanBeInserted = True
+
+    nodeCorrectlyInserted = True
+
+    manageMint = listGovSentToAddress && freeGovSentToWallet && headSentToAddress
+
+    headSentToAddress = True
+
+    listGovSentToAddress = True
+
+    freeGovSentToWallet = True
+
+    burnUpdate = True
 
 {-# INLINEABLE govMintPolicy #-}
 
@@ -64,21 +117,51 @@ govMintPolicy x =
 -- | Minting policy for GOV and xGOV tokens.
 mkGovScript :: UniqueToken -> GovDatum -> GovAct -> ScriptContext -> Bool
 mkGovScript _ _ act _ =
-  case act of
-    InitialiseGov ->
-      True
-    MintGov ->
-      True -- makes sure that the correct fees are paid, and the correct amount
-      -- of Gov/xGov is minted. Also makes sure that the Gov/xGov are sent
-      -- to the correct addresses, and that the Gov list is not altered
-      -- maliciously.
-    Proof ->
-      True -- makes sure that the token is used as proof and returned to the Gov
-      -- Address, with nothing being altered.
-    ProofAndBurn ->
-      True -- makes sure, that the corresponding Gov to the xGov is removed from
-      -- the list. The user can also claim their locked lovelace back (take
-      -- their stake out of the app).
+  traceIfFalse "" True
+    && case act of
+      InitialiseGov ->
+        traceIfFalse "Only Gov head containing Unique Token is sent to Gov Address." onlyGovHead
+          && traceIfFalse "Nothing is used from the script address." onlySending
+      MintGov ->
+        traceIfFalse "Fees are not correctly." correctFeesPaid
+          && traceIfFalse "ListGov not minted correctly." correctListGovMinted
+          && traceIfFalse "FreeGov not minted correctly." correctFreeGovMinted
+          && traceIfFalse "Gov List head not managed correctly." headCorrectlyManaged
+      Proof ->
+        traceIfFalse "Free Gov tokens are required to unlock." freeGovPresent
+          && traceIfFalse "ListGov must be sent bach unchanged." listGovSentBackUnchanged
+          && traceIfFalse "FreeGov must be sent bach unchanged." freeGovSentBackUnchaged
+      ProofAndBurn ->
+        traceIfFalse "Free Gov tokens are required to unlock." freeGovPresent
+          && traceIfFalse "Free Gov tokens must be burnt correctly." (freeGovBurnt && listGovBurnt)
+  where
+    -- OnlyGovHead containing Unique Token is sent to GovScript Address.
+    onlyGovHead = True
+
+    onlySending = True
+
+    -- MintGov
+    correctFeesPaid = True
+    correctListGovMinted = True
+    correctFreeGovMinted = True
+    headCorrectlyManaged = True
+
+    -- Proof
+    freeGovPresent = True
+    listGovSentBackUnchanged = True
+    freeGovSentBackUnchaged = True
+
+    -- Proof And Burn
+    listGovBurnt = True
+    freeGovBurnt = True
+
+{-# INLINEABLE findCurrSym #-}
+
+{- | Returns the AssetClass of the Governance list by finding the head of the
+ list in the token and returning the other AssetClass except for the UniqueToken.
+-}
+findCurrSym :: UniqueToken -> ScriptContext -> Maybe GovernanceToken
+findCurrSym _ _ = Nothing
 
 {-# INLINEABLE govScript #-}
 govScript :: UniqueToken -> TypedValidator GovManage

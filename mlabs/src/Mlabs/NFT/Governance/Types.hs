@@ -5,6 +5,7 @@ module Mlabs.NFT.Governance.Types (
   GovLList,
   GovDatum (..),
   LList (..),
+  GovernanceToken,
 ) where
 
 import Mlabs.Data.LinkedList (LList (..))
@@ -15,6 +16,7 @@ import PlutusTx qualified
 
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
+import Plutus.V1.Ledger.Value (AssetClass)
 
 -- | Datum for utxo containing GovLList Head token.
 data GovLHead = GovLHead
@@ -53,3 +55,6 @@ data GovAct
   deriving anyclass (ToJSON, FromJSON)
 PlutusTx.unstableMakeIsData ''GovAct
 PlutusTx.makeLift ''GovAct
+
+-- | Governance Token is a specific AssetClass.
+type GovernanceToken = AssetClass
