@@ -260,8 +260,8 @@ mkGovScript ut datum act ctx =
     InitialiseGov ->
       False -- FIXME It was True. Why should anybody for good reason use it as the redeemer?!
     MintGov -> -- Inserting new node in the governance linked list is a bit more complicated than the NFT linked list.
-               -- The reason is that here we need the list head to always be consumed, and it hardens 
-               -- the detection of 'first', 'second', 'newFirst', 'newInserted' in the terminology 
+               -- The reason is that here we need the list head to always be consumed, and it hardens
+               -- the detection of 'first', 'second', 'newFirst', 'newInserted' in the terminology
                -- of NFT/Validation.hs validator script. So we can't use the same pattern here.
       case gov'list datum of
         HeadLList (GovLHead fee) Nothing ->
