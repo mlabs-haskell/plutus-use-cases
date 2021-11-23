@@ -27,6 +27,7 @@ import Ledger (
   findOwnInput,
   getContinuingOutputs,
   txInfoMint,
+  txInfoSignatories,
  )
 import Ledger.Typed.Scripts (
   TypedValidator,
@@ -35,6 +36,10 @@ import Ledger.Typed.Scripts (
   validatorAddress,
   wrapMintingPolicy,
   wrapValidator,
+ )
+
+import Plutus.V1.Ledger.Crypto (
+  getPubKeyHash,
  )
 
 import Mlabs.NFT.Governance.Types (
@@ -57,6 +62,7 @@ import Mlabs.NFT.Types (
 
 import PlutusTx qualified
 import PlutusTx.Prelude
+import PlutusTx.Ratio (Ratio)
 import Plutus.V1.Ledger.Value (
   AssetClass (..),
   TokenName (..),
@@ -67,11 +73,8 @@ import Plutus.V1.Ledger.Value (
  )
 
 import Plutus.V1.Ledger.Ada (lovelaceValueOf, adaSymbol)
---import PlutusTx.Builtins.Internal (BuiltinString (..))
---import Prelude (show)
---import Data.String (fromString)
---import Data.Text (pack, unpack)
---import Data.Text.Encoding (encodeUtf8)
+import PlutusTx.Builtins (divideInteger)
+
 data GovManage
 instance ValidatorTypes GovManage where
   type DatumType GovManage = GovDatum
@@ -87,13 +90,17 @@ mkGovMintPolicy appInstance act ctx =
 
     MintGov ->
       traceIfFalse "List head must be spent" checkListHeadIsSpent
---      && traceIfFalse "New head must be in the outputs" checkListHeadInOutputs
       && traceIfFalse "Fee must be paid to the list head." checkFeeToTheListHead
-      && traceIfFalse "Equal amounts of xGov and Gov tokens must be minted/burned." checkGovxGovEquality
-      && traceIfFalse "Only allowd to mint/burn xGov and Gov" checkOnlyGovxGovMinted
+
+      && traceIfFalse "List node incorrectly minted or updated"
+        (nodeCanBeUpdated && nodeCorrectlyUpdated) || (nodeCanBeInserted && nodeCorrectlyInserted)
+
+
+      && traceIfFalse "Equal amounts of listGov and freeGov tokens must be minted/burned." checkListGovFreeGovEquality
+      && traceIfFalse "Only allowd to mint/burn xGov and Gov" checkOnlyListGovFreeGovMinted
       && traceIfFalse "The minted/burned amount must be equal to the fee." checkGovEqualToFee
---        && traceIfFalse "A new node must be inserted to the linked list correctly" checkNewNodeInsertedCorrectly
-      && traceIfFalse "Gov tokens must be sent to the new node" checkAllGovToAddress
+      && traceIfFalse "listGov tokens must be sent to the new node" checkAllListGovToAddress
+
 
       -- makes sure that 1:1 Gov/xGov tokens are minted with the amount of
       -- lovelace paid at the Treasury address. Makes sure that the Gov is
@@ -109,10 +116,11 @@ mkGovMintPolicy appInstance act ctx =
 
     ProofAndBurn ->
       traceIfFalse "List head must be spent" checkListHeadIsSpent
-      && traceIfFalse "Equal amounts of xGov and Gov tokens must be burned." checkGovxGovEquality
+      && traceIfFalse "Equal amounts of xGov and Gov tokens must be burned." checkListGovFreeGovEquality
       && traceIfFalse "Maximum fee number of lovelace is allowed to remove from the list head." checkFeeFromTheListHead
-      && traceIfFalse "Only allowd to mint/burn xGov and Gov" checkOnlyGovxGovMinted
-      && traceIfFalse "The minted/burned amount must be equal to the fee." checkGovEqualToNegFee
+      && traceIfFalse "Only allowd to mint/burn freeGov and listGov" checkOnlyListGovFreeGovMinted
+      && traceIfFalse "The minted/burned amount must be equal to the fee." checkListGovEqualToNegFee
+--      && traceIfFalse "List updated incorrectly" burnUpdate
 
       -- makes sure that Gov/xGov is removed and the Gov linked list is
       -- updated accordingly.
@@ -130,6 +138,12 @@ mkGovMintPolicy appInstance act ctx =
         )
         $ getOutputDatumsWithTx @GovDatum ctx
 
+    outputsWithNodeDatum =
+      filter
+        ( \(datum', txO) ->
+            datumIsNode (gov'list datum') && tokenPresent txO
+        )
+        $ getOutputDatumsWithTx @GovDatum ctx
 
     outputsToScriptAddress =
       filter
@@ -144,6 +158,79 @@ mkGovMintPolicy appInstance act ctx =
         )
         $ getInputDatumsWithTx @GovDatum ctx
 
+    inputsWithNodeDatum =
+      filter
+        ( \(datum', txO) ->
+            datumIsNode (gov'list datum') && toScriptAddress txO
+        )
+        $ getInputDatumsWithTx @GovDatum ctx
+
+    nodeCanBeUpdated = length inputsWithNodeDatum == 1
+
+
+    sort2 :: ((GovDatum, TxOut), (GovDatum, TxOut)) -> ((GovDatum, TxOut), (GovDatum, TxOut))
+    sort2 (x'@(x, _), y'@(y, _)) =
+      case (gov'list x, gov'list y) of
+        ((HeadLList _ _), (HeadLList _ _)) -> (x', y')
+        ((NodeLList _ _ _), (HeadLList _ _)) -> (x', y')
+        ((HeadLList _ _), (NodeLList _ _ _)) -> (y', x')
+        ((NodeLList k1 _ _), (NodeLList k2 _ _)) -> if k1 < k2 then (x', y') else (y', x')
+
+    nodeCanBeInserted =
+      wrapMaybe $ do
+        (head, _) <- getMaybeOne inputsWithHeadDatum
+        return $
+          ((isNothing $ getNext head) && (length outputsWithNodeDatum == 1) && (length inputsWithNodeDatum == 0)) ||
+          ((length inputsWithNodeDatum == 0) && (length outputsWithNodeDatum == 1) ) ||
+          ((length inputsWithNodeDatum == 1) && (length outputsWithNodeDatum == 2) )
+
+    nodeCorrectlyInserted
+      | ((isNothing $ getNext head) && (length outputsWithNodeDatum == 1) && (length inputsWithNodeDatum == 0)) =
+        wrapMaybe $ do
+          (head, _) <- getMaybeOne outputsWithHeadDatum
+          (node, _) <- getMaybeOne outputsWithNodeDatum
+          next <- getNext head
+          key <- getKey node
+          return $ key == next
+
+      | ((isJust $ getNext head) && (length inputsWithNodeDatum == 0) && (length outputsWithNodeDatum == 1) ) =
+        wrapMaybe $ do
+          (prevHead, _) <- getMaybeOne inputsWithHeadDatum
+          (newHead, _) <- getMaybeOne outputsWithHeadDatum
+          (newNode, _) <- getMaybeOne outputsWithNodeDatum
+          secondKey <- getNext prevHead
+          newNodeKey <- getKey newNode
+          newHeadNext <- getNext newHead
+          newNodeNext <- getNext newNode
+          return $ (newNodeKey < secondKey) && (newHeadNext == newNodeKey) && (newNodeNext == secondKey)
+
+      | ((length inputsWithNodeDatum == 1) && (length outputsWithNodeDatum == 2) ) =
+        wrapMaybe $ do
+          let ((newFirst, _), (newSecond, _)) = sort2 (outputsWithNodeDatum!!0, outputsWithNodeDatum!!1)
+          (oldFirst, _) <- getMaybeOne inputsWithNodeDatum
+          oldFirstKey <- getKey oldFirst
+          newFirstNext <- getNext newFirst
+          newFirstKey <- getKey newFirst
+          newSecondKey <- getKey newSecond
+          return $ if isNothing . getNext $ oldFirst
+          then
+            (newSecondKey == newFirstNext) && (oldFirstKey == newFirstKey)
+          else
+            wrapMaybe $ do
+              oldFirstNext <- getNext oldFirst
+              newSecondNext <- getNext newSecond
+              return $ (newFirstKey == oldFirstKey) && (newSecondNext == oldFirstNext) && (newFirstNext == newSecondKey)
+      where
+        head = case getMaybeOne inputsWithHeadDatum of
+          Just (h, _) -> h
+          Nothing -> traceError "No head found"
+
+
+
+    getNext :: GovDatum -> Maybe UserId
+    getNext (GovDatum (HeadLList _ next)) = next
+    getNext (GovDatum (NodeLList _ _ next)) = next
+
     checkListHeadIsSpent =
       case inputsWithHeadDatum of
         [] -> False
@@ -154,25 +241,39 @@ mkGovMintPolicy appInstance act ctx =
       wrapMaybe $ do
         (h, txOut) <- getMaybeOne outputsWithHeadDatum
         (_, txIn) <- getMaybeOne inputsWithHeadDatum
+        feeRate <- getFeeRate h
         let valOut = txOutValue txOut
             valIn = txOutValue txIn
-        fee <- getFee h
-        return $ valOut `geq` (valIn <> lovelaceValueOf fee)
+        return $ valOut `geq` (valIn <> lovelaceValueOf (getFee feeRate))
+
+--     burnUpdate =
+--      wrapMaybe $ do
+--        (headIn, headInTxOut) <- getMaybeOne inputsWithHeadDatum
+--        (nodeIn, nodeInTxOut) <- getMaybeOne inputsWithNodeDatum
+--
+--        (headOut, headOutTxOut) <- getMaybeOne outputsWithHeadDatum
+--        (nodeOut, nodeOutTxOut) <- getMaybeOne outputsWithNodeDatum
+--
+--        feeRate <- getFeeRate headIn
+--
+--        return $
+--          (lovelaceValueOf (txOutValue headOut) >= lovelaceValueOf (txOutValue headIn) - (getFee feeRate) )
+--          &&
 
     checkFeeFromTheListHead =
       wrapMaybe $ do
         (h, txOut) <- getMaybeOne outputsWithHeadDatum
         (_, txIn) <- getMaybeOne inputsWithHeadDatum
+        feeRate <- getFeeRate h
         let valOut = txOutValue txOut
             valIn = txOutValue txIn
-        fee <- getFee h
-        return $ valOut `geq` (valIn <> (lovelaceValueOf $ (-1) * fee))
+        return $ valOut `geq` (valIn <> (lovelaceValueOf (getFee feeRate)))
 
-    checkGovxGovEquality = xGovMinted == govMinted
+    checkListGovFreeGovEquality = freeGovMinted == listGovMinted
 
-    checkOnlyGovxGovMinted =
+    checkOnlyListGovFreeGovMinted =
       valueMinted  ==
-      (assetClassValue xGov xGovMinted) <> (assetClassValue gov $ govMinted)
+      (assetClassValue freeGov freeGovMinted) <> (assetClassValue listGov $ listGovMinted)
 
     checkOnlyProofMinted =
       valueMinted  == (assetClassValue proofToken 1)
@@ -180,62 +281,65 @@ mkGovMintPolicy appInstance act ctx =
     checkGovEqualToFee =
       wrapMaybe $ do
         (h, _) <- getMaybeOne outputsWithHeadDatum
-        fee <- getFee h
-        return $ xGovMinted == fee
+        feeRate <- getFeeRate h
+        return $ freeGovMinted == getFee feeRate
 
-    checkGovEqualToNegFee =
+
+    checkListGovEqualToNegFee =
       wrapMaybe $ do
         (h, _) <- getMaybeOne outputsWithHeadDatum
-        fee <- getFee h
-        return $ xGovMinted == (-1) * fee
+        feeRate <- getFeeRate h
+        return $ freeGovMinted == (-1) * (getFee feeRate)
 
-    checkAllGovToAddress =
-      govMinted == (assetClassValueOf (foldMap (txOutValue . snd) outputsToScriptAddress) gov)
+    checkAllListGovToAddress =
+      listGovMinted == (assetClassValueOf (foldMap (txOutValue . snd) outputsToScriptAddress) listGov)
+
+
+    nodeCorrectlyUpdated =
+      wrapMaybe $ do
+        (input, txOIn) <- getMaybeOne inputsWithNodeDatum
+        (output, txOOut) <- getMaybeOne outputsWithNodeDatum
+        (head, _) <- getMaybeOne inputsWithHeadDatum
+        feeRate <- getFeeRate head
+        let inListGov = (assetClassValueOf (txOutValue txOIn) listGov)
+            outListGov = (assetClassValueOf (txOutValue txOOut) listGov)
+        return $ (outListGov < inListGov + (getFee feeRate))
+          && (input == output)
 
     wrapMaybe v = maybe False id v
+
+    datumIsNode = not . datumIsHead
 
     datumIsHead (HeadLList _ _) = True
     datumIsHead _             = False
 
---    datumIsNode = not . datumIsHead
-
-    getFee :: GovDatum -> Maybe Integer
-    getFee (GovDatum datum) =
+    getFeeRate :: GovDatum -> Maybe Rational
+    getFeeRate (GovDatum datum) =
       case datum of
         HeadLList (GovLHead fee) _ -> Just fee
         _ -> Nothing
 
---    getNext :: GovDatum -> Maybe UserId
---    getNext (GovDatum (HeadLList _ next)) = next
---    getNext (GovDatum (NodeLList _ _ next)) = next
 
---    getKey (GovDatum (HeadLList _ _)) = Nothing
---    getKey (GovDatum (NodeLList _ _ k)) = k
     symbol = ownCurrencySymbol ctx
     asset tn = AssetClass (symbol, TokenName tn)
-    gov = asset "Gov"
-    xGov = asset "xGov"
+    userId = getPubKeyHash $ (txInfoSignatories . scriptContextTxInfo $ ctx)!!0
+    freeGov = asset ("freeGov" <> userId) -- FIXME more sophisticated way is needed
+    listGov = asset ("listGov" <> userId)
     proofToken = asset emptyByteString
 
     tokenPresent txO = 1 == assetClassValueOf (txOutValue txO) proofToken
 
     toScriptAddress txO = txOutAddress txO == appInstance'Address appInstance
 
---    validInput txO = (assetClassValueOf (txOutValue txO) gov) >= 0
-
-    getMaybeOne :: [a] -> Maybe a
-    getMaybeOne [x] = Just x
-    getMaybeOne _ = Nothing
 
     valueIn = foldMap (txOutValue . txInInfoResolved) $ txInfoInputs . scriptContextTxInfo $ ctx
---    ownValueIn = valueOf valueIn symbol gov <> valueOf valueIn symbol xGov
---    More complicated of finding value in with our own currency symbol.
---    Useful for then we have token names other than Gov and xGov
---    ownValueIn = Value <$>
---      (AssocMap.fromList <$> (sequence [(,) <$> pure symbol  <*> (AssocMap.lookup symbol $ getValue valueIn)]))
+    --    ownValueIn = valueOf valueIn symbol gov <> valueOf valueIn symbol xGov
+    --    More complicated of finding value in with our own currency symbol.
+    --    Useful for then we have token names other than Gov and xGov
+    --    ownValueIn = Value <$>
+    --      (AssocMap.fromList <$> (sequence [(,) <$> pure symbol  <*> (AssocMap.lookup symbol $ getValue valueIn)]))
 
     valueOut = foldMap txOutValue $ txInfoOutputs . scriptContextTxInfo $ ctx
---    ownValueOut = valueOf valueOut symbol gov <> valueOf valueIn symbol xGov
 
     valueMinted =
       let allMinted = flattenValue $ valueOut <> negate valueIn
@@ -244,8 +348,22 @@ mkGovMintPolicy appInstance act ctx =
         . filter (\(s, _, _) -> s == ownCurrencySymbol ctx)
         $ allMinted
 
-    xGovMinted = assetClassValueOf valueMinted xGov
-    govMinted = assetClassValueOf valueMinted gov
+    freeGovMinted = assetClassValueOf valueMinted freeGov
+    listGovMinted = assetClassValueOf valueMinted listGov
+
+--    validInput txO = (assetClassValueOf (txOutValue txO) gov) >= 0
+
+    getMaybeOne :: [a] -> Maybe a
+    getMaybeOne [x] = Just x
+    getMaybeOne _ = Nothing
+
+    price = 10 -- FIXME
+
+    getFee :: Ratio Integer -> Integer
+    getFee feeRate = round $ fromInteger price * feeRate
+
+    getKey (GovDatum (HeadLList _ _)) = Nothing
+    getKey (GovDatum (NodeLList _ _ k)) = k
 
 
 {-# INLINEABLE govMintPolicy #-}
@@ -264,73 +382,59 @@ mkGovScript :: UniqueToken -> GovDatum -> GovAct -> ScriptContext -> Bool
 mkGovScript ut datum act ctx =
   case act of
     InitialiseGov ->
-      False -- FIXME It was True. Why should anybody for good reason use it as the redeemer?!
+      False -- FIXME Why should anybody for good reason use it as the redeemer?!
     MintGov -> -- Inserting new node in the governance linked list is a bit more complicated than the NFT linked list.
                -- The reason is that here we need the list head to always be consumed, and it hardens
                -- the detection of 'first', 'second', 'newFirst', 'newInserted' in the terminology
                -- of NFT/Validation.hs validator script. So we can't use the same pattern here.
       case gov'list datum of
         HeadLList (GovLHead fee) Nothing ->
-          traceIfFalse "New Gov tokens must be minted" checkGovIsMinted -- We need to ensure that our minting policy verifications are called.
+          -- We are head and there must be only one node input. (There is no update, just adding new node)
+          traceIfFalse "New listGov tokens must be minted" checkListGovIsMinted -- We need to ensure that our minting policy verifications are called.
           && traceIfFalse "New head's fee must be the same as old head's fee" (checkHeadsFeeEquality fee)
-          && traceIfFalse "New first must point to the new node" (newFirst `pointsTo` (newSecond >>= getKey . fst)) -- It automatically ensures that there is only one output with node datum
-          && traceIfFalse "New node must contain Gov equal to fee" checkGovIsPaid
+          && traceIfFalse "New first must point to the new node" (newFirst `pointsTo` (newSecond >>= getKey . fst))
+          && traceIfFalse "New node must contain listGov equal to fee" checkGovIsPaid
 --          && traceIfFalse "New head must have unique token and proof token" checkNewHeadHasTokens
-          && traceIfFalse "New first/head must have value at least equal to old head" checkFirstValueIsConsistent
+          && traceIfFalse "New head must have value everything plus fee" checkHeadHasEverythingPlusFee
 
-
-
-        HeadLList (GovLHead fee) (Just key)
-          -> -- new node has to be inserted after the head
-            traceIfFalse "New Gov tokens must be minted" checkGovIsMinted
-            && traceIfFalse "New head's fee must be the same as old head's fee" (checkHeadsFeeEquality fee)
-            && traceIfFalse "New first/head must have value at least equal to old first/head" checkFirstValueIsConsistent
-  --              && traceIfFalse "New head key must be same as old head key" checkFirstValueIsConsistent
-            && traceIfFalse "New first must point to the new node" (newFirst `pointsTo` (newSecond >>= getKey . fst))
-            && traceIfFalse "New node must point to the old first's next" (newSecond `pointsTo` oldSecond)
-            && traceIfFalse "New node must contain Gov equal to fee" checkGovIsPaid
---            && traceIfFalse "New head must have the unique token and the proof token" checkNewHeadHasTokens
---            && traceIfFalse "List head must be spent" checkListHeadIsSpent
-
-
---          | (length inputsFromScriptAddress) == 2
---            ->
---              traceIfFalse "New Gov tokens must be minted" checkGovIsMinted
---              && traceIfFalse "Old first node must remain consistent" checkFirstIsConsistent
---              && traceIfFalse "New nodes must contain Gov equal to fee" (checkGovIsPaidToTwo fee)
---              && traceIfFalse "New head's fee must be the same as old head's fee" (checkHeadsFeeEquality fee)
---              && traceIfFalse "New first must point to the new second" (newFirst `pointsTo` (newSecond >>= getKey))
---              && traceIfFalse "New second must point to the old second" (newSecond `pointsTo` oldSecond)
---              && traceIfFalse "New head must have the unique token and the proof token" checkNewHeadHasTokens
-
---          | otherwise -> False
+        HeadLList (GovLHead fee) (Just key) ->
+          traceIfFalse "New listGov tokens must be minted" checkListGovIsMinted -- We need to ensure that our minting policy verifications are called.
+          && traceIfFalse "New head's fee must be the same as old head's fee" (checkHeadsFeeEquality fee)
+          && traceIfFalse "New first must point to the new node" (newFirst `pointsTo` (newSecond >>= getKey . fst))
+          && traceIfFalse "New node must point to the old first's next if there was any" checkNewNodePointsCorrectly
+          && traceIfFalse "New node must contain listGov equal to fee" checkGovIsPaid
+          && traceIfFalse "New head must have everything plus fee" checkHeadHasEverythingPlusFee
 
         NodeLList _ _ _ ->
-            traceIfFalse "New Gov tokens must be minted" checkGovIsMinted
-            && traceIfFalse "New first must point to the new node" (newFirst `pointsTo` (newSecond >>= getKey . fst))
-            && traceIfFalse "New node must point to the old first's next" (newSecond `pointsTo` oldSecond)
-            && traceIfFalse "New node must contain Gov equal to fee" checkGovIsPaid
-            && traceIfFalse "New first/head must have value equal to old first/head" checkFirstValueIsConsistent
+          traceIfFalse "New Gov tokens must be minted" checkListGovIsMinted
+          && traceIfFalse "Old first must remain consistent" checkFirstIsConsistent -- This line actually always executes. Since there has to be at least one node input
+  --            && traceIfFalse "New first must point to the new node" (newFirst `pointsTo` (newSecond >>= getKey . fst))
+  --            && traceIfFalse "New node must point to the old first's next" (newSecond `pointsTo` oldSecond)
+  --            && traceIfFalse "New node must contain Gov equal to fee" checkGovIsPaid
+  --            && traceIfFalse "New first/head must have value equal to old first/head" checkFirstValueIsConsistent
 
---            && traceIfFalse "New head must have the unique token and the proof token" checkNewHeadHasTokens
 
     Proof ->
-      case gov'list datum of
-        HeadLList (GovLHead fee) (Just _) ->
-          traceIfFalse "New head's fee must be the same as old head's fee" (checkHeadsFeeEquality fee)
-          && traceIfFalse "New head must have value at least equal to old head" checkFirstValueIsConsistent
-          && traceIfFalse "New head's next must be equal to old head's next" checkFirstNextIsConsistent
-          && traceIfFalse "New head must have the unique token and the proof token" checkNewHeadHasTokens
-
-        HeadLList (GovLHead fee) Nothing ->
-          traceError "Not allowed to consume a head as a Proof when it has no next. Use MintGov instead."
-
-        NodeLList key _ next ->
-          traceError "Not implemented. Spec needed" -- FIXME
+      traceIfFalse "Free Gov tokens are required to unlock." freeGovPresent
+      && traceIfFalse "ListGov must be sent bach unchanged." listGovSentBackUnchanged
+      && traceIfFalse "FreeGov must be sent bach unchanged." freeGovSentBackUnchanged
+--      case gov'list datum of
+--        HeadLList (GovLHead fee) (Just _) ->
+--          traceIfFalse "New head's fee must be the same as old head's fee" (checkHeadsFeeEquality fee)
+--          && traceIfFalse "New head must have value at least equal to old head" checkFirstValueIsConsistent
+--          && traceIfFalse "New head's next must be equal to old head's next" checkFirstNextIsConsistent
+--          && traceIfFalse "New head must have the unique token and the proof token" checkNewHeadHasTokens
+--
+--        HeadLList (GovLHead fee) Nothing ->
+--          traceError "Not allowed to consume a head as a Proof when it has no next. Use MintGov instead."
+--
+--        NodeLList key _ next ->
+--          traceError "Not implemented. Spec needed" -- FIXME
 
        -- makes sure that the token is used as proof and returned to the Gov
       -- Address, with nothing being altered.
     ProofAndBurn ->
+      -- There has to be only one input node, and that's us. Only updated is allowed to happen
       traceIfFalse "FILL IN LATER" True -- FIXME
 
       -- makes sure, that the corresponding Gov to the xGov is removed from
@@ -338,6 +442,7 @@ mkGovScript ut datum act ctx =
       -- their stake out of the app).
 
     where
+
       pointsTo first key =
         wrapMaybe $ do
           (first', _) <- first
@@ -358,49 +463,55 @@ mkGovScript ut datum act ctx =
         case act of
           MintGov ->
             case gov'list datum of
-              HeadLList _ _ -> getMaybeOne inputsFromScriptAddress
-              NodeLList _ _ _ -> getMaybeOne inputsWithHeadDatum
-          Proof ->
-            case gov'list datum of
-              HeadLList _ Nothing -> traceError "Not allowed to consume a head as a Proof when it has no next. Use MintGov instead."
-              HeadLList _ (Just _) -> getMaybeOne inputsWithNodeDatum
-              NodeLList _ _ _ -> traceError "Not allowed to consume a node as a Proof."
-          ProofAndBurn ->
-            case gov'list datum of
-              HeadLList _ Nothing -> traceError "There is nothing to burn in the list."
-              HeadLList _ (Just _) -> getMaybeOne inputsWithNodeDatum
-              NodeLList _ _ _ -> traceError "Not allowed to consume a node as a Proof."
-
+              HeadLList _ Nothing -> getMaybeOne inputsWithHeadDatum
+              HeadLList _ _
+                | length inputsFromScriptAddress == 1 -> getMaybeOne inputsFromScriptAddress -- Inserting after head
+                | length inputsFromScriptAddress == 2 -> getMaybeOne inputsWithNodeDatum -- Inserting somewhere else
+                | otherwise -> traceError "Illegal script inptuts"
+              NodeLList _ _ _ -> getMaybeOne inputsWithNodeDatum
+          _ -> traceError "Pointers only are allowed for minting."
 
       newFirst :: Maybe (GovDatum, TxOut)
       newFirst =
         case act of
           MintGov ->
             case gov'list datum of
-              HeadLList _ _ -> getMaybeOne outputsWithHeadDatum
-              NodeLList _ _ _ -> do
-                [d1, d2] <- getMaybeTwo outputsWithNodeDatum
-                return $ fst . sort2 $ (d1, d2)
-          Proof -> getMaybeOne outputsWithNodeDatum
-          ProofAndBurn -> traceError "Not implemented yet." -- FIXME
-
+              HeadLList _ Nothing -> getMaybeOne outputsWithHeadDatum
+              HeadLList _ _
+                | length inputsFromScriptAddress == 1 -> getMaybeOne outputsWithNodeDatum -- Inserting after head
+                | length inputsFromScriptAddress == 2 ->
+                  do
+                    [d1, d2] <- getMaybeTwo outputsWithNodeDatum
+                    return $ fst . sort2 $ (d1, d2)
+                | otherwise -> traceError "Illegal script inptuts"
+              NodeLList _ _ _ -> getMaybeOne inputsWithNodeDatum
+          _ -> traceError "Pointers only are allowed for minting."
 
       oldSecond :: Maybe UserId
       oldSecond = oldFirst >>= getNext . fst
-
 
       newSecond :: Maybe (GovDatum, TxOut)
       newSecond =
         case act of
           MintGov ->
             case gov'list datum of
-              HeadLList _ _ -> getMaybeOne outputsWithNodeDatum
-              NodeLList _ _ _ -> do
-                [d1, d2] <- getMaybeTwo outputsWithNodeDatum
-                return $ snd . sort2 $ (d1, d2)
-          Proof -> traceError "New second pointer isn't needed for the Proof act"
-          ProofAndBurn -> traceError "Not implemented yet." -- FIXME
+              HeadLList _ Nothing -> getMaybeOne outputsWithNodeDatum
+              HeadLList _ _
+                | length inputsFromScriptAddress == 1 -> getMaybeOne outputsWithNodeDatum -- Inserting after head
+                | length inputsFromScriptAddress == 2 ->
+                  do
+                    [d1, d2] <- getMaybeTwo outputsWithNodeDatum
+                    return $ snd . sort2 $ (d1, d2)
+                | otherwise -> traceError "Illegal script inptuts"
+              NodeLList _ _ _ -> getMaybeOne inputsWithNodeDatum
+          _ -> traceError "Pointers only are allowed for minting."
 
+
+      nodeToBurn :: Maybe (GovDatum, TxOut)
+      nodeToBurn =
+        case act of
+          ProofAndBurn -> getMaybeOne inputsWithNodeDatum
+          _ -> traceError "Act has to be ProofAndBurn"
 
       outputsWithHeadDatum =
         filter
@@ -427,7 +538,26 @@ mkGovScript ut datum act ctx =
       inputsWithHeadDatum = filter (\(d, _) -> datumIsHead . gov'list $ d) inputsFromScriptAddress
       inputsWithNodeDatum = filter (\(d, _) -> datumIsNode . gov'list $ d) inputsFromScriptAddress
 
-      checkGovIsMinted = govMinted > 0
+      checkNewNodePointsCorrectly =
+        case oldSecond of
+          Nothing ->
+            wrapMaybe $ do
+              (d, _) <- newSecond
+              return . isNothing . getNext $ d
+          _ -> (newSecond `pointsTo` oldSecond)
+
+      checkFirstIsConsistent =
+        wrapMaybe $ do
+          (dOld, oldTxO) <- oldFirst
+          (dNew, newTxO) <- newFirst
+          oldKey <- getKey dOld
+          newKey <- getKey dNew
+          let valIn = txOutValue oldTxO
+              valOut = txOutValue newTxO
+          return $ (oldKey == newKey) && (valOut `geq` valIn)
+
+
+      checkListGovIsMinted = listGovMinted > 0
 
       checkNewHeadPointsToNewNode =
         wrapMaybe $ do
@@ -437,47 +567,36 @@ mkGovScript ut datum act ctx =
           newNodeKey <- getKey newNodeDatum
           return $ newNodeKey == newHeadNext
 
-      checkFirstValueIsConsistent =
+      checkHeadHasEverythingPlusFee =
         wrapMaybe $ do
-          (_, oldTxO) <- oldFirst
-          (_, newTxO) <- newFirst
-          return $ (txOutValue newTxO) `geq` (txOutValue oldTxO)
+          (d, oldTxO) <- getMaybeOne inputsWithHeadDatum
+          (_, newTxO) <- getMaybeOne outputsWithHeadDatum
+          feeRate <- getFeeRate d
+          return $ (txOutValue newTxO) `geq` ((txOutValue oldTxO) <> (lovelaceValueOf $ getFee feeRate))
 
       checkListHeadIsSpent = length inputsWithHeadDatum == 1
-
-      checkFirstNextIsConsistent =
-        wrapMaybe $ do
-          (oldFirst', _) <- oldFirst
-          oldNext <- getNext oldFirst'
-          (newFirst', _) <- newFirst
-          newNext <- getNext newFirst'
-          return $ oldNext == newNext
-
-      checkNewHeadHasTokens =
-        wrapMaybe $ do
-          (_, txO) <- getMaybeOne outputsWithHeadDatum
-          return $ txOutValue txO `geq` (uniqueToken <> govProofToken)
-        where
-          uniqueToken = assetClassValue ut 1
-          govProofToken = assetClassValue (asset emptyByteString) 1
 
       checkGovIsPaid =
         wrapMaybe $ do
           (head, _) <- getMaybeOne inputsWithHeadDatum
-          fee <- getFee head
+          feeRate <- getFeeRate head
           (_, txO) <- newSecond
-          return $ assetClassValueOf (txOutValue txO) gov == fee -- geq won't work since we can't handle multiple minting at in this version
+          return $ assetClassValueOf (txOutValue txO) listGov == getFee feeRate -- geq won't work since we can't handle multiple minting at in this version
 
       checkHeadsFeeEquality oldFee =
         wrapMaybe $ do
           (newDatum, _) <- getMaybeOne outputsWithHeadDatum
-          newFee <- getFee newDatum
+          newFee <- getFeeRate newDatum
           return $ newFee == oldFee
 
       ownAddress =
         case txOutAddress . txInInfoResolved <$> findOwnInput ctx of
           Just addr -> addr
           Nothing -> traceError "Can't find own address!"
+
+      freeGovPresent = True -- TODO
+      listGovSentBackUnchanged = True -- TODO
+      freeGovSentBackUnchanged = True -- TODO
 
       ownCurrencySymbol' :: CurrencySymbol
       ownCurrencySymbol' =
@@ -495,7 +614,33 @@ mkGovScript ut datum act ctx =
               otherSymbols = filter (\s -> not . elem s $ validSymbols) allCurrencySymbols
 
       asset tn = AssetClass (ownCurrencySymbol', TokenName tn)
-      gov = asset "Gov"
+
+      userId =
+        case act of
+          MintGov ->
+            case gov'list datum of
+              HeadLList _ _ ->
+                do
+                  (d, _) <- getMaybeOne outputsWithNodeDatum
+                  key <- getKey d
+                  return . getPubKeyHash . getUserId $ key
+              NodeLList _ _ _ ->
+                do
+                  [d1, d2] <- getMaybeTwo outputsWithNodeDatum
+                  key <- getKey $ fst . snd . sort2 $ (d1, d2)
+                  return . getPubKeyHash . getUserId $ key
+
+          _ ->
+            do
+              (d, _) <- getMaybeOne inputsWithNodeDatum
+              key <- getKey d
+              return . getPubKeyHash . getUserId $ key
+
+
+      listGov =
+        case userId of
+          Just id -> asset $ "listGov" <> id
+          Nothing -> traceError "UserId didn't find"
   --        xGov = asset "xGov"
 
       valueIn = foldMap (txOutValue . txInInfoResolved) $ txInfoInputs . scriptContextTxInfo $ ctx
@@ -509,7 +654,7 @@ mkGovScript ut datum act ctx =
           . filter (\(s, _, _) -> s == ownCurrencySymbol')
           $ allMinted
 
-      govMinted = assetClassValueOf valueMinted gov
+      listGovMinted = assetClassValueOf valueMinted listGov
       tokenPresent txO = 1 == (assetClassValueOf (txOutValue txO) ut)
 
 
@@ -532,13 +677,18 @@ mkGovScript ut datum act ctx =
       getNext (GovDatum (HeadLList _ next)) = next
       getNext (GovDatum (NodeLList _ _ next)) = next
 
-      getFee :: GovDatum -> Maybe Integer
-      getFee (GovDatum d) =
+      getFeeRate :: GovDatum -> Maybe Rational
+      getFeeRate (GovDatum d) =
         case d of
-          HeadLList (GovLHead fee) _ -> Just fee
+          HeadLList (GovLHead feeRate) _ -> Just feeRate
           _ -> Nothing
 
+      price = 10 -- FIXME
 
+      getFee :: Ratio Integer -> Integer
+      getFee feeRate = round $ fromInteger price * feeRate
+
+      getKey :: GovDatum -> Maybe UserId
       getKey (GovDatum (HeadLList _ _)) = Nothing
       getKey (GovDatum (NodeLList _ _ k)) = k
 
