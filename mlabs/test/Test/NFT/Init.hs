@@ -25,6 +25,7 @@ module Test.NFT.Init (
   userStartAuction,
   userCloseAuction,
   userWait,
+  waitInit,
 ) where
 
 import Control.Lens ((&), (.~))
