@@ -17,7 +17,8 @@ import Mlabs.NFT.Contract.Buy (buy)
 import Mlabs.NFT.Contract.Init (initApp)
 import Mlabs.NFT.Contract.Mint (mint)
 import Mlabs.NFT.Contract.SetPrice (setPrice)
-import Mlabs.NFT.Types (BuyRequestUser (..), MintParams (..), NftAppSymbol (..), NftId (..), QueryResponse (..), SetPriceParams (..))
+import Mlabs.NFT.Types (BuyRequestUser (..), MintParams (..), NftAppSymbol (..),
+  NftId (..), QueryResponse (..), SetPriceParams (..))
 import Mlabs.Plutus.Contract (selectForever)
 
 -- | A common App schema works for now.

@@ -32,7 +32,8 @@ import Plutus.Contract qualified as Contract
 import Plutus.Contract.Effects.ExposeEndpoint qualified as Cardano
 import Plutus.Contract.Resumable (Response)
 import Plutus.Contract.Schema (Event, Handlers, Input, Output)
-import Plutus.Contract.State (Contract, ContractRequest (..), ContractResponse (..))
+import Plutus.Contract.State 
+  (Contract, ContractRequest (..), ContractResponse (..))
 import Plutus.Contract.State qualified as Contract
 import Plutus.PAB.Core qualified as PAB
 import Plutus.PAB.Core.ContractInstance.STM qualified as Cardano
@@ -43,8 +44,10 @@ import Plutus.PAB.Events.Contract (ContractPABRequest)
 import Plutus.PAB.Events.Contract qualified as Contract
 import Plutus.PAB.Events.ContractInstanceState (PartiallyDecodedResponse)
 import Plutus.PAB.Events.ContractInstanceState qualified as Contract
-import Plutus.PAB.Monitoring.PABLogMsg (ContractEffectMsg (..), PABMultiAgentMsg (..))
-import Plutus.PAB.Simulator (Simulation, SimulatorContractHandler, SimulatorEffectHandlers)
+import Plutus.PAB.Monitoring.PABLogMsg 
+  (ContractEffectMsg (..), PABMultiAgentMsg (..))
+import Plutus.PAB.Simulator 
+  (Simulation, SimulatorContractHandler, SimulatorEffectHandlers)
 import Plutus.PAB.Simulator qualified as Simulator
 import Plutus.PAB.Types (PABError (..), WebserverConfig (..))
 import Plutus.PAB.Webserver.Server qualified as PAB
@@ -61,7 +64,8 @@ import Wallet.Emulator.Wallet qualified as Wallet
 --------------------------------------------------------------------------------
 
 import Mlabs.Lending.Contract.Lendex qualified as Lendex
-import Mlabs.Lending.Logic.Types (Coin, StartParams (..), UserAct (..), UserId (..))
+import Mlabs.Lending.Logic.Types 
+  (Coin, StartParams (..), UserAct (..), UserId (..))
 import Mlabs.Lending.Logic.Types qualified as Lendex
 
 --------------------------------------------------------------------------------
@@ -73,7 +77,8 @@ main = void $
 
     cidInit <- Simulator.activateContract (Wallet 1) Init
 
-    -- The initial spend is enough to identify the entire market, provided the initial params are also clear.
+    -- The initial spend is enough to identify the entire market, 
+    -- provided the initial params are also clear.
     -- TODO: get pool info here.
     _ <- flip Simulator.waitForState cidInit $ \json -> case fromJSON json of
       Success (Just (Semigroup.Last mkt)) -> Just mkt
@@ -129,7 +134,9 @@ initValue :: Value.Value
 initValue = Value.singleton Ada.adaSymbol Ada.adaToken 10000
 
 -- TODO: figure out how to support multiple currencies
--- note: looks like we'll need a minimal minting contract to get currencies working, otherwise we can support Ada collateral, Ada borrow by removing `collateralNonBorrow uid asset` from the contract.
+-- note: looks like we'll need a minimal minting contract to get currencies 
+-- working, otherwise we can support Ada collateral, Ada borrow by removing
+-- `collateralNonBorrow uid asset` from the contract.
 -- <> Value.Singleton  () (Value.tokenName "USDc")
 
 initCoinCfg =
@@ -147,4 +154,4 @@ depositAct =
     , act'asset = Value.AssetClass (Ada.adaSymbol, Ada.adaToken)
     }
 
--- --------------------------------------------------------------------------------
+-- ----------------------------------------------------------------------------

@@ -9,23 +9,26 @@ module Mlabs.Nft.Contract.Server (
   startNft,
 ) where
 
-import Prelude (String, (<>))
+import Prelude qualified as Hask -- (String, (<>))
 
 import Control.Lens (preview)
 import Control.Monad (forever)
 import Data.Map qualified as M
 import Data.Monoid (Last (..))
 import Ledger.Address (pubKeyAddress)
-import Ledger.Constraints (mintingPolicy, mustIncludeDatum, mustMintValue, mustSpendPubKeyOutput, ownPubKeyHash)
+import Ledger.Constraints (mintingPolicy, mustIncludeDatum, mustMintValue, 
+  mustSpendPubKeyOutput, ownPubKeyHash)
 import Ledger.Crypto (pubKeyHash)
 import Ledger.Tx (ciTxOutDatum)
 import Mlabs.Data.List (firstJustRight)
 import Mlabs.Emulator.Types (ownUserId)
-import Mlabs.Nft.Contract.Api (AuthorSchema, Buy, IsUserAct, SetPrice, StartParams (..), UserSchema, toUserAct)
+import Mlabs.Nft.Contract.Api (AuthorSchema, Buy, IsUserAct, SetPrice, 
+  StartParams (..), UserSchema, toUserAct)
 import Mlabs.Nft.Contract.StateMachine qualified as SM
 import Mlabs.Nft.Logic.Types (Act (UserAct), NftId, initNft, toNftId)
 import Mlabs.Plutus.Contract (getEndpoint, selectForever)
-import Plutus.Contract (Contract, logError, ownPubKey, tell, throwError, toContract, utxosAt)
+import Plutus.Contract (Contract, logError, ownPubKey, tell, throwError, 
+  toContract, utxosAt)
 import Plutus.V1.Ledger.Api (Datum)
 import PlutusTx.Prelude hiding ((<>))
 
@@ -59,7 +62,7 @@ userAction nid input = do
   inputDatum <- findInputStateDatum nid
   let lookups =
         mintingPolicy (SM.nftPolicy nid)
-          <> ownPubKeyHash pkh
+          Hask.<> ownPubKeyHash pkh
       constraints = mustIncludeDatum inputDatum
   SM.runStepWith nid act lookups constraints
 
@@ -70,16 +73,17 @@ startNft :: StartParams -> AuthorContract ()
 startNft StartParams {..} = do
   orefs <- M.keys <$> (utxosAt . pubKeyAddress =<< ownPubKey)
   case orefs of
-    [] -> logError @String "No UTXO found"
+    [] -> logError @Hask.String "No UTXO found"
     oref : _ -> do
       let nftId = toNftId oref sp'content
           val = SM.nftValue nftId
           lookups = mintingPolicy $ SM.nftPolicy nftId
           tx =
             mustMintValue val
-              <> mustSpendPubKeyOutput oref
+              Hask.<> mustSpendPubKeyOutput oref
       authorId <- ownUserId
-      SM.runInitialiseWith nftId (initNft oref authorId sp'content sp'share sp'price) val lookups tx
+      SM.runInitialiseWith nftId 
+        (initNft oref authorId sp'content sp'share sp'price) val lookups tx
       tell $ Last $ Just nftId
 
 ----------------------------------------------------------------
@@ -97,6 +101,7 @@ getUserAct act = do
 findInputStateDatum :: NftId -> UserContract Datum
 findInputStateDatum nid = do
   utxos <- utxosAt (SM.nftAddress nid)
-  maybe err pure $ firstJustRight (preview ciTxOutDatum . snd) $ M.toList utxos
+  maybe err pure $ firstJustRight (preview ciTxOutDatum . snd) $ 
+    M.toList utxos
   where
     err = throwError $ SM.toNftError "Can not find NFT app instance"

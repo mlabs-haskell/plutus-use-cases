@@ -17,7 +17,7 @@ module Mlabs.Emulator.Scene (
 ) where
 
 import PlutusTx.Prelude hiding (Monoid, Semigroup, mempty, (<>))
-import Prelude (Monoid, Semigroup, mempty, (<>))
+import Prelude qualified as Hask -- (Monoid, Semigroup, mempty, (<>))
 
 import Control.Applicative (Alternative (..))
 
@@ -37,7 +37,8 @@ import Plutus.V1.Ledger.Value qualified as Value
 
 import Mlabs.Lending.Logic.Types (Coin)
 
-{- | Scene is users with balances and value that is owned by application script.
+{- | Scene is users with balances and value that is owned by application 
+ script.
  It can be built with Monoid instance from parts with handy functions:
 
  'owns', 'apOwns', 'appAddress'
@@ -54,26 +55,31 @@ data Scene = Scene
     scene'appAddress :: Maybe Address
   }
 
-instance Semigroup Scene where
+instance Hask.Semigroup Scene where
   Scene us1 e1 maddr1 <> Scene us2 e2 maddr2 =
-    Scene (M.unionWith (<>) us1 us2) (e1 <> e2) (maddr1 <|> maddr2)
+    Scene (M.unionWith (Hask.<>) us1 us2) (e1 Hask.<> e2) (maddr1 <|> maddr2)
 
-instance Monoid Scene where
-  mempty = Scene mempty mempty Nothing
+instance Hask.Monoid Scene where
+  mempty = Scene Hask.mempty Hask.mempty Nothing
 
--- | Creates scene with single user in it that owns so many coins, app owns zero coins.
+-- | Creates scene with single user in it that owns so many coins, app owns 
+-- zero coins.
 owns :: Wallet -> [(Coin, Integer)] -> Scene
-owns wal ds = Scene {scene'users = M.singleton wal (coinDiff ds), scene'appValue = mempty, scene'appAddress = Nothing}
+owns wal ds = Scene {scene'users = M.singleton wal (coinDiff ds), 
+                    scene'appValue = Hask.mempty, scene'appAddress = Nothing}
 
 -- | Creates scene with no users and app owns given amount of coins.
 appOwns :: [(Coin, Integer)] -> Scene
-appOwns v = Scene {scene'users = mempty, scene'appValue = coinDiff v, scene'appAddress = Nothing}
+appOwns v = Scene {scene'users = Hask.mempty, scene'appValue = coinDiff v, 
+                  scene'appAddress = Nothing}
 
 -- | Creates scene with no users and app owns given amount of coins.
 appAddress :: Address -> Scene
-appAddress addr = Scene {scene'users = mempty, scene'appValue = mempty, scene'appAddress = Just addr}
+appAddress addr = Scene {scene'users = Hask.mempty, scene'appValue = Hask.mempty, 
+                        scene'appAddress = Just addr}
 
--- | Turns scene to plutus checks. Every user ownership turns into 'walletFundsChange' check.
+-- | Turns scene to plutus checks. Every user ownership turns into 
+-- 'walletFundsChange' check.
 checkScene :: Scene -> TracePredicate
 checkScene Scene {..} =
   withAddressCheck $
@@ -81,7 +87,9 @@ checkScene Scene {..} =
       (uncurry walletFundsChange <$> M.toList scene'users)
       .&&. assertNoFailedTransactions
   where
-    withAddressCheck = maybe id (\addr -> (valueAtAddress addr (== scene'appValue) .&&.)) scene'appAddress
+    withAddressCheck = 
+      maybe id (\addr -> (valueAtAddress addr (== scene'appValue) .&&.)) 
+        scene'appAddress
 
 -- | Converts list of coins to value.
 coinDiff :: [(Coin, Integer)] -> Value

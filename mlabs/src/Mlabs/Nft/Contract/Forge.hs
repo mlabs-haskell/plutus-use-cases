@@ -26,7 +26,8 @@ import Mlabs.Nft.Logic.Types (NftId (NftId))
 
  Also we check that
 
- * user mints token that corresponds to the content of NFT (token name is hash of NFT content)
+ * user mints token that corresponds to the content of NFT (token name is hash
+   of NFT content)
  * user spends NFT token to the StateMachine script
 
  First argument is an address of NFT state machine script. We use it to check
@@ -40,17 +41,20 @@ validate !stateAddr (NftId token !oref) _ !ctx =
   where
     !info = Contexts.scriptContextTxInfo ctx
 
-    !hasUtxo = any (\inp -> Contexts.txInInfoOutRef inp == oref) $ Contexts.txInfoInputs info
+    !hasUtxo = any (\inp -> Contexts.txInInfoOutRef inp == oref) $ 
+      Contexts.txInfoInputs info
 
     !checkMintedAmount = case Value.flattenValue (Contexts.txInfoMint info) of
-      [(cur, tn, !val)] -> Contexts.ownCurrencySymbol ctx == cur && token == tn && val == 1
+      [(cur, tn, !val)] -> 
+        Contexts.ownCurrencySymbol ctx == cur && token == tn && val == 1
       _ -> False
 
     !paysToState = any hasNftToken $ Contexts.txInfoOutputs info
 
     hasNftToken Contexts.TxOut {..} =
       txOutAddress == stateAddr
-        && txOutValue == Value.singleton (Contexts.ownCurrencySymbol ctx) token 1
+        && txOutValue == 
+          Value.singleton (Contexts.ownCurrencySymbol ctx) token 1
 
 -------------------------------------------------------------------------------
 
@@ -68,4 +72,5 @@ currencyPolicy stateAddr nid =
  First argument is an address of NFT state machine script.
 -}
 currencySymbol :: Address -> NftId -> CurrencySymbol
-currencySymbol stateAddr nid = Contexts.scriptCurrencySymbol (currencyPolicy stateAddr nid)
+currencySymbol stateAddr nid = 
+  Contexts.scriptCurrencySymbol (currencyPolicy stateAddr nid)

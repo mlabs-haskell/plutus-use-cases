@@ -17,7 +17,7 @@ module Mlabs.Emulator.App (
 ) where
 
 import PlutusTx.Prelude
-import Prelude qualified as Hask (Show, print, uncurry)
+import Prelude qualified as Hask -- (Show, print, uncurry)
 
 import Control.Monad.State.Strict (foldM)
 import Data.List (foldl')
@@ -49,12 +49,14 @@ lookupAppWallet uid App {..} = case app'wallets of
 {- | Runs application with the list of actions.
  Returns final state of the application.
 -}
-runApp :: (act -> PlutusState st [Resp]) -> App st act -> Script act -> App st act
+runApp :: (act -> PlutusState st [Resp]) -> App st act -> Script act 
+          -> App st act
 runApp react app acts = foldl' go app (runScript acts)
   where
     -- There are two possible sources of errors:
     --   * we can not make transition to state (react produces Left)
-    --   * the transition produces action on blockchain that leads to negative balances (applyResp produces Left)
+    --   * the transition produces action on blockchain that leads to negative 
+    --     balances (applyResp produces Left)
     go (App lp errs wallets) act = case runStateT (react act) lp of
       Right (resp, nextState) -> case foldM (flip applyResp) wallets resp of
         Right nextWallets -> App nextState errs nextWallets
@@ -83,6 +85,7 @@ someErrors = assertBool "Script fails" . not . null . app'log
 checkWallets :: [(UserId, BchWallet)] -> App st act -> Assertion
 checkWallets wals app = mapM_ (Hask.uncurry $ hasWallet app) wals
 
--- | Checks that application state contains concrete wallet for a given user id.
+-- | Checks that application state contains concrete wallet for a given user 
+-- id.
 hasWallet :: App st act -> UserId -> BchWallet -> Assertion
 hasWallet app uid wal = lookupAppWallet uid app @=? Just wal

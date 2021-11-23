@@ -65,7 +65,7 @@ module Mlabs.Lending.Logic.State (
 ) where
 
 import PlutusTx.Prelude
-import Prelude qualified as Hask (Show, uncurry)
+import Prelude qualified as Hask -- (Show, uncurry)
 
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.State.Strict (MonadState (get, put), gets, modify')
@@ -143,7 +143,8 @@ isAdmin :: Types.UserId -> St ()
 isAdmin = checkRole "Is not admin" lp'admins
 
 {-# INLINEABLE checkRole #-}
-checkRole :: BuiltinByteString -> (LendingPool -> [Types.UserId]) -> Types.UserId -> St ()
+checkRole :: BuiltinByteString -> (LendingPool -> [Types.UserId]) 
+          -> Types.UserId -> St ()
 checkRole msg extract uid = do
   users <- gets extract
   guardError msg $ elem uid users
@@ -190,7 +191,8 @@ getUsers = M.keys <$> getAllUsers
 
 {-# INLINEABLE getsUser #-}
 
--- | Get user info in the lending app by user id and apply extractor function to it.
+-- | Get user info in the lending app by user id and apply extractor 
+-- function to it.
 getsUser :: Types.UserId -> (User -> a) -> St a
 getsUser uid f = fmap f $ getUser uid
 
@@ -278,7 +280,8 @@ weightedTotal = fmap sum . mapM (Hask.uncurry toAda)
 
 -- | Collects cumulative value for given wallet field
 walletTotal :: (Wallet -> Integer) -> User -> St Integer
-walletTotal extract (User ws _ _) = weightedTotal $ M.toList $ fmap extract ws
+walletTotal extract (User ws _ _) = weightedTotal $ M.toList $ 
+  fmap extract ws
 
 {-# INLINEABLE getTotalCollateral #-}
 
@@ -332,14 +335,16 @@ getCurrentHealth = getHealth 0
 -- | Reads liquidation threshold for a give asset.
 getLiquidationThreshold :: Types.Coin -> St Rational
 getLiquidationThreshold coin =
-  gets (maybe (R.fromInteger 0) reserve'liquidationThreshold . M.lookup coin . lp'reserves)
+  gets (maybe (R.fromInteger 0) 
+    reserve'liquidationThreshold . M.lookup coin . lp'reserves)
 
 {-# INLINEABLE getLiquidationBonus #-}
 
 -- | Reads liquidation bonus for a give asset.
 getLiquidationBonus :: Types.Coin -> St Rational
 getLiquidationBonus coin =
-  gets (maybe (R.fromInteger 0) reserve'liquidationBonus . M.lookup coin . lp'reserves)
+  gets (maybe (R.fromInteger 0) reserve'liquidationBonus . 
+    M.lookup coin . lp'reserves)
 
 {-# INLINEABLE modifyUsers #-}
 modifyUsers :: (Map Types.UserId User -> Map Types.UserId User) -> St ()
@@ -361,7 +366,8 @@ modifyReserve' asset f = do
     Just reserve -> either throwError (putReserve st) (f reserve)
     Nothing -> throwError "Asset is not supported"
   where
-    putReserve st x = put $ st {lp'reserves = M.insert asset x $ lp'reserves st}
+    putReserve st x = put $ st 
+      {lp'reserves = M.insert asset x $ lp'reserves st}
 
 {-# INLINEABLE modifyUser #-}
 
@@ -388,13 +394,17 @@ modifyHealthReport f =
 {-# INLINEABLE modifyWalletAndReserve #-}
 
 -- | Modify user wallet and reserve wallet with the same function.
-modifyWalletAndReserve :: Types.UserId -> Types.Coin -> (Wallet -> Wallet) -> St ()
-modifyWalletAndReserve uid coin f = modifyWalletAndReserve' uid coin (Right . f)
+modifyWalletAndReserve :: Types.UserId -> Types.Coin -> (Wallet -> Wallet) 
+                       -> St ()
+modifyWalletAndReserve uid coin f = 
+  modifyWalletAndReserve' uid coin (Right . f)
 
 {-# INLINEABLE modifyWalletAndReserve' #-}
 
--- | Applies the same modification function to the user and to the reserve wallet. It can throw errors.
-modifyWalletAndReserve' :: Types.UserId -> Types.Coin -> (Wallet -> Either Error Wallet) -> St ()
+-- | Applies the same modification function to the user and to the reserve 
+-- wallet. It can throw errors.
+modifyWalletAndReserve' :: Types.UserId -> Types.Coin 
+                        -> (Wallet -> Either Error Wallet) -> St ()
 modifyWalletAndReserve' uid coin f = do
   modifyWallet' uid coin f
   modifyReserveWallet' coin f
@@ -410,20 +420,23 @@ modifyReserveWallet coin f = modifyReserveWallet' coin (Right . f)
 -- | Modify reserve wallet for a given asset. It can throw errors.
 modifyReserveWallet' :: Types.Coin -> (Wallet -> Either Error Wallet) -> St ()
 modifyReserveWallet' coin f =
-  modifyReserve' coin $ \r -> fmap (\w -> r {reserve'wallet = w}) $ f $ reserve'wallet r
+  modifyReserve' coin $ \r -> fmap (\w -> r {reserve'wallet = w}) $ f $ 
+    reserve'wallet r
 
 {-# INLINEABLE modifyWallet #-}
 
--- | Modify internal user wallet that is allocated for a given user id and asset.
+-- | Modify internal user wallet that is allocated for a given user id and 
+-- asset.
 modifyWallet :: Types.UserId -> Types.Coin -> (Wallet -> Wallet) -> St ()
 modifyWallet uid coin f = modifyWallet' uid coin (Right . f)
 
 {-# INLINEABLE modifyWallet' #-}
 
-{- | Modify internal user wallet that is allocated for a given user id and asset.
- It can throw errors.
+{- | Modify internal user wallet that is allocated for a given user id and 
+ asset. It can throw errors.
 -}
-modifyWallet' :: Types.UserId -> Types.Coin -> (Wallet -> Either Error Wallet) -> St ()
+modifyWallet' :: Types.UserId -> Types.Coin -> (Wallet -> Either Error Wallet) 
+              -> St ()
 modifyWallet' uid coin f = modifyUser' uid $ \(User ws time health) -> do
   wal <- f $ fromMaybe defaultWallet $ M.lookup coin ws
   pure $ User (M.insert coin wal ws) time health

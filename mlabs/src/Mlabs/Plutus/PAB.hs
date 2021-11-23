@@ -4,7 +4,9 @@ module Mlabs.Plutus.PAB (
   printBalance,
 ) where
 
-import Prelude
+-- Note: should this module be modified to Plutus Prelude version?
+-- import PlutusTx.Prelude
+import Prelude qualified as Hask
 
 import Data.Aeson (FromJSON, Result (..), fromJSON)
 import Data.Functor (void)
@@ -20,8 +22,8 @@ import Mlabs.System.Console.Utils (logBalance)
 
 call :: IsEndpoint a => ContractInstanceId -> a -> Simulation (Builtin schema) ()
 call cid input = do
-  void $ callEndpointOnInstance cid (endpointName input) input
-  void $ waitNSlots 2
+  void Hask.$ callEndpointOnInstance cid (endpointName input) input
+  void Hask.$ waitNSlots 2
 
 {- | Waits for the given value to be written to the state of the service.
  We use it to share data between endpoints. One endpoint can write parameter to state with tell
@@ -29,10 +31,11 @@ call cid input = do
 -}
 waitForLast :: FromJSON a => ContractInstanceId -> Simulation t a
 waitForLast cid =
-  flip waitForState cid $ \json -> case fromJSON json of
-    Success (Last (Just x)) -> Just x
-    _ -> Nothing
+  Hask.flip waitForState cid Hask.$ \json -> case fromJSON json of
+    Success (Last (Hask.Just x)) -> Hask.Just x
+    _ -> Hask.Nothing
 
-printBalance :: Integer -> Simulation (Builtin schema) ()
+printBalance :: Hask.Integer -> Simulation (Builtin schema) ()
 printBalance n =
-  logBalance ("WALLET " <> show n) =<< (valueAt . Wallet.walletAddress $ walletFromNumber n)
+  logBalance ("WALLET " Hask.<> Hask.show n) Hask.=<< 
+    (valueAt Hask.. Wallet.walletAddress Hask.$ walletFromNumber n)

@@ -161,8 +161,10 @@ PlutusTx.unstableMakeIsData ''MintParams
 
 instance Eq MintParams where
   {-# INLINEABLE (==) #-}
-  (MintParams content1 title1 share1 price1) == (MintParams content2 title2 share2 price2) =
-    content1 == content2 && title1 == title2 && share1 == share2 && price1 == price2
+  (MintParams content1 title1 share1 price1) == 
+    (MintParams content2 title2 share2 price2) =
+      content1 == content2 && title1 == title2 && share1 
+      == share2 && price1 == price2
 
 data SetPriceParams = SetPriceParams
   { -- | NFTid of the token which price is set.
@@ -193,8 +195,9 @@ PlutusTx.unstableMakeIsData ''BuyRequestUser
 
 instance Eq BuyRequestUser where
   {-# INLINEABLE (==) #-}
-  (BuyRequestUser nftId1 price1 newPrice1) == (BuyRequestUser nftId2 price2 newPrice2) =
-    nftId1 == nftId2 && price1 == price2 && newPrice1 == newPrice2
+  (BuyRequestUser nftId1 price1 newPrice1) == 
+    (BuyRequestUser nftId2 price2 newPrice2) =
+      nftId1 == nftId2 && price1 == price2 && newPrice1 == newPrice2
 
 -- | A datatype used by the QueryContract to return a response
 data QueryResponse
@@ -214,7 +217,8 @@ PlutusTx.makeLift ''NftId
 
 -- | NFT Information.
 data InformationNft = InformationNft
-  { -- | NFT ID. Represents the key of the Datum. ?could even be taken out of the information?
+  { -- | NFT ID. Represents the key of the Datum. ?could even be taken out of 
+    -- the information?
     info'id :: NftId
   , -- | Author's share of the NFT.
     info'share :: Rational
@@ -244,7 +248,8 @@ instance Eq InformationNft where
 data NftAppInstance = NftAppInstance
   { -- | Script Address where all the NFTs can be found
     appInstance'Address :: Address
-  , -- | AssetClass with which all the NFTs are parametrised - guarantees the proof of uniqueness.
+  , -- | AssetClass with which all the NFTs are parametrised - guarantees the 
+    -- proof of uniqueness.
     appInstance'AppAssetClass :: AssetClass
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
@@ -350,7 +355,8 @@ getDatumPointer = \case
 getDatumValue :: DatumNft -> BuiltinByteString
 getDatumValue = \case
   HeadDatum _ -> ""
-  NodeDatum listNode -> nftId'contentHash . info'id . node'information $ listNode
+  NodeDatum listNode -> 
+    nftId'contentHash . info'id . node'information $ listNode
 
 instance Eq DatumNft where
   {-# INLINEABLE (==) #-}

@@ -7,7 +7,7 @@ module Main (
   startParams,
 ) where
 
-import Prelude
+import Prelude qualified as Hask
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Functor (void)
@@ -39,11 +39,15 @@ main = Handler.runSimulator startParams $ do
   cids <- mapM (activateUser nid) [user1, user2, user3]
   let [u1, u2, u3] = cids
 
-  test "User 1 sets the Mona Lisa's price to 100 Lovelace, User 2 buys The Mona Lisa from User 1 for 100 Lovelace (what a deal!), User 2 has specified that the Mona Lisa is not for sale" [1, 2] $ do
+  test "User 1 sets the Mona Lisa's price to 100 Lovelace, User 2 buys The Mona\
+  \ Lisa from User 1 for 100 Lovelace (what a deal!), User 2 has specified that\
+  \ the Mona Lisa is not for sale" [1, 2] $ do
     setPrice u1 (Just 100)
     buy u2 100 Nothing
 
-  test "User 2 sets the sale price to 500 Lovelace, User 3 buys The Mona Lisa from User 2 for 500 Lovelace setting the new sale price to 1000 Lovelace, User 1 receives a royalty from the sale" [1, 2, 3] $ do
+  test "User 2 sets the sale price to 500 Lovelace, User 3 buys The Mona Lisa f\
+  \rom User 2 for 500 Lovelace setting the new sale price to 1000 Lovelace, Use\
+  \r 1 receives a royalty from the sale" [1, 2, 3] $ do
     setPrice u2 (Just 500)
     buy u3 500 (Just 1000)
 

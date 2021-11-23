@@ -28,12 +28,13 @@ module Test.Lending.Init (
   fromToken,
 ) where
 
-import Prelude
+import Prelude qualified as Hask
 
 import Control.Lens ((&), (.~))
 import Data.Map qualified as M
 import Ledger.Contexts (pubKeyHash)
-import Plutus.Contract.Test (CheckOptions, Wallet (..), defaultCheckOptions, emulatorConfig, walletPubKey)
+import Plutus.Contract.Test (CheckOptions, Wallet (..), defaultCheckOptions, 
+  emulatorConfig, walletPubKey)
 import Plutus.Trace.Emulator (EmulatorTrace, initialChainState)
 import Plutus.V1.Ledger.Ada qualified as Ada
 import Plutus.V1.Ledger.Crypto (PubKeyHash (..))
@@ -47,7 +48,9 @@ import Mlabs.Lending.Logic.Types (Coin, LendexId (..), UserAct (..), UserId (..)
 import Mlabs.Utils.Wallet (walletFromNumber)
 
 checkOptions :: CheckOptions
-checkOptions = defaultCheckOptions & emulatorConfig . initialChainState .~ Left initialDistribution
+checkOptions = 
+  defaultCheckOptions & emulatorConfig Hask.. initialChainState .~ 
+    Hask.Left initialDistribution
 
 -- | Wallets that are used for testing.
 wAdmin, w1, w2, w3 :: Wallet
@@ -57,10 +60,10 @@ w3 = walletFromNumber 3
 wAdmin = walletFromNumber 4
 
 toUserId :: Wallet -> UserId
-toUserId = UserId . pubKeyHash . walletPubKey
+toUserId = UserId Hask.. pubKeyHash Hask.. walletPubKey
 
 toPubKeyHash :: Wallet -> PubKeyHash
-toPubKeyHash = pubKeyHash . walletPubKey
+toPubKeyHash = pubKeyHash Hask.. walletPubKey
 
 -- | Identifier for our lendex platform
 lendexId :: LendexId
@@ -104,14 +107,14 @@ initialDistribution :: M.Map Wallet Value
 initialDistribution =
   M.fromList
     [ (wAdmin, val 2000_000_000)
-    , (w1, val 1000_000_000 <> v1 100)
-    , (w2, val 1000_000_000 <> v2 100)
-    , (w3, val 1000_000_000 <> v3 100)
+    , (w1, val 1000_000_000 Hask.<> v1 100)
+    , (w2, val 1000_000_000 Hask.<> v2 100)
+    , (w3, val 1000_000_000 Hask.<> v3 100)
     ]
   where
     val x = Value.singleton Ada.adaSymbol Ada.adaToken x
 
-    coinVal coin = uncurry Value.singleton (Value.unAssetClass coin)
+    coinVal coin = Hask.uncurry Value.singleton (Value.unAssetClass coin)
     v1 = coinVal coin1
     v2 = coinVal coin2
     v3 = coinVal coin3

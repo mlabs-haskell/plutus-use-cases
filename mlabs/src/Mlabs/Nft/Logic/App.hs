@@ -19,7 +19,7 @@ module Mlabs.Nft.Logic.App (
 ) where
 
 import PlutusTx.Prelude
-import Prelude qualified as Hask (uncurry)
+import Prelude qualified as Hask -- (uncurry)
 
 import Data.Map.Strict qualified as M
 import Playground.Contract (TxOutRef (..))
@@ -27,11 +27,13 @@ import Plutus.V1.Ledger.Crypto (PubKeyHash (..))
 import Plutus.V1.Ledger.TxId (TxId (TxId))
 
 import Mlabs.Emulator.App (App (..), runApp)
-import Mlabs.Emulator.Blockchain (BchState (BchState), BchWallet (..), defaultBchWallet)
+import Mlabs.Emulator.Blockchain (BchState (BchState), BchWallet (..), 
+  defaultBchWallet)
 import Mlabs.Emulator.Script qualified as S
 import Mlabs.Emulator.Types (UserId (..), adaCoin)
 import Mlabs.Nft.Logic.React (react)
-import Mlabs.Nft.Logic.Types (Act (..), Nft, UserAct (BuyAct, SetPriceAct), initNft)
+import Mlabs.Nft.Logic.Types (Act (..), Nft, UserAct (BuyAct, SetPriceAct), 
+  initNft)
 import PlutusTx.Ratio qualified as R
 
 -- | NFT test emulator. We use it test the logic.
@@ -56,7 +58,8 @@ runNftApp cfg = runApp react (initApp cfg)
 initApp :: AppCfg -> NftApp
 initApp AppCfg {..} =
   App
-    { app'st = initNft appCfg'nftInRef appCfg'nftAuthor appCfg'nftData (1 R.% 10) Nothing
+    { app'st = initNft appCfg'nftInRef appCfg'nftAuthor appCfg'nftData (1 R.% 10) 
+               Nothing
     , app'log = []
     , app'wallets = BchState $ M.fromList $ (Self, defaultBchWallet) : appCfg'users
     }
@@ -72,7 +75,8 @@ defaultAppCfg = AppCfg users dummyOutRef "mona-lisa" (fst . head $ users)
 
     userNames = ["1", "2", "3"]
 
-    users = fmap (\userName -> (UserId (PubKeyHash userName), wal (adaCoin, 1000))) userNames
+    users = fmap (\userName -> (UserId (PubKeyHash userName), wal 
+              (adaCoin, 1000))) userNames
     wal cs = BchWallet $ Hask.uncurry M.singleton cs
 
 -------------------------------------------------------

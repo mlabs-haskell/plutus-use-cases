@@ -25,7 +25,7 @@ module Mlabs.Lending.Logic.App (
 ) where
 
 import PlutusTx.Prelude hiding ((%))
-import Prelude qualified as Hask (uncurry)
+import Prelude qualified as Hask -- (uncurry)
 
 import Data.Map.Strict qualified as M
 import Plutus.V1.Ledger.Crypto (PubKeyHash (..))
@@ -33,7 +33,8 @@ import Plutus.V1.Ledger.Value qualified as Value
 import PlutusTx.AssocMap qualified as AM
 
 import Mlabs.Emulator.App (App (..), runApp)
-import Mlabs.Emulator.Blockchain (BchState (BchState), BchWallet (..), defaultBchWallet)
+import Mlabs.Emulator.Blockchain (BchState (BchState), BchWallet (..), 
+  defaultBchWallet)
 import Mlabs.Emulator.Script qualified as Script
 import Mlabs.Lending.Logic.React (react)
 import Mlabs.Lending.Logic.Types qualified as Types
@@ -60,13 +61,17 @@ data AppConfig = AppConfig
     appConfig'oracles :: [Types.UserId]
   }
 
--- | App is initialised with list of coins and their rates (value relative to base currency, ada for us)
+-- | App is initialised with list of coins and their rates (value relative to 
+-- base currency, ada for us)
 initApp :: AppConfig -> LendingApp
 initApp AppConfig {..} =
   App
     { app'st =
         Types.LendingPool
-          { lp'reserves = AM.fromList (fmap (\x -> (Types.coinCfg'coin x, Types.initReserve x)) appConfig'reserves)
+          { lp'reserves = AM.fromList 
+                            (fmap (\x -> (Types.coinCfg'coin x, 
+                                          Types.initReserve x)) 
+                                  appConfig'reserves)
           , lp'users = AM.empty
           , lp'currency = appConfig'currencySymbol
           , lp'coinMap = coinMap
@@ -75,7 +80,9 @@ initApp AppConfig {..} =
           , lp'trustedOracles = appConfig'oracles
           }
     , app'log = []
-    , app'wallets = BchState $ M.fromList $ (Types.Self, defaultBchWallet) : appConfig'users
+    , app'wallets = 
+        BchState $ M.fromList $ (Types.Self, defaultBchWallet) : 
+          appConfig'users
     }
   where
     coinMap =
@@ -86,14 +93,16 @@ initApp AppConfig {..} =
 
 {- | Default application.
  It allocates three users and three reserves for Dollars, Euros and Liras.
- Each user has 100 units of only one currency. User 1 has dollars, user 2 has euros amd user 3 has liras.
+ Each user has 100 units of only one currency. User 1 has dollars, user 2 has 
+ euros amd user 3 has liras.
 -}
 defaultAppConfig :: AppConfig
 defaultAppConfig = AppConfig reserves users curSym admins oracles
   where
     admins = [user1]
     oracles = [user1]
-    user1 = Types.UserId $ PubKeyHash "1" -- only user 1 can set the price and be admin
+    user1 = Types.UserId $ PubKeyHash "1" -- only user 1 can set the price 
+                                          -- and be admin
     curSym = Value.currencySymbol "lending-app"
     userNames = ["1", "2", "3"]
     coinNames = ["Dollar", "Euro", "Lira"]
@@ -111,7 +120,9 @@ defaultAppConfig = AppConfig reserves users curSym admins oracles
         )
         coinNames
 
-    users = zipWith (\coinName userName -> (Types.UserId (PubKeyHash userName), wal (toCoin coinName, 100))) coinNames userNames
+    users = zipWith (\coinName userName -> 
+      (Types.UserId (PubKeyHash userName), wal (toCoin coinName, 100))) 
+      coinNames userNames
     wal cs = BchWallet $ Hask.uncurry M.singleton cs
 
     toAToken name = Value.TokenName $ "a" <> name

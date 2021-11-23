@@ -10,7 +10,7 @@ module Main (
   toCoin,
 ) where
 
-import Prelude
+import Prelude qualified as Hask
 
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -40,7 +40,7 @@ import Mlabs.Utils.Wallet (walletFromNumber)
 import PlutusTx.Ratio qualified as R
 
 -- | Console demo for Lendex with simulator
-main :: IO ()
+main :: Hask.IO ()
 main = Handler.runSimulator lendexId initContract $ do
   cur <- activateInit wAdmin
   Simulator.waitNSlots 10
@@ -74,7 +74,8 @@ main = Handler.runSimulator lendexId initContract $ do
         { addCollateral'asset = coin1
         , addCollateral'amount = 100
         }
-    call user1 $ Contract.Borrow 60 coin2 (Contract.toInterestRateFlag StableRate)
+    call user1 $ 
+      Contract.Borrow 60 coin2 (Contract.toInterestRateFlag StableRate)
 
   test "User 3 withdraws 25 Liras" $ do
     call user3 $ Contract.Withdraw 25 coin3
@@ -97,7 +98,8 @@ main = Handler.runSimulator lendexId initContract $ do
           }
 
   test "User 1 repays 20 coins of the loan" $ do
-    call user1 $ Contract.Repay 20 coin1 (Contract.toInterestRateFlag StableRate)
+    call user1 $ 
+      Contract.Repay 20 coin1 (Contract.toInterestRateFlag StableRate)
 
   liftIO $ putStrLn "Fin (Press enter to Exit)"
   where
@@ -204,7 +206,8 @@ startParams cur =
                 , coinCfg'liquidationBonus = 5 R.% 100
                 }
           )
-          [(adaCoin, aAda), (toCoin cur token1, aToken1), (toCoin cur token2, aToken2), (toCoin cur token3, aToken3)]
+          [(adaCoin, aAda), (toCoin cur token1, aToken1), 
+          (toCoin cur token2, aToken2), (toCoin cur token3, aToken3)]
     , sp'initValue = Value.assetClassValue adaCoin 1000
     , sp'admins = [toPubKeyHash wAdmin]
     , sp'oracles = [toPubKeyHash wAdmin]

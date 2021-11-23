@@ -20,7 +20,7 @@ import GHC.Generics (Generic)
 import Playground.Contract (FromJSON, ToJSON, ToSchema)
 import Plutus.Contract (type (.\/))
 import PlutusTx.Prelude (BuiltinByteString, Integer, Maybe, Rational)
-import Prelude qualified as Hask (Eq, Show)
+import Prelude qualified as Hask -- (Eq, Show)
 
 import Mlabs.Nft.Logic.Types (UserAct (BuyAct, SetPriceAct))
 import Mlabs.Plutus.Contract (Call, IsEndpoint (..))
@@ -78,7 +78,8 @@ class IsUserAct a where
   toUserAct :: a -> UserAct
 
 instance IsUserAct Buy where toUserAct Buy {..} = BuyAct buy'price buy'newPrice
-instance IsUserAct SetPrice where toUserAct SetPrice {..} = SetPriceAct setPrice'newPrice
+instance IsUserAct SetPrice where 
+  toUserAct SetPrice {..} = SetPriceAct setPrice'newPrice
 
 instance IsEndpoint Buy where
   type EndpointSymbol Buy = "buy-nft"

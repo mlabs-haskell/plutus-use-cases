@@ -1,6 +1,6 @@
 module Main where
 
-import Prelude (IO, putStrLn)
+import Prelude qualified as Hask-- (IO, putStrLn)
 
-main :: IO ()
+main :: Hask.IO ()
 main = putStrLn "Hello, Haskell!"

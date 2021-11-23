@@ -139,12 +139,14 @@ setPriceTrace = do
     Just nid -> return nid
   logInfo $ Hask.show nftId
   void $ Trace.waitNSlots 1
-  authUseH :: AppTraceHandle <- activateContractWallet wallet1 (endpoints $ error ())
+  authUseH :: AppTraceHandle <- 
+    activateContractWallet wallet1 (endpoints $ error ())
   callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just 20))
   void $ Trace.waitNSlots 1
   callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just (-20)))
   void $ Trace.waitNSlots 1
-  userUseH :: AppTraceHandle <- activateContractWallet wallet2 (endpoints $ error ())
+  userUseH :: AppTraceHandle <- 
+    activateContractWallet wallet2 (endpoints $ error ())
   callEndpoint @"set-price" userUseH (SetPriceParams nftId Nothing)
   void $ Trace.waitNSlots 1
   callEndpoint @"set-price" userUseH (SetPriceParams nftId (Just 30))
@@ -176,7 +178,9 @@ setPriceTrace = do
 --   queriedPrice <- case getLast queryState of
 --     Nothing -> Trace.throwError (Trace.GenericError "QueryResponse not found")
 --     Just resp -> case resp of
---       QueryCurrentOwner _ -> Trace.throwError (Trace.GenericError "wrong query state, got owner instead of price")
+--       QueryCurrentOwner _ -> 
+--          Trace.throwError (Trace.GenericError 
+--            "wrong query state, got owner instead of price")
 --       QueryCurrentPrice price -> return price
 --   logInfo $ "Queried price: " <> Hask.show queriedPrice
 
@@ -187,7 +191,8 @@ setPriceTrace = do
 --     Nothing -> Trace.throwError (Trace.GenericError "QueryResponse not found")
 --     Just resp -> case resp of
 --       QueryCurrentOwner owner -> return owner
---       QueryCurrentPrice _ -> Trace.throwError (Trace.GenericError "wrong query state, got price instead of owner")
+--       QueryCurrentPrice _ -> Trace.throwError 
+--        (Trace.GenericError "wrong query state, got price instead of owner")
 --   logInfo $ "Queried owner: " <> Hask.show queriedOwner
 
 --   void $ Trace.waitNSlots 1

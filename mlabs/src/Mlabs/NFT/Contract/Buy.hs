@@ -5,7 +5,7 @@ module Mlabs.NFT.Contract.Buy (
 ) where
 
 import PlutusTx.Prelude hiding (mconcat, mempty, (<>))
-import Prelude (mconcat)
+-- import Prelude (mconcat)
 import Prelude qualified as Hask
 
 import Control.Lens ((^.))
@@ -51,7 +51,8 @@ buy symbol BuyRequestUser {..} = do
         then Contract.logError @Hask.String "Bid price is too low."
         else do
           userUtxos <- getUserUtxos
-          let (paidToOwner, paidToAuthor) = calculateShares ur'price . info'share . node'information $ node
+          let (paidToOwner, paidToAuthor) = 
+                calculateShares ur'price . info'share . node'information $ node
               nftDatum = NodeDatum $ updateDatum ownPkh node
               nftVal = pi'CITxO ^. ciTxOutValue
               action =
@@ -61,19 +62,25 @@ buy symbol BuyRequestUser {..} = do
                   , act'symbol = symbol
                   }
               lookups =
-                mconcat
+                Hask.mconcat
                   [ Constraints.unspentOutputs userUtxos
                   , Constraints.unspentOutputs $ Map.fromList [ownOrefTxOut]
-                  , Constraints.unspentOutputs $ Map.fromList [(pi'TOR, pi'CITxO)]
+                  , Constraints.unspentOutputs $ 
+                      Map.fromList [(pi'TOR, pi'CITxO)]
                   , Constraints.typedValidatorLookups txPolicy
                   , Constraints.otherScript (validatorScript txPolicy)
                   ]
               tx =
-                mconcat
+                Hask.mconcat
                   [ Constraints.mustPayToTheScript nftDatum nftVal
-                  , Constraints.mustIncludeDatum (Datum . PlutusTx.toBuiltinData $ nftDatum)
-                  , Constraints.mustPayToPubKey (getUserId . info'author . node'information $ node) paidToAuthor
-                  , Constraints.mustPayToPubKey (getUserId . info'owner . node'information $ node) paidToOwner
+                  , Constraints.mustIncludeDatum 
+                      (Datum . PlutusTx.toBuiltinData $ nftDatum)
+                  , Constraints.mustPayToPubKey 
+                      (getUserId . info'author . node'information $ node) 
+                      paidToAuthor
+                  , Constraints.mustPayToPubKey 
+                      (getUserId . info'owner . node'information $ node) 
+                      paidToOwner
                   , Constraints.mustSpendPubKeyOutput (fst ownOrefTxOut)
                   , Constraints.mustSpendScriptOutput
                       pi'TOR

@@ -10,22 +10,14 @@
 module Test.Lending.QuickCheck where
 
 import PlutusTx.Prelude hiding (fmap, length, (<$>), (<*>))
-import Prelude (
-  Int,
-  Show,
-  abs,
-  drop,
-  fmap,
-  length,
-  zip3,
-  (<$>),
-  (<*>),
- )
+import Prelude qualified as Hask
+--   (Int, Show, abs, drop, fmap, length, zip3, (<$>), (<*>),)
 
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Plutus.V1.Ledger.Value qualified as Value
-import Test.Lending.Logic (coin1, coin2, coin3, fromToken, testAppConfig, user1, user2, user3)
+import Test.Lending.Logic (coin1, coin2, coin3, fromToken, testAppConfig, 
+  user1, user2, user3)
 import Test.QuickCheck qualified as QC
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.QuickCheck (testProperty)
@@ -40,13 +32,13 @@ allUsers :: [UserId]
 allUsers = [Self, user1, user2, user3]
 
 users :: [UserId]
-users = drop 1 allUsers
+users = Hask.drop 1 allUsers
 
 coins :: [Coin]
 coins = [adaCoin, coin1, coin2, coin3]
 
 nonNativeCoins :: [Coin]
-nonNativeCoins = drop 1 coins
+nonNativeCoins = Hask.drop 1 coins
 
 aToken :: Coin -> Value.TokenName
 aToken (Value.AssetClass (_, Value.TokenName tn)) = Value.TokenName ("a" <> tn)
@@ -55,38 +47,41 @@ aCoin :: Coin -> Coin
 aCoin coin = fromToken (aToken coin)
 
 -- Various integer generators
-smallGenSize :: Int
+smallGenSize :: Hask.Int
 smallGenSize = 100
 
-bigGenSize :: Int
+bigGenSize :: Hask.Int
 bigGenSize = 1_000_000_000_000_000_000
 
 positiveSmallInteger :: QC.Gen Integer
-positiveSmallInteger = fmap QC.getPositive (QC.resize smallGenSize QC.arbitrary)
+positiveSmallInteger = Hask.fmap QC.getPositive (QC.resize smallGenSize QC.arbitrary)
 
 positiveBigInteger :: QC.Gen Integer
-positiveBigInteger = (*) <$> gen <*> gen
+positiveBigInteger = (*) Hask.<$> gen Hask.<*> gen
   where
-    gen = fmap QC.getPositive (QC.resize bigGenSize QC.arbitrary)
+    gen = Hask.fmap QC.getPositive (QC.resize bigGenSize QC.arbitrary)
 
 nonPositiveSmallInteger :: QC.Gen Integer
-nonPositiveSmallInteger = fmap (negate . abs) (QC.resize smallGenSize QC.arbitrary)
+nonPositiveSmallInteger = 
+  Hask.fmap (negate . Hask.abs) (QC.resize smallGenSize QC.arbitrary)
 
 nonPositiveBigInteger :: QC.Gen Integer
-nonPositiveBigInteger = (\x y -> negate (abs (x * y))) <$> gen <*> gen
+nonPositiveBigInteger = (\x y -> negate (Hask.abs (x * y))) Hask.<$> gen Hask.<*> gen
   where
-    gen = fmap negate (QC.resize bigGenSize QC.arbitrary)
+    gen = Hask.fmap negate (QC.resize bigGenSize QC.arbitrary)
 
 positiveInteger :: QC.Gen Integer
-positiveInteger = QC.frequency [(1, positiveSmallInteger), (1, positiveBigInteger)]
+positiveInteger = 
+  QC.frequency [(1, positiveSmallInteger), (1, positiveBigInteger)]
 
 nonPositiveInteger :: QC.Gen Integer
-nonPositiveInteger = QC.frequency [(1, nonPositiveSmallInteger), (1, nonPositiveBigInteger)]
+nonPositiveInteger = 
+  QC.frequency [(1, nonPositiveSmallInteger), (1, nonPositiveBigInteger)]
 
 -- | Contains parameters that deposit test cases can be generalized over
 newtype DepositTestInput = DepositTestInput
   {deposits :: [(UserId, Coin, Integer)]}
-  deriving (Show)
+  deriving stock (Hask.Show)
 
 -- | Construct a `Script`
 createDepositScript :: DepositTestInput -> Script
@@ -102,7 +97,8 @@ someErrorsProp = not . noErrorsProp
 hasWallet :: App st act -> UserId -> BchWallet -> Bool
 hasWallet app uid wal = lookupAppWallet uid app == Just wal
 
-checkWalletsProp :: (Show act, Show st) => [(UserId, BchWallet)] -> App st act -> Bool
+checkWalletsProp :: (Hask.Show act, Hask.Show st) => 
+  [(UserId, BchWallet)] -> App st act -> Bool
 checkWalletsProp wals app = all (uncurry $ hasWallet app) wals
 
 -- Map manipulation helper functions
@@ -120,14 +116,21 @@ addNestedMaps = Map.unionsWith (Map.unionWith (+))
 expectedWalletsDeposit :: AppConfig -> DepositTestInput -> [(UserId, BchWallet)]
 expectedWalletsDeposit appCfg (DepositTestInput ds) =
   let startingBalances = walletListToNestedMap (appConfig'users appCfg)
-      depositedCoins = map (\(user, coin, amt) -> Map.singleton user (Map.singleton coin (negate amt))) ds
-      aCoins = map (\(user, coin, amt) -> Map.singleton user (Map.singleton (aCoin coin) amt)) ds
-      appCoins = Map.singleton Self $ Map.unionsWith (+) (map (\(_, coin, amt) -> Map.singleton coin amt) ds)
-      appAcoins = Map.singleton Self $ Map.fromList $ map (\(_, coin, _) -> (aCoin coin, 0)) ds
-      allWallets = addNestedMaps ([startingBalances] ++ depositedCoins ++ aCoins ++ [appCoins] ++ [appAcoins])
+      depositedCoins = map (\(user, coin, amt) -> 
+          Map.singleton user (Map.singleton coin (negate amt))) ds
+      aCoins = map (\(user, coin, amt) -> 
+        Map.singleton user (Map.singleton (aCoin coin) amt)) ds
+      appCoins = Map.singleton Self $ 
+        Map.unionsWith (+) (map (\(_, coin, amt) -> Map.singleton coin amt) ds)
+      appAcoins = Map.singleton Self $ 
+        Map.fromList $ map (\(_, coin, _) -> (aCoin coin, 0)) ds
+      allWallets = addNestedMaps 
+        ([startingBalances] ++ depositedCoins ++ aCoins ++ [appCoins] 
+        ++ [appAcoins])
    in Map.toAscList (Map.map BchWallet allWallets)
 
--- | Check that the balances after deposit script run correspond to the expected balances
+-- | Check that the balances after deposit script run correspond to the 
+-- expected balances
 testWalletsProp :: [(UserId, BchWallet)] -> Script -> Bool
 testWalletsProp expectedWals script =
   let app = runLendingApp testAppConfig script
@@ -140,12 +143,15 @@ testWalletsProp' d =
 
 depositInputGen :: QC.Gen Integer -> QC.Gen DepositTestInput
 depositInputGen integerGen =
-  fmap (DepositTestInput . zip3 users nonNativeCoins) (QC.vectorOf n integerGen)
+  Hask.fmap (DepositTestInput . Hask.zip3 users nonNativeCoins) 
+    (QC.vectorOf n integerGen)
   where
-    n = length users
+    n = Hask.length users
 
 testDepositLogic :: QC.Property
-testDepositLogic = QC.forAll (depositInputGen (QC.choose (1, 100))) testWalletsProp'
+testDepositLogic = 
+  QC.forAll (depositInputGen (QC.choose (1, 100))) testWalletsProp'
 
 test :: TestTree
-test = testGroup "QuickCheck" [testGroup "Logic" [testProperty "deposit" testDepositLogic]]
+test = testGroup "QuickCheck" [testGroup "Logic" 
+  [testProperty "deposit" testDepositLogic]]

@@ -45,23 +45,28 @@ import Mlabs.Lending.Contract.Forge (currencyPolicy, currencySymbol)
 import Mlabs.Lending.Contract.StateMachine qualified as StateMachine
 import Mlabs.Lending.Logic.React qualified as React
 import Mlabs.Lending.Logic.Types qualified as Types
-import Mlabs.Plutus.Contract (getEndpoint, readChainIndexTxDatum, readDatum', selectForever)
+import Mlabs.Plutus.Contract (getEndpoint, readChainIndexTxDatum, 
+  readDatum', selectForever)
 import Plutus.Contract.Request qualified as Request
 
 import PlutusTx.Prelude
 import Prelude qualified as Hask
 
 -- | User contract monad
-type UserContract a = Contract.Contract () Api.UserSchema StateMachine.LendexError a
+type UserContract a = 
+  Contract.Contract () Api.UserSchema StateMachine.LendexError a
 
 -- | Oracle contract monad
-type OracleContract a = Contract.Contract () Api.OracleSchema StateMachine.LendexError a
+type OracleContract a = 
+  Contract.Contract () Api.OracleSchema StateMachine.LendexError a
 
 -- | Admin contract monad
-type AdminContract a = Contract.Contract () Api.AdminSchema StateMachine.LendexError a
+type AdminContract a = 
+  Contract.Contract () Api.AdminSchema StateMachine.LendexError a
 
 -- | Query contract monad
-type QueryContract a = Contract.Contract QueryResult Api.QuerySchema StateMachine.LendexError a
+type QueryContract a = 
+  Contract.Contract QueryResult Api.QuerySchema StateMachine.LendexError a
 
 type QueryResult = Maybe (Last Types.QueryRes)
 
@@ -97,21 +102,26 @@ oracleEndpoints lid =
 -- | Endpoints for admin
 adminEndpoints :: Types.LendexId -> AdminContract ()
 adminEndpoints lid = do
-  Contract.toContract $ getEndpoint @Api.StartLendex $ startLendex lid
+  Contract.toContract $ getEndpoint @Api.StartLendex $ 
+    startLendex lid
   selectForever
     [ getEndpoint @Api.AddReserve $ adminAction lid
     ]
 
 {- | Endpoints for querrying Lendex state:
-   * `QueryAllLendexes` - returns a list of `LendingPool` data associated with each available lendes
-   * `QuerySupportedCurrencies` - returns the list of supported currencies (see `SupportedCurrency`) for current `LendingPool`
-   * `QuerryCurrentBalance` - returns a list of all the users, together with their current balances.
+   * `QueryAllLendexes` - returns a list of `LendingPool` data associated 
+     with each available lendes
+   * `QuerySupportedCurrencies` - returns the list of supported currencies 
+     (see `SupportedCurrency`) for current `LendingPool`
+   * `QuerryCurrentBalance` - returns a list of all the users, together with 
+     their current balances.
 -}
 queryEndpoints :: Types.LendexId -> QueryContract ()
 queryEndpoints lid =
   selectForever
     [ getEndpoint @Api.QueryAllLendexes $ queryAllLendexes lid
-    , getEndpoint @Api.QuerySupportedCurrencies $ \_ -> querySupportedCurrencies lid
+    , getEndpoint @Api.QuerySupportedCurrencies $ \_ -> 
+        querySupportedCurrencies lid
     , getEndpoint @Api.QueryCurrentBalance $ queryAction lid
     , getEndpoint @Api.QueryInsolventAccounts $ queryAction lid
     ]
@@ -141,13 +151,17 @@ adminAction lid input = StateMachine.runStep lid =<< getGovernAct input
 
 startLendex :: Types.LendexId -> Api.StartLendex -> AdminContract ()
 startLendex lid (Api.StartLendex Types.StartParams {..}) =
-  StateMachine.runInitialise lid (Types.initLendingPool (currencySymbol lid) sp'coins (fmap Types.UserId sp'admins) (fmap Types.UserId sp'oracles)) sp'initValue
+  StateMachine.runInitialise lid 
+    (Types.initLendingPool (currencySymbol lid) sp'coins 
+      (fmap Types.UserId sp'admins) (fmap Types.UserId sp'oracles)) 
+    sp'initValue
 
 -- Query actions
 
 queryAction :: Api.IsQueryAct a => Types.LendexId -> a -> QueryContract ()
 queryAction lid input = do
-  (_, pool) <- findDatum lid :: QueryContract (Types.LendexId, Types.LendingPool)
+  (_, pool) <- findDatum 
+    lid :: QueryContract (Types.LendexId, Types.LendingPool)
   qAction pool =<< getQueryAct input
   where
     qAction :: Types.LendingPool -> Types.Act -> QueryContract ()
@@ -155,21 +169,26 @@ queryAction lid input = do
 
     -- Builds the Log by running a State Machine
     buildLog :: Types.LendingPool -> Types.Act -> QueryResult
-    buildLog pool action = either (const Nothing) fst $ runStateT (React.qReact action) pool
+    buildLog pool action = either (const Nothing) fst $ 
+      runStateT (React.qReact action) pool
 
 queryAllLendexes :: Types.LendexId -> Api.QueryAllLendexes -> QueryContract ()
 queryAllLendexes lid (Api.QueryAllLendexes spm) = do
   utxos <- Contract.utxosAt $ StateMachine.lendexAddress lid
-  Contract.tell . Just . Last . Types.QueryResAllLendexes . mapMaybe f . Map.elems $ utxos
+  Contract.tell . Just . Last . Types.QueryResAllLendexes . mapMaybe f . 
+    Map.elems $ utxos
   pure ()
   where
-    startedWith :: Types.LendingPool -> Types.StartParams -> Maybe Types.LendingPool
+    startedWith :: Types.LendingPool -> Types.StartParams 
+                -> Maybe Types.LendingPool
     startedWith lp@Types.LendingPool {..} Types.StartParams {..} = do
       guard (map UserId sp'admins == lp'admins)
       guard (map UserId sp'oracles == lp'trustedOracles)
-      -- unsure if we can check that the tokens in StartParams are still being dealt in
+      -- unsure if we can check that the tokens in StartParams are still being 
+      -- dealt in
       -- there is no 100% certainty since AddReserve can add new Coin types
-      -- todo: we could check that the Coins is SartParams are a subset of the ones being dealt in now?
+      -- todo: we could check that the Coins is SartParams are a subset of the 
+      -- ones being dealt in now?
       pure lp
 
     f :: ChainIndexTxOut -> Maybe (Address, Types.LendingPool)
@@ -181,7 +200,8 @@ queryAllLendexes lid (Api.QueryAllLendexes spm) = do
 
 querySupportedCurrencies :: Types.LendexId -> QueryContract ()
 querySupportedCurrencies lid = do
-  (_, pool) <- findInputStateData lid :: QueryContract (Types.LendexId, Types.LendingPool)
+  (_, pool) <- findInputStateData 
+    lid :: QueryContract (Types.LendexId, Types.LendingPool)
   tellResult . getSupportedCurrencies $ pool
   where
     getSupportedCurrencies :: Types.LendingPool -> [Types.SupportedCurrency]
@@ -191,7 +211,8 @@ querySupportedCurrencies lid = do
     toSupportedCurrency (coin, Types.Reserve {reserve'aToken, reserve'rate}) =
       Types.SupportedCurrency coin reserve'aToken reserve'rate
 
-    tellResult = Contract.tell . Just . Last . Types.QueryResSupportedCurrencies
+    tellResult = Contract.tell . Just . Last . 
+                  Types.QueryResSupportedCurrencies
 
 ----------------------------------------------------------
 -- to act conversion
@@ -229,23 +250,30 @@ getCurrentTime = getSlot <$> Contract.currentSlot
 findInputStateDatum :: Types.LendexId -> UserContract Datum
 findInputStateDatum = findInputStateData
 
-findInputStateData :: FromData d => Types.LendexId -> Contract.Contract w s StateMachine.LendexError d
+findInputStateData :: FromData d => Types.LendexId 
+  -> Contract.Contract w s StateMachine.LendexError d
 findInputStateData lid = do
   txOuts <- Map.elems <$> Contract.utxosAt (StateMachine.lendexAddress lid)
   maybe err pure $ firstJust readDatum' txOuts
   where
-    err = Contract.throwError $ StateMachine.toLendexError "Can not find Lending app instance"
+    err = Contract.throwError $ 
+      StateMachine.toLendexError "Can not find Lending app instance"
 
 -- | todo: add a unique NFT to distinguish between utxos / review logic.
-findDatum :: FromData d => Types.LendexId -> Contract.Contract w s StateMachine.LendexError (Types.LendexId, d)
+findDatum :: FromData d => Types.LendexId 
+  -> Contract.Contract w s StateMachine.LendexError (Types.LendexId, d)
 findDatum lid = do
-  txOuts <- filterTxOuts . Map.toList <$> Request.utxosTxOutTxAt (StateMachine.lendexAddress lid)
+  txOuts <- filterTxOuts . Map.toList <$> 
+    Request.utxosTxOutTxAt (StateMachine.lendexAddress lid)
   case txOuts of
-    [(_, [x])] -> maybe err return $ (lid,) <$> x -- only passes if there is only 1 datum instance.
+    [(_, [x])] -> maybe err return $ (lid,) <$> x -- only passes if there is 
+                                                  -- only 1 datum instance.
     _ -> err
   where
-    err = Contract.throwError . StateMachine.toLendexError $ "Cannot establish correct Lending app instance."
-    filterTxOuts = filter ((== 1) . length . filter isNotNothing . snd) . fmap (second $ readChainIndexTxDatum . snd)
+    err = Contract.throwError . StateMachine.toLendexError $ 
+      "Cannot establish correct Lending app instance."
+    filterTxOuts = filter ((== 1) . length . filter isNotNothing . snd) . 
+                    fmap (second $ readChainIndexTxDatum . snd)
     isNotNothing = \case
       Nothing -> False
       Just _ -> True

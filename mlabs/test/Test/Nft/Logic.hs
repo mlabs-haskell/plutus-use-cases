@@ -30,7 +30,8 @@ test =
     testBuy = testWallets buyWallets buyScript
     testFailToSetPrice = testWalletsFail buyWallets failToSetPriceScript
     testBuyLocked = testWalletsFail initWallets failToBuyLocked
-    testBuyNotEnoughPrice = testWalletsFail initWallets failToBuyNotEnoughPrice
+    testBuyNotEnoughPrice = 
+      testWalletsFail initWallets failToBuyNotEnoughPrice
     testBuyTwice = testWallets buyTwiceWallets buyTwiceScript
 
     testWallets wals script = do

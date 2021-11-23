@@ -8,19 +8,22 @@ import Control.Monad.Reader (ReaderT, ask, lift, runReaderT, void)
 import Data.Map qualified as M
 import Data.Monoid (Last (..))
 import Ledger.Contexts (pubKeyHash)
-import Plutus.Contract.Test (CheckOptions, TracePredicate, Wallet (..), checkPredicateOptions, defaultCheckOptions, emulatorConfig, walletPubKey)
+import Plutus.Contract.Test (CheckOptions, TracePredicate, Wallet (..), 
+  checkPredicateOptions, defaultCheckOptions, emulatorConfig, walletPubKey)
 import Plutus.Trace.Effects.EmulatedWalletAPI (EmulatedWalletAPI)
 import Plutus.Trace.Effects.EmulatorControl (EmulatorControl)
 import Plutus.Trace.Effects.RunContract (RunContract)
 import Plutus.Trace.Effects.Waiting (Waiting)
-import Plutus.Trace.Emulator (EmulatorRuntimeError (GenericError), EmulatorTrace, activateContractWallet, callEndpoint, initialChainState, observableState, throwError, waitNSlots)
+import Plutus.Trace.Emulator (EmulatorRuntimeError (GenericError), 
+  EmulatorTrace, activateContractWallet, callEndpoint, initialChainState, 
+  observableState, throwError, waitNSlots)
 import Plutus.V1.Ledger.Ada (adaSymbol, adaToken)
 import Plutus.V1.Ledger.Value (Value, singleton)
 import PlutusTx.Prelude hiding (foldMap, pure)
 
 import Test.Tasty (TestTree)
 import Test.Utils (next)
-import Prelude (Applicative (..), String, foldMap)
+import Prelude qualified as Hask -- (Applicative (..), String, foldMap)
 
 import Mlabs.Emulator.Scene (Scene, owns)
 import Mlabs.Emulator.Types (adaCoin)
@@ -46,16 +49,19 @@ callStartNft wal = do
   oState <- observableState hAdmin
   aSymbol <- case getLast oState of
     Nothing -> throwError $ GenericError "App Symbol Could not be established."
-    Just aS -> pure aS
+    Just aS -> Hask.pure aS
   void $ waitNSlots 1
-  pure aSymbol
+  Hask.pure aSymbol
 
-type ScriptM a = ReaderT NftAppSymbol (Eff '[RunContract, Waiting, EmulatorControl, EmulatedWalletAPI, LogMsg String, Error EmulatorRuntimeError]) a
+type ScriptM a = ReaderT NftAppSymbol (Eff '[RunContract, Waiting, 
+  EmulatorControl, EmulatedWalletAPI, LogMsg Hask.String, 
+  Error EmulatorRuntimeError]) a
 
 type Script = ScriptM ()
 
 checkOptions :: CheckOptions
-checkOptions = defaultCheckOptions & emulatorConfig . initialChainState .~ Left initialDistribution
+checkOptions = defaultCheckOptions & emulatorConfig . 
+  initialChainState .~ Left initialDistribution
 
 -- | Wallets that are used for testing.
 w1, w2, w3 :: Wallet
@@ -85,7 +91,7 @@ userMint wal mp = do
     oState <- observableState hdl
     case getLast oState of
       Nothing -> throwError $ GenericError "Could not mint NFT"
-      Just nftId -> pure nftId
+      Just nftId -> Hask.pure nftId
 
 userSetPrice :: Wallet -> SetPriceParams -> Script
 userSetPrice wal sp = do
@@ -120,12 +126,13 @@ initialDistribution =
 ownsAda :: Wallet -> Integer -> Scene
 ownsAda wal amount = wal `owns` [(adaCoin, amount)]
 
-check :: String -> TracePredicate -> Wallet -> Script -> TestTree
-check msg assertions wal script = checkPredicateOptions checkOptions msg assertions (runScript wal script)
+check :: Hask.String -> TracePredicate -> Wallet -> Script -> TestTree
+check msg assertions wal script = 
+  checkPredicateOptions checkOptions msg assertions (runScript wal script)
 
 -- | Scene without any transfers
 noChangesScene :: Scene
-noChangesScene = foldMap (`ownsAda` 0) [w1, w2, w3]
+noChangesScene = Hask.foldMap (`ownsAda` 0) [w1, w2, w3]
 
 artwork1 :: MintParams
 artwork1 =

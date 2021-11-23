@@ -24,6 +24,8 @@ instance Functor (PlutusState st) where
     where
       g (v, st) = (f v, st)
 
+  -- >>>
+
 instance Applicative (PlutusState st) where
   {-# INLINEABLE pure #-}
   pure a = StateT (\st -> Right (a, st))

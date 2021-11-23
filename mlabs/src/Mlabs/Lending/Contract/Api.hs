@@ -55,7 +55,7 @@ import GHC.Generics (Generic)
 import Playground.Contract (FromJSON, ToJSON, ToSchema)
 import Plutus.Contract (type (.\/))
 import Plutus.V1.Ledger.Crypto (PubKeyHash)
-import Prelude qualified as Hask (Eq, Show)
+import Prelude qualified as Hask -- (Eq, Show)
 
 import Mlabs.Lending.Logic.Types qualified as Types
 import Mlabs.Plutus.Contract (Call, IsEndpoint (..))
@@ -99,7 +99,8 @@ data SwapBorrowRateModel = SwapBorrowRateModel
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
--- | Transfer portion of asset from the user's wallet to the contract, locked as the user's Collateral
+-- | Transfer portion of asset from the user's wallet to the contract, 
+-- locked as the user's Collateral
 data AddCollateral = AddCollateral
   { -- | which Asset to use as collateral
     addCollateral'asset :: Types.Coin
@@ -254,27 +255,48 @@ class IsEndpoint a => IsQueryAct a where
 
 -- user acts
 
-instance IsUserAct Deposit where toUserAct Deposit {..} = Types.DepositAct deposit'amount deposit'asset
-instance IsUserAct Borrow where toUserAct Borrow {..} = Types.BorrowAct borrow'amount borrow'asset (fromInterestRateFlag borrow'rate)
-instance IsUserAct Repay where toUserAct Repay {..} = Types.RepayAct repay'amount repay'asset (fromInterestRateFlag repay'rate)
-instance IsUserAct SwapBorrowRateModel where toUserAct SwapBorrowRateModel {..} = Types.SwapBorrowRateModelAct swapRate'asset (fromInterestRateFlag swapRate'rate)
-instance IsUserAct AddCollateral where toUserAct AddCollateral {..} = Types.AddCollateralAct addCollateral'asset addCollateral'amount
-instance IsUserAct RemoveCollateral where toUserAct RemoveCollateral {..} = Types.RemoveCollateralAct removeCollateral'asset removeCollateral'amount
-instance IsUserAct Withdraw where toUserAct Withdraw {..} = Types.WithdrawAct withdraw'asset withdraw'amount
-instance IsUserAct LiquidationCall where toUserAct LiquidationCall {..} = Types.LiquidationCallAct liquidationCall'collateral (Types.BadBorrow (Types.UserId liquidationCall'debtUser) liquidationCall'debtAsset) liquidationCall'debtToCover liquidationCall'receiveAToken
+instance IsUserAct Deposit where 
+  toUserAct Deposit {..} = Types.DepositAct deposit'amount deposit'asset
+instance IsUserAct Borrow where 
+  toUserAct Borrow {..} = 
+    Types.BorrowAct borrow'amount borrow'asset (fromInterestRateFlag borrow'rate)
+instance IsUserAct Repay where 
+  toUserAct Repay {..} = Types.RepayAct repay'amount repay'asset (fromInterestRateFlag repay'rate)
+instance IsUserAct SwapBorrowRateModel where 
+  toUserAct SwapBorrowRateModel {..} = 
+    Types.SwapBorrowRateModelAct swapRate'asset 
+      (fromInterestRateFlag swapRate'rate)
+instance IsUserAct AddCollateral where 
+  toUserAct AddCollateral {..} = 
+    Types.AddCollateralAct addCollateral'asset addCollateral'amount
+instance IsUserAct RemoveCollateral where 
+  toUserAct RemoveCollateral {..} = 
+    Types.RemoveCollateralAct removeCollateral'asset removeCollateral'amount
+instance IsUserAct Withdraw where 
+  toUserAct Withdraw {..} = Types.WithdrawAct withdraw'asset withdraw'amount
+instance IsUserAct LiquidationCall where 
+  toUserAct LiquidationCall {..} = 
+    Types.LiquidationCallAct liquidationCall'collateral 
+      (Types.BadBorrow (Types.UserId liquidationCall'debtUser) 
+        liquidationCall'debtAsset) 
+      liquidationCall'debtToCover liquidationCall'receiveAToken
 
 -- price acts
 
-instance IsPriceAct SetAssetPrice where toPriceAct (SetAssetPrice asset rate) = Types.SetAssetPriceAct asset rate
+instance IsPriceAct SetAssetPrice where 
+  toPriceAct (SetAssetPrice asset rate) = Types.SetAssetPriceAct asset rate
 
 -- govern acts
 
-instance IsGovernAct AddReserve where toGovernAct (AddReserve cfg) = Types.AddReserveAct cfg
+instance IsGovernAct AddReserve where 
+  toGovernAct (AddReserve cfg) = Types.AddReserveAct cfg
 
 -- query acts
 
-instance IsQueryAct QueryCurrentBalance where toQueryAct (QueryCurrentBalance ()) = Types.QueryCurrentBalanceAct ()
-instance IsQueryAct QueryInsolventAccounts where toQueryAct (QueryInsolventAccounts ()) = Types.QueryInsolventAccountsAct ()
+instance IsQueryAct QueryCurrentBalance where 
+  toQueryAct (QueryCurrentBalance ()) = Types.QueryCurrentBalanceAct ()
+instance IsQueryAct QueryInsolventAccounts where 
+  toQueryAct (QueryInsolventAccounts ()) = Types.QueryInsolventAccountsAct ()
 
 -- endpoint names
 

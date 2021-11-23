@@ -10,7 +10,7 @@ import Data.Functor (void)
 import Data.Semigroup (Last (..))
 
 import PlutusTx.Prelude hiding (Eq (..), mconcat, (<>))
-import Prelude (Eq (..), mconcat, (<>))
+import Prelude qualified as Hask -- (Eq (..), mconcat, (<>))
 
 import Plutus.Contract.Test (Wallet, assertAccumState, checkPredicateOptions)
 import Plutus.Trace.Emulator qualified as Trace
@@ -84,19 +84,27 @@ test =
     check msg scene = checkPredicateOptions checkOptions msg (checkScene scene)
     testDeposit = check "Deposit (can mint aTokens)" depositScene depositScript
     testBorrow = check "Borrow" borrowScene borrowScript
-    testBorrowNoCollateral = check "Borrow without collateral" borrowWithoutCollateralScene borrowWithoutCollateralScript
-    testBorrowNotEnoughCollateral = check "Borrow with not enough collateral" borrowNotEnoughCollateralScene borrowNotEnoughCollateralScript
-    testWithdraw = check "Withdraw (can burn aTokens)" withdrawScene withdrawScript
+    testBorrowNoCollateral = 
+      check "Borrow without collateral" borrowWithoutCollateralScene 
+        borrowWithoutCollateralScript
+    testBorrowNotEnoughCollateral = check "Borrow with not enough collateral" 
+      borrowNotEnoughCollateralScene borrowNotEnoughCollateralScript
+    testWithdraw = check "Withdraw (can burn aTokens)" withdrawScene 
+      withdrawScript
     testRepay = check "Repay" repayScene repayScript
     testLiquidationCall =
       testGroup
         "Liquidation"
-        [ check "Liquidation call aToken" (liquidationCallScene True) (liquidationCallScript True)
-        , check "Liquidation call real currency" (liquidationCallScene False) (liquidationCallScript False)
+        [ check "Liquidation call aToken" (liquidationCallScene True) 
+          (liquidationCallScript True)
+        , check "Liquidation call real currency" (liquidationCallScene False) 
+          (liquidationCallScript False)
         ]
-    testQueryAllLendexes = check "QueryAllLendexes works" queryAllLendexesScene queryAllLendexesScript
+    testQueryAllLendexes = check "QueryAllLendexes works" queryAllLendexesScene 
+      queryAllLendexesScript
 
--- testQueryCurrentBalance = check "QeuryCurrentBalance works" queryCurrentBalanceScene queryCurrentBalanceScript
+-- testQueryCurrentBalance = check "QeuryCurrentBalance works" 
+--  queryCurrentBalanceScene queryCurrentBalanceScript
 -- testQueryInsolventAccounts =
 --------------------------------------------------------------------------------
 -- deposit test
@@ -117,7 +125,8 @@ depositScript = do
                   , coinCfg'liquidationBonus = 5 R.% 100
                   }
             )
-            [(adaCoin, aAda), (coin1, aToken1), (coin2, aToken2), (coin3, aToken3)]
+            [(adaCoin, aAda), (coin1, aToken1), (coin2, aToken2), 
+            (coin3, aToken3)]
       , sp'initValue = assetClassValue adaCoin 1000
       , sp'admins = [toPubKeyHash wAdmin]
       , sp'oracles = [toPubKeyHash wAdmin]
@@ -132,7 +141,7 @@ depositScript = do
 
 depositScene :: Scene
 depositScene =
-  mconcat
+  Hask.mconcat
     [ appAddress (L.lendexAddress lendexId)
     , appOwns [(coin1, 50), (coin2, 50), (coin3, 50), (adaCoin, 1000)]
     , user w1 coin1 aCoin1
@@ -167,10 +176,10 @@ borrowScript = do
   next
 
 borrowScene :: Scene
-borrowScene = depositScene <> borrowChange
+borrowScene = depositScene Hask.<> borrowChange
   where
     borrowChange =
-      mconcat
+      Hask.mconcat
         [ w1 `owns` [(aCoin1, -50), (coin2, 30)]
         , appOwns [(aCoin1, 50), (coin2, -30)]
         ]
@@ -202,7 +211,8 @@ borrowWithoutCollateralScene = depositScene
 
 {- | 3 users deposit 50 coins to lending app
  and first user wants to borrow too much.
- Only allocation of collateral succeeds for the first user but borrow step should fail.
+ Only allocation of collateral succeeds for the first user but borrow step 
+ should fail.
 -}
 borrowNotEnoughCollateralScript :: Trace.EmulatorTrace ()
 borrowNotEnoughCollateralScript = do
@@ -223,9 +233,10 @@ borrowNotEnoughCollateralScript = do
 
 -- | Only allocation of collateral succeeds but borrow step should fail.
 borrowNotEnoughCollateralScene :: Scene
-borrowNotEnoughCollateralScene = depositScene <> setCollateralChange
+borrowNotEnoughCollateralScene = depositScene Hask.<> setCollateralChange
   where
-    setCollateralChange = mconcat [w1 `owns` [(aCoin1, -50)], appOwns [(aCoin1, 50)]]
+    setCollateralChange = 
+      Hask.mconcat [w1 `owns` [(aCoin1, -50)], appOwns [(aCoin1, 50)]]
 
 --------------------------------------------------------------------------------
 -- withdraw test
@@ -243,9 +254,10 @@ withdrawScript = do
       }
 
 withdrawScene :: Scene
-withdrawScene = depositScene <> withdrawChange
+withdrawScene = depositScene Hask.<> withdrawChange
   where
-    withdrawChange = mconcat [w1 `owns` [(aCoin1, -25), (coin1, 25)], appOwns [(coin1, -25)]]
+    withdrawChange = 
+      Hask.mconcat [w1 `owns` [(aCoin1, -25), (coin1, 25)], appOwns [(coin1, -25)]]
 
 --------------------------------------------------------------------------------
 -- repay test
@@ -262,9 +274,9 @@ repayScript = do
   next
 
 repayScene :: Scene
-repayScene = borrowScene <> repayChange
+repayScene = borrowScene Hask.<> repayChange
   where
-    repayChange = mconcat [w1 `owns` [(coin2, -20)], appOwns [(coin2, 20)]]
+    repayChange = Hask.mconcat [w1 `owns` [(coin2, -20)], appOwns [(coin2, 20)]]
 
 --------------------------------------------------------------------------------
 -- liquidation call test
@@ -284,10 +296,10 @@ liquidationCallScript receiveAToken = do
   next
 
 liquidationCallScene :: Bool -> Scene
-liquidationCallScene receiveAToken = borrowScene <> liquidationCallChange
+liquidationCallScene receiveAToken = borrowScene Hask.<> liquidationCallChange
   where
     liquidationCallChange =
-      mconcat
+      Hask.mconcat
         [ w2 `owns` [(receiveCoin, 20), (coin2, -10), (adaCoin, 1)]
         , appOwns [(adaCoin, -1), (coin2, 10), (receiveCoin, -20)]
         ]
@@ -317,7 +329,8 @@ queryAllLendexesScript = do
                     , coinCfg'liquidationBonus = 5 R.% 100
                     }
               )
-              [(adaCoin, aAda), (coin1, aToken1), (coin2, aToken2), (coin3, aToken3)]
+              [(adaCoin, aAda), (coin1, aToken1), 
+              (coin2, aToken2), (coin3, aToken3)]
         , sp'initValue = assetClassValue adaCoin 1000
         , sp'admins = [toPubKeyHash wAdmin]
         , sp'oracles = [toPubKeyHash wAdmin]
@@ -351,14 +364,16 @@ testQuerrySupportedCurrencies =
     ( assertAccumState
         contract
         tag
-        (== expectedQueryResult)
-        "contract state after QuerrySupportedCurrencies call doesn't match expected"
+        (Hask.== expectedQueryResult)
+        "contract state after QuerrySupportedCurrencies call \
+        \doesn't match expected"
     )
     $ do
       initLendex lendexId
       next
       hdl <- Trace.activateContractWallet w1 contract
-      void $ callEndpoint' @Api.QuerySupportedCurrencies hdl (Api.QuerySupportedCurrencies ())
+      void $ callEndpoint' @Api.QuerySupportedCurrencies hdl 
+        (Api.QuerySupportedCurrencies ())
       next
   where
     initLendex lid = L.callStartLendex lid wAdmin . StartLendex $ sp
@@ -367,7 +382,8 @@ testQuerrySupportedCurrencies =
     coins = [(adaCoin, aAda, 1 R.% 1), (coin1, aToken1, 1 R.% 2)]
     expectedQueryResult =
       Just . Last . QueryResSupportedCurrencies $
-        (\(coin, aCoin, rate) -> SupportedCurrency coin aCoin (CoinRate rate 0)) <$> coins
+        (\(coin, aCoin, rate) -> 
+          SupportedCurrency coin aCoin (CoinRate rate 0)) <$> coins
     sp =
       StartParams
         { sp'coins =

@@ -14,7 +14,7 @@ module Mlabs.Plutus.Contract (
 ) where
 
 import PlutusTx.Prelude
-import Prelude (String)
+import Prelude qualified as Hask -- (String)
 
 import Control.Lens (view, (^?))
 import Control.Monad (forever)
@@ -27,7 +27,8 @@ import Data.OpenUnion (Member)
 import Data.Proxy (Proxy (..))
 import Data.Row (KnownSymbol)
 import GHC.TypeLits (Symbol, symbolVal)
-import Ledger (Datum (..), TxOut (txOutDatumHash), TxOutTx (txOutTxOut, txOutTxTx), lookupDatum)
+import Ledger (Datum (..), TxOut (txOutDatumHash), 
+  TxOutTx (txOutTxOut, txOutTxTx), lookupDatum)
 import Ledger.Tx (ChainIndexTxOut, ciTxOutDatum)
 import Mlabs.Data.List (maybeRight)
 import Playground.Contract (Contract, ToSchema)
@@ -65,16 +66,19 @@ readDatum' txOut = do
  Using the ChainIndexTx returned by `utxosTxOutTxAt`
 -}
 readChainIndexTxDatum :: FromData a => ChainIndexTx -> [Maybe a]
-readChainIndexTxDatum = fmap (snd . second (\(Datum e) -> PlutusTx.fromBuiltinData e)) . M.toList . view citxData
+readChainIndexTxDatum = fmap (snd . second (\(Datum e) -> 
+  PlutusTx.fromBuiltinData e)) . M.toList . view citxData
 
 type Call a = Contract.Endpoint (EndpointSymbol a) a
 
-class (ToSchema a, ToJSON a, FromJSON a, KnownSymbol (EndpointSymbol a)) => IsEndpoint a where
-  type EndpointSymbol a :: Symbol
+class (ToSchema a, ToJSON a, FromJSON a, KnownSymbol (EndpointSymbol a)) => 
+  IsEndpoint a where
+    type EndpointSymbol a :: Symbol
 
 callEndpoint' ::
   forall ep w s e effs.
-  (IsEndpoint ep, ContractConstraints s, Contract.HasEndpoint (EndpointSymbol ep) ep s, Member RunContract effs) =>
+  (IsEndpoint ep, ContractConstraints s, 
+  Contract.HasEndpoint (EndpointSymbol ep) ep s, Member RunContract effs) =>
   ContractHandle w s e ->
   ep ->
   Eff effs ()
@@ -90,13 +94,14 @@ getEndpoint ::
   Contract.Promise w s e b
 getEndpoint = Contract.endpoint @(EndpointSymbol a)
 
-endpointName :: forall a. IsEndpoint a => a -> String
+endpointName :: forall a. IsEndpoint a => a -> Hask.String
 endpointName a = symbolVal (toProxy a)
   where
     toProxy :: a -> Proxy (EndpointSymbol a)
     toProxy _ = Proxy
 
-callSimulator :: IsEndpoint a => Contract.ContractInstanceId -> a -> Simulation (Builtin schema) ()
+callSimulator :: IsEndpoint a => Contract.ContractInstanceId -> a 
+              -> Simulation (Builtin schema) ()
 callSimulator cid input = do
   void $ callEndpointOnInstance cid (endpointName input) input
   void $ waitNSlots 1

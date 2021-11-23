@@ -8,7 +8,7 @@ module Test.Governance.Contract (
 import Data.Functor (void)
 import Data.Text (Text)
 import PlutusTx.Prelude hiding (error)
-import Prelude (Show (..), error)
+import Prelude qualified as Hask -- (Show (..), error)
 
 -- import Data.Monoid ((<>), mempty)
 
@@ -57,7 +57,9 @@ setup ::
   (Member RunContract effs) =>
   Wallet ->
   (Wallet, Gov.GovernanceContract (), ContractInstanceTag, Eff effs Handle)
-setup wallet = (wallet, theContract, Trace.walletInstanceTag wallet, Trace.activateContractWallet wallet theContract)
+setup wallet = 
+  (wallet, theContract, Trace.walletInstanceTag wallet, 
+  Trace.activateContractWallet wallet theContract)
 
 test :: TestTree
 test =
@@ -108,17 +110,21 @@ testDepositHappyPath =
 testInsuficcientGOVFails :: TestTree
 testInsuficcientGOVFails =
   let (wallet, contract, tag, activateWallet) = setup Test.fstWalletWithGOV
-      errCheck = ("InsufficientFunds" `T.isInfixOf`) -- todo probably matching some concrete error type will be better
+      errCheck = ("InsufficientFunds" `T.isInfixOf`) -- todo probably matching
+                                                     -- some concrete error type 
+                                                     -- will be better
    in checkPredicateOptions
         Test.checkOptions
         "Cant deposit more GOV than wallet owns"
         ( assertNoFailedTransactions
-            .&&. assertContractError contract tag errCheck "Should fail with `InsufficientFunds`"
+            .&&. assertContractError contract tag errCheck 
+              "Should fail with `InsufficientFunds`"
             .&&. walletFundsChange wallet mempty
         )
         $ do
           hdl <- activateWallet
-          void $ callEndpoint' @Deposit hdl (Deposit 1000) -- TODO get value from wallet
+          void $ callEndpoint' @Deposit hdl (Deposit 1000) -- TODO get 
+                                                           -- value from wallet
           next
 
 testCantDepositWithoutGov :: TestTree
@@ -129,7 +135,8 @@ testCantDepositWithoutGov =
         Test.checkOptions
         "Cant deposit with no GOV in wallet"
         ( assertNoFailedTransactions
-            .&&. assertContractError contract tag errCheck "Should fail with `InsufficientFunds`"
+            .&&. assertContractError contract tag errCheck 
+              "Should fail with `InsufficientFunds`"
             .&&. walletFundsChange wallet mempty
         )
         $ do
@@ -138,9 +145,10 @@ testCantDepositWithoutGov =
           next
 
 {- A bit special case at the moment:
-   if we try to deposit negative amount without making (positive) deposit beforehand,
-   transaction will have to burn xGOV tokens:
-   (see in `deposit`: `xGovValue = Validation.xgovSingleton params.nft (coerce ownPkh) amnt`)
+   if we try to deposit negative amount without making (positive) deposit 
+   beforehand, transaction will have to burn xGOV tokens:
+   (see in `deposit`: `xGovValue = 
+     Validation.xgovSingleton params.nft (coerce ownPkh) amnt`)
    But without prior deposit wallet won't have xGOV tokens to burn,
    so `Contract` will throw `InsufficientFunds` exception
 -}
@@ -152,7 +160,8 @@ testCantDepositNegativeAmount1 =
         Test.checkOptions
         "Cant deposit negative GOV case 1"
         ( assertNoFailedTransactions
-            .&&. assertContractError contract tag errCheck "Should fail with `InsufficientFunds`"
+            .&&. assertContractError contract tag errCheck 
+              "Should fail with `InsufficientFunds`"
             .&&. walletFundsChange wallet mempty
         )
         $ do
@@ -161,7 +170,8 @@ testCantDepositNegativeAmount1 =
           next
 
 testCantDepositNegativeAmount2 :: TestTree
-testCantDepositNegativeAmount2 = checkPredicateOptions Test.checkOptions msg predicates actions
+testCantDepositNegativeAmount2 = 
+  checkPredicateOptions Test.checkOptions msg predicates actions
   where
     msg = "Cannot deposit negative GOV case 2"
 
@@ -179,7 +189,8 @@ testCantDepositNegativeAmount2 = checkPredicateOptions Test.checkOptions msg pre
     predicates =
       concatPredicates
         [ assertFailedTransaction errCheck
-        , walletFundsChange wallet $ mconcat [Test.gov (negate depoAmt), Test.xgov wallet depoAmt]
+        , walletFundsChange wallet $ 
+            mconcat [Test.gov (negate depoAmt), Test.xgov wallet depoAmt]
         , valueAtAddress Test.scriptAddress (== Test.gov depoAmt)
         ]
       where
@@ -189,7 +200,8 @@ testCantDepositNegativeAmount2 = checkPredicateOptions Test.checkOptions msg pre
 
 -- withdraw tests
 testFullWithdraw :: TestTree
-testFullWithdraw = checkPredicateOptions Test.checkOptions msg predicates actions
+testFullWithdraw = 
+  checkPredicateOptions Test.checkOptions msg predicates actions
   where
     msg = "Full withdraw"
     depoAmt = 50
@@ -217,7 +229,8 @@ testPartialWithdraw =
         Test.checkOptions
         "Partial withdraw"
         ( assertNoFailedTransactions
-            .&&. walletFundsChange wallet (Test.gov (negate diff) <> Test.xgov wallet diff)
+            .&&. walletFundsChange wallet 
+              (Test.gov (negate diff) <> Test.xgov wallet diff)
             .&&. valueAtAddress Test.scriptAddress (== Test.gov diff)
         )
         $ do
@@ -225,7 +238,8 @@ testPartialWithdraw =
           next
           void $ callEndpoint' @Deposit hdl (Deposit depoAmt)
           next
-          void $ callEndpoint' @Withdraw hdl (Withdraw $ Test.xgovEP wallet withdrawAmt)
+          void $ callEndpoint' @Withdraw hdl 
+            (Withdraw $ Test.xgovEP wallet withdrawAmt)
           next
 
 {- What behaviour expected here:
@@ -235,7 +249,7 @@ testPartialWithdraw =
     ?
 -}
 testCantWithdrawMoreThandeposited :: TestTree
-testCantWithdrawMoreThandeposited = error "TBD"
+testCantWithdrawMoreThandeposited = Hask.error "TBD"
 
 testCantWithdrawNegativeAmount :: TestTree
 testCantWithdrawNegativeAmount =
@@ -257,8 +271,9 @@ testCantWithdrawNegativeAmount =
           hdl <- activateWallet
           void $ callEndpoint' @Deposit hdl (Deposit depoAmt)
           next
-          void $ callEndpoint' @Withdraw hdl (Withdraw $ Test.xgovEP wallet (negate 1))
+          void $ callEndpoint' @Withdraw hdl 
+            (Withdraw $ Test.xgovEP wallet (negate 1))
           next
 
 testCanWithdrawOnlyxGov :: TestTree
-testCanWithdrawOnlyxGov = error "TBD"
+testCanWithdrawOnlyxGov = Hask.error "TBD" -- ???

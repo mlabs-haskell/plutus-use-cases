@@ -30,7 +30,7 @@ import GHC.Generics (Generic)
 import Playground.Contract (ToSchema, TxOutRef)
 import Plutus.V1.Ledger.Value (TokenName (..))
 import PlutusTx qualified
-import Prelude qualified as Hask (Eq, Show)
+import Prelude qualified as Hask -- (Eq, Show)
 
 import Mlabs.Emulator.Types (UserId (..))
 
@@ -71,7 +71,8 @@ instance Eq NftId where
 {-# INLINEABLE initNft #-}
 
 -- | Initialise NFT
-initNft :: TxOutRef -> UserId -> BuiltinByteString -> Rational -> Maybe Integer -> Nft
+initNft :: TxOutRef -> UserId -> BuiltinByteString -> Rational -> Maybe Integer 
+        -> Nft
 initNft nftInRef author content share mPrice =
   Nft
     { nft'id = toNftId nftInRef content

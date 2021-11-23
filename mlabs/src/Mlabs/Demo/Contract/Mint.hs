@@ -30,7 +30,7 @@ module Mlabs.Demo.Contract.Mint (
 ) where
 
 import PlutusTx.Prelude hiding (Semigroup (..))
-import Prelude (Semigroup (..))
+import Prelude qualified as Hask -- (Semigroup (..))
 
 import Control.Monad (forever, void)
 import Data.Aeson (FromJSON, ToJSON)
@@ -40,7 +40,8 @@ import GHC.Generics (Generic)
 import Ledger qualified
 import Ledger.Ada qualified as Ada
 import Ledger.Constraints qualified as Constraints
-import Ledger.Contexts (ScriptContext, TxInfo, TxOut, scriptContextTxInfo, txInfoMint, txInfoOutputs, txOutAddress, txOutValue)
+import Ledger.Contexts (ScriptContext, TxInfo, TxOut, scriptContextTxInfo, 
+  txInfoMint, txInfoOutputs, txOutAddress, txOutValue)
 import Ledger.Scripts (Datum (Datum), MintingPolicy, mkMintingPolicyScript)
 import Ledger.Typed.Scripts qualified as Scripts
 import Ledger.Value (CurrencySymbol, TokenName)
@@ -81,7 +82,8 @@ mkPolicy burnAddr _ ctx =
     isPaid :: Bool
     isPaid =
       let adaVal =
-            Ada.fromValue $ mconcat $ txOutValue <$> filter isToBurnAddr outputs
+            Ada.fromValue $ mconcat $ txOutValue <$> 
+              filter isToBurnAddr outputs
        in Ada.getLovelace adaVal >= forgedQty * tokenToLovelaceXR
 
     isForgeValid :: Bool
@@ -115,7 +117,8 @@ data MintParams = MintParams
 type MintSchema =
   Endpoint "mint" MintParams
 
--- | Generates tokens with the specified name/amount and burns an equal amount of Ada.
+-- | Generates tokens with the specified name/amount and burns an equal amount 
+-- of Ada.
 mintContract :: MintParams -> Contract w MintSchema Text ()
 mintContract (MintParams tn amt) = do
   let payVal = Ada.lovelaceValueOf $ amt * tokenToLovelaceXR
@@ -126,7 +129,7 @@ mintContract (MintParams tn amt) = do
           burnValHash
           (Datum $ PlutusTx.toBuiltinData ())
           payVal
-          <> Constraints.mustMintValue forgeVal
+          Hask.<> Constraints.mustMintValue forgeVal
   ledgerTx <- submitTxConstraintsWith @Void lookups tx
   void $ awaitTxConfirmed $ Ledger.txId ledgerTx
 

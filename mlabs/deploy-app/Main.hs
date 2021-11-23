@@ -3,7 +3,7 @@ module Main where
 import PlutusTx.Prelude hiding (error)
 import System.Environment (getArgs)
 import System.Exit (die)
-import Prelude (IO, String, error, print, undefined)
+import Prelude qualified as Hask -- (IO, String, error, print, undefined)
 
 import Mlabs.Emulator.Types (UserId (..))
 import Mlabs.Nft.Contract.Forge as F
@@ -17,7 +17,7 @@ import Cardano.Ledger.Alonzo.Data qualified as Alonzo
 import Codec.Serialise
 import Ledger.Typed.Scripts.Validators as VS
 import Plutus.V1.Ledger.Api (MintingPolicy, TxOutRef, Validator)
-import Plutus.V1.Ledger.Api qualified as Plutus
+import Plutus.V1.Ledger.Api qualified as Ledger
 import PlutusTx
 
 import Data.Aeson as Json
@@ -28,7 +28,7 @@ import Data.ByteString as DB
 import Mlabs.Deploy.Governance
 import Mlabs.Deploy.Nft
 
-main :: IO ()
+main :: Hask.IO ()
 main = do
   args <- getArgs
   case args of

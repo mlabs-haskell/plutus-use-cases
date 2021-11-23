@@ -3,7 +3,7 @@ module Mlabs.Deploy.Governance (
 ) where
 
 import PlutusTx.Prelude hiding (error)
-import Prelude (FilePath, IO)
+import Prelude qualified as Hask -- (FilePath, IO)
 
 import Mlabs.Governance.Contract.Validation
 
@@ -12,15 +12,16 @@ import Ledger.Typed.Scripts.Validators (validatorScript)
 
 import Mlabs.Deploy.Utils
 
-outDir :: FilePath
+outDir :: Hask.FilePath
 outDir = "/home/mike/dev/mlabs/contract_deploy/node_mnt/plutus_files"
 
 -- serializeGovernance txId txIx ownerPkh content outDir = do
-serializeGovernance :: IO ()
+serializeGovernance :: Hask.IO ()
 serializeGovernance = do
   let acGov =
         AssetClassGov
-          "fda1b6b487bee2e7f64ecf24d24b1224342484c0195ee1b7b943db50" -- MintingPolicy.plutus
+        -- MintingPolicy.plutus
+          "fda1b6b487bee2e7f64ecf24d24b1224342484c0195ee1b7b943db50" 
           "GOV"
       validator = validatorScript $ govInstance acGov
       policy = xGovMintingPolicy acGov

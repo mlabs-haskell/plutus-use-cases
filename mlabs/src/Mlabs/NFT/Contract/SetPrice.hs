@@ -5,7 +5,7 @@ module Mlabs.NFT.Contract.SetPrice (
 ) where
 
 import PlutusTx.Prelude hiding (mconcat, mempty, (<>))
-import Prelude (mconcat)
+-- import Prelude (mconcat)
 import Prelude qualified as Hask
 
 import Control.Lens ((^.))
@@ -54,14 +54,14 @@ setPrice symbol SetPriceParams {..} = do
       nftVal = pi'CITxO ^. ciTxOutValue
       action = SetPriceAct sp'price symbol
       lookups =
-        mconcat
+        Hask.mconcat
           [ Constraints.unspentOutputs $ Map.fromList [ownOrefTxOut]
           , Constraints.unspentOutputs $ Map.fromList [(pi'TOR, pi'CITxO)]
           , Constraints.typedValidatorLookups txPolicy
           , Constraints.otherScript (validatorScript txPolicy)
           ]
       tx =
-        mconcat
+        Hask.mconcat
           [ Constraints.mustPayToTheScript nftDatum nftVal
           , Constraints.mustSpendPubKeyOutput (fst ownOrefTxOut)
           , Constraints.mustSpendScriptOutput
@@ -73,7 +73,8 @@ setPrice symbol SetPriceParams {..} = do
   Contract.tell . Last . Just $ sp'nftId
   Contract.logInfo @Hask.String "set-price successful!"
   where
-    updateDatum node = node {node'information = (node'information node) {info'price = sp'price}}
+    updateDatum node = 
+      node {node'information = (node'information node) {info'price = sp'price}}
 
     negativePrice = case sp'price of
       Nothing -> False

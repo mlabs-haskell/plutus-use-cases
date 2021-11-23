@@ -14,7 +14,8 @@ import PlutusTx.Prelude
 
 -- import Prelude qualified as Hask (String)
 
-import Mlabs.Lending.Logic.Types (Reserve (..), ReserveInterest (..), Wallet (..))
+import Mlabs.Lending.Logic.Types (Reserve (..), ReserveInterest (..), 
+  Wallet (..))
 import Mlabs.Lending.Logic.Types qualified as Types
 import PlutusTx.Ratio qualified as R
 
@@ -47,7 +48,8 @@ updateReserveInterestRates currentTime reserve =
 
 {-# INLINEABLE getYearDelta #-}
 getYearDelta :: Integer -> Integer -> Rational
-getYearDelta t0 t1 = R.fromInteger (max 0 $ t1 - t0) * secondsPerSlot * R.recip secondsPerYear
+getYearDelta t0 t1 = R.fromInteger (max 0 $ t1 - t0) * secondsPerSlot * 
+  R.recip secondsPerYear
   where
     secondsPerSlot = R.fromInteger 1
     secondsPerYear = R.fromInteger 31622400
@@ -79,18 +81,22 @@ getUtilisation Types.Wallet {..} = wallet'borrow R.% liquidity
 getBorrowRate :: Types.InterestModel -> Rational -> Rational
 getBorrowRate Types.InterestModel {..} u
   | u <= uOptimal = im'base + im'slope1 * (u * R.recip uOptimal)
-  | otherwise = im'base + im'slope2 * (u - uOptimal) * R.recip (R.fromInteger 1 - uOptimal)
+  | otherwise = im'base + im'slope2 * (u - uOptimal) * 
+                  R.recip (R.fromInteger 1 - uOptimal)
   where
     uOptimal = im'optimalUtilisation
 
 {-# INLINEABLE addDeposit #-}
-addDeposit :: Rational -> Integer -> Types.Wallet -> Either BuiltinByteString Types.Wallet
+addDeposit :: Rational -> Integer -> Types.Wallet 
+           -> Either BuiltinByteString Types.Wallet
 addDeposit normalisedIncome amount wallet
   | newDeposit >= 0 =
     Right
       wallet
         { wallet'deposit = max 0 newDeposit
-        , wallet'scaledBalance = max (R.fromInteger 0) $ wallet'scaledBalance wallet + R.fromInteger amount * R.recip normalisedIncome
+        , wallet'scaledBalance = max (R.fromInteger 0) $ 
+          wallet'scaledBalance wallet + 
+          R.fromInteger amount * R.recip normalisedIncome
         }
   | otherwise = Left "Negative deposit"
   where
