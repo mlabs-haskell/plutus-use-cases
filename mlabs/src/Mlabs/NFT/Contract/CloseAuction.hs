@@ -10,7 +10,7 @@ import Prelude qualified as Hask
 
 import Control.Monad (void)
 import Data.Map qualified as Map
-import Data.Monoid (Last (..))
+import Data.Monoid (Last (..), (<>))
 import Data.Text (Text)
 import Text.Printf (printf)
 
@@ -29,6 +29,7 @@ import Ledger.Typed.Scripts (validatorScript)
 import Ledger.Value qualified as Value
 
 import Mlabs.NFT.Contract.Aux
+import Mlabs.NFT.Contract.Fees
 import Mlabs.NFT.Types
 import Mlabs.NFT.Validation
 
@@ -45,6 +46,22 @@ closeAuction symbol (AuctionCloseParams nftId) = do
   auctionState <- maybe (Contract.throwError "Can't close: no auction in progress") pure mauctionState
 
   userUtxos <- getUserUtxos
+  feeRate <- getCurrFeeRate symbol
+  (bidDependentTxConstraints, bidDependentLookupConstraints) <- do
+    case as'highestBid auctionState of
+      Nothing -> Hask.pure ([], [])
+      Just (AuctionBid bid _bidder) ->
+        let feeValue = round $ fromInteger bid * feeRate
+            (amountPaidToOwner, amountPaidToAuthor) =
+              calculateShares (bid - feeValue) (info'share . node'information $ node)
+            payTx =
+              [ Constraints.mustPayToPubKey (getUserId . info'owner . node'information $ node) amountPaidToOwner
+              , Constraints.mustPayToPubKey (getUserId . info'author . node'information $ node) amountPaidToAuthor
+              ]
+         in do
+              (govTx, govLookups) <- getFeesConstraints symbol nftId bid
+              Hask.pure (govTx <> payTx, govLookups)
+
   let newOwner =
         case as'highestBid auctionState of
           Nothing -> info'owner . node'information $ node
@@ -57,34 +74,27 @@ closeAuction symbol (AuctionCloseParams nftId) = do
           { act'symbol = symbol
           }
       lookups =
-        mconcat
+        mconcat $
           [ Constraints.unspentOutputs userUtxos
           , Constraints.unspentOutputs $ Map.fromList [ownOrefTxOut]
           , Constraints.unspentOutputs $ Map.fromList [(pi'TOR, pi'CITxO)]
           , Constraints.typedValidatorLookups txPolicy
           , Constraints.otherScript (validatorScript txPolicy)
           ]
+            <> bidDependentLookupConstraints
 
-      bidDependentTxConstraints =
-        case as'highestBid auctionState of
-          Nothing -> []
-          Just (AuctionBid bid _bidder) ->
-            let (amountPaidToOwner, amountPaidToAuthor) = calculateShares bid (info'share . node'information $ node)
-             in [ Constraints.mustPayToPubKey (getUserId . info'owner . node'information $ node) amountPaidToOwner
-                , Constraints.mustPayToPubKey (getUserId . info'author . node'information $ node) amountPaidToAuthor
-                ]
       tx =
-        mconcat
-          ( [ Constraints.mustPayToTheScript nftDatum nftVal
-            , Constraints.mustIncludeDatum (Datum . PlutusTx.toBuiltinData $ nftDatum)
-            , Constraints.mustSpendPubKeyOutput (fst ownOrefTxOut)
-            , Constraints.mustSpendScriptOutput
-                pi'TOR
-                (Redeemer . PlutusTx.toBuiltinData $ action)
-            , Constraints.mustValidateIn (from $ as'deadline auctionState)
-            ]
-              ++ bidDependentTxConstraints
-          )
+        mconcat $
+          [ Constraints.mustPayToTheScript nftDatum nftVal
+          , Constraints.mustIncludeDatum (Datum . PlutusTx.toBuiltinData $ nftDatum)
+          , Constraints.mustSpendPubKeyOutput (fst ownOrefTxOut)
+          , Constraints.mustSpendScriptOutput
+              pi'TOR
+              (Redeemer . PlutusTx.toBuiltinData $ action)
+          , Constraints.mustValidateIn (from $ as'deadline auctionState)
+          ]
+            <> bidDependentTxConstraints
+
   void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
   Contract.tell . Last . Just . Left $ nftId
   void $ Contract.logInfo @Hask.String $ printf "Closing auction for %s" $ Hask.show nftVal

@@ -4,7 +4,6 @@ module Mlabs.NFT.Contract.Mint (
   mint,
   getDatumsTxsOrdered,
   mintParamsToInfo,
-  InsertPoint (..),
 ) where
 
 import PlutusTx.Prelude hiding (mconcat, mempty, (<>))
@@ -33,17 +32,11 @@ import Mlabs.NFT.Validation
 --------------------------------------------------------------------------------
 -- MINT --
 
--- | Two positions in on-chain list between which new NFT will be "inserted"
-data InsertPoint = InsertPoint
-  { prev :: PointInfo
-  , next :: Maybe PointInfo
-  }
-
 ---- | Mints an NFT and sends it to the App Address.
 mint :: forall s. NftAppSymbol -> MintParams -> Contract UserWriter s Text ()
 mint symbol params = do
   user <- getUId
-  head' <- getHead symbol
+  head' <- getNftHead symbol
   case head' of
     Nothing -> Contract.throwError @Text "Couldn't find head"
     Just headX -> do
@@ -67,14 +60,14 @@ mint symbol params = do
         , node'appInstance = appInstance
         }
 
-    findInsertPoint :: NftAppSymbol -> NftListNode -> GenericContract InsertPoint
+    findInsertPoint :: NftAppSymbol -> NftListNode -> GenericContract (InsertPoint DatumNft)
     findInsertPoint aSymbol node = do
       list <- getDatumsTxsOrdered aSymbol
       case list of
         [] -> Contract.throwError "This Should never happen."
         x : xs -> findPoint x xs
       where
-        findPoint :: PointInfo -> [PointInfo] -> GenericContract InsertPoint
+        findPoint :: PointInfo DatumNft -> [PointInfo DatumNft] -> GenericContract (InsertPoint DatumNft)
         findPoint x = \case
           [] -> pure $ InsertPoint x Nothing
           (y : ys) ->
@@ -87,7 +80,7 @@ mint symbol params = do
       NftAppSymbol ->
       MintingPolicy ->
       NftListNode ->
-      Maybe PointInfo ->
+      Maybe (PointInfo DatumNft) ->
       GenericContract (Constraints.ScriptLookups NftTrade, Constraints.TxConstraints i0 DatumNft)
     mintNode appSymbol mintingP newNode nextNode = pure (lookups, tx)
       where
@@ -116,7 +109,7 @@ mint symbol params = do
     updateNodePointer ::
       NftAppInstance ->
       NftAppSymbol ->
-      PointInfo ->
+      PointInfo DatumNft ->
       NftListNode ->
       GenericContract (Constraints.ScriptLookups NftTrade, Constraints.TxConstraints i0 DatumNft)
     updateNodePointer appInstance appSymbol insertPoint newNode = do

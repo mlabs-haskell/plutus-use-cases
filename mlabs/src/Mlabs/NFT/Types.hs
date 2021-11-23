@@ -34,6 +34,7 @@ module Mlabs.NFT.Types (
   AuctionBidParams (..),
   AuctionCloseParams (..),
   UniqueToken,
+  InsertPoint (..),
 ) where
 
 import PlutusTx.Prelude
@@ -540,24 +541,31 @@ data QueryResponse
   deriving anyclass (FromJSON, ToJSON)
 
 -- | Easy type to find and use Nodes by.
-data PointInfo = PointInfo
-  { pi'datum :: DatumNft
+data PointInfo a = PointInfo
+  { pi'datum :: a
   , pi'TOR :: TxOutRef
   , pi'CITxO :: ChainIndexTxOut
   , pi'CITx :: ChainIndexTx
   }
   deriving stock (Hask.Eq, Hask.Show)
 
-instance Eq PointInfo where
+instance Eq a => Eq (PointInfo a) where
   {-# INLINEABLE (==) #-}
   (PointInfo x y _ _) == (PointInfo a b _ _) =
     x == a && y == b -- && z == c && k == d
 
-instance Ord PointInfo where
+instance Ord a => Ord (PointInfo a) where
   x <= y = pi'datum x <= pi'datum y
 
-instance Hask.Ord PointInfo where
+instance (Ord a, Hask.Eq a) => Hask.Ord (PointInfo a) where
   x <= y = pi'datum x <= pi'datum y
+
+-- | Two positions in on-chain list between which new NFT will be "inserted"
+data InsertPoint a = InsertPoint
+  { prev :: PointInfo a
+  , next :: Maybe (PointInfo a)
+  }
+  deriving stock (Hask.Show)
 
 -- Contract types
 type GenericContract a = forall w s. Contract w s Text a
