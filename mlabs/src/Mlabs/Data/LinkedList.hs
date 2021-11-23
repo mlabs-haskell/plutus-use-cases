@@ -94,6 +94,9 @@ insertingNode `canInsertAfter` leftNode = insKey > leftKey && nextOk
 pointNodeTo :: (Ord a) => forall b c. LList a b c -> LList a b c -> Maybe (LList a b c)
 pointNodeTo a b = pointNodeToMaybe a (Just b)
 
+{- | Utility function that optionally points List Node to another List node,
+ and returns the updated List Node.
+-}
 pointNodeToMaybe :: (Ord a) => forall b c. LList a b c -> Maybe (LList a b c) -> Maybe (LList a b c)
 (HeadLList i _) `pointNodeToMaybe` Nothing = Just (HeadLList i Nothing)
 (HeadLList i _) `pointNodeToMaybe` (Just (NodeLList k _ _)) = Just (HeadLList i (Just k))
