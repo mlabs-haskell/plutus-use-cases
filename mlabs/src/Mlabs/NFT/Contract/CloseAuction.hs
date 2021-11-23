@@ -46,21 +46,7 @@ closeAuction symbol (AuctionCloseParams nftId) = do
   auctionState <- maybe (Contract.throwError "Can't close: no auction in progress") pure mauctionState
 
   userUtxos <- getUserUtxos
-  feeRate <- getCurrFeeRate symbol
-  (bidDependentTxConstraints, bidDependentLookupConstraints) <- do
-    case as'highestBid auctionState of
-      Nothing -> Hask.pure ([], [])
-      Just (AuctionBid bid _bidder) ->
-        let feeValue = round $ fromInteger bid * feeRate
-            (amountPaidToOwner, amountPaidToAuthor) =
-              calculateShares (bid - feeValue) (info'share . node'information $ node)
-            payTx =
-              [ Constraints.mustPayToPubKey (getUserId . info'owner . node'information $ node) amountPaidToOwner
-              , Constraints.mustPayToPubKey (getUserId . info'author . node'information $ node) amountPaidToAuthor
-              ]
-         in do
-              (govTx, govLookups) <- getFeesConstraints symbol nftId bid
-              Hask.pure (govTx <> payTx, govLookups)
+  (bidDependentTxConstraints, bidDependentLookupConstraints) <- getBidDependentConstraints auctionState node
 
   let newOwner =
         case as'highestBid auctionState of
@@ -107,3 +93,18 @@ closeAuction symbol (AuctionCloseParams nftId) = do
               , info'auctionState = Nothing
               }
         }
+
+    -- If someone bid on auction, returns constrains to pay to owner, author, mint GOV, and pay fees
+    getBidDependentConstraints auctionState node = case as'highestBid auctionState of
+      Nothing -> Hask.pure ([], [])
+      Just (AuctionBid bid _bidder) -> do
+        feeRate <- getCurrFeeRate symbol
+        let feeValue = round $ fromInteger bid * feeRate
+            (amountPaidToOwner, amountPaidToAuthor) =
+              calculateShares (bid - feeValue) (info'share . node'information $ node)
+            payTx =
+              [ Constraints.mustPayToPubKey (getUserId . info'owner . node'information $ node) amountPaidToOwner
+              , Constraints.mustPayToPubKey (getUserId . info'author . node'information $ node) amountPaidToAuthor
+              ]
+        (govTx, govLookups) <- getFeesConstraints symbol nftId bid
+        Hask.pure (govTx <> payTx, govLookups)
