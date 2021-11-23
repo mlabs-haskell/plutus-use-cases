@@ -37,7 +37,7 @@ closeAuction :: NftAppSymbol -> AuctionCloseParams -> Contract UserWriter s Text
 closeAuction symbol (AuctionCloseParams nftId) = do
   ownOrefTxOut <- getUserAddr >>= fstUtxoAt
   PointInfo {..} <- findNft nftId symbol
-  node <- case pi'datum of
+  node <- case pi'data of
     NodeDatum n -> Hask.pure n
     _ -> Contract.throwError "NFT not found"
 

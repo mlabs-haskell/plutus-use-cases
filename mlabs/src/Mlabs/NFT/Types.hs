@@ -551,7 +551,7 @@ data QueryResponse
 
 -- | Easy type to find and use Nodes by.
 data PointInfo a = PointInfo
-  { pi'datum :: a
+  { pi'data :: a
   , pi'TOR :: TxOutRef
   , pi'CITxO :: ChainIndexTxOut
   , pi'CITx :: ChainIndexTx
@@ -565,10 +565,10 @@ instance Eq a => Eq (PointInfo a) where
 
 instance Ord a => Ord (PointInfo a) where
   {-# INLINEABLE (<=) #-}
-  x <= y = pi'datum x <= pi'datum y
+  x <= y = pi'data x <= pi'data y
 
 instance (Ord a, Hask.Eq a) => Hask.Ord (PointInfo a) where
-  x <= y = pi'datum x <= pi'datum y
+  x <= y = pi'data x <= pi'data y
 
 -- | Two positions in on-chain list between which new NFT will be "inserted"
 data InsertPoint a = InsertPoint
