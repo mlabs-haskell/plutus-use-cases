@@ -324,6 +324,7 @@ PlutusTx.makeLift ''MintAct
 PlutusTx.makeLift ''NftId
 
 instance Ord InformationNft where
+  {-# INLINEABLE (<=) #-}
   x <= y = info'id x <= info'id y
 
 PlutusTx.unstableMakeIsData ''InformationNft
@@ -359,6 +360,7 @@ instanceCurrency = fst . unAssetClass . appInstance'AppAssetClass
 PlutusTx.unstableMakeIsData ''NftAppInstance
 PlutusTx.makeLift ''NftAppInstance
 instance Eq NftAppInstance where
+  {-# INLINEABLE (==) #-}
   (NftAppInstance a b c d) == (NftAppInstance a' b' c' d') = a == a' && b == b' && c == c' && d == d'
 
 newtype NftAppSymbol = NftAppSymbol {app'symbol :: CurrencySymbol}
@@ -369,6 +371,7 @@ PlutusTx.unstableMakeIsData ''NftAppSymbol
 PlutusTx.makeLift ''NftAppSymbol
 
 instance Eq NftAppSymbol where
+  {-# INLINEABLE (==) #-}
   (NftAppSymbol a) == (NftAppSymbol a') = a == a'
 
 {- | The AssetClass is the pointer itself. Each NFT has the same CurrencySymbol,
@@ -384,9 +387,11 @@ PlutusTx.unstableMakeIsData ''Pointer
 PlutusTx.makeLift ''Pointer
 
 instance Eq Pointer where
+  {-# INLINEABLE (==) #-}
   (Pointer a) == (Pointer a') = a == a'
 
 instance Ord Pointer where
+  {-# INLINEABLE compare #-}
   (Pointer a) `compare` (Pointer a') = a `compare` a'
 
 {- | The head datum is unique for each list. Its token is minted when the unique
@@ -404,6 +409,7 @@ data NftListHead = NftListHead
 PlutusTx.unstableMakeIsData ''NftListHead
 PlutusTx.makeLift ''NftListHead
 instance Eq NftListHead where
+  {-# INLINEABLE (==) #-}
   (NftListHead a b) == (NftListHead a' b') = a == a' && b == b'
 
 -- | The nft list node is based on the above described properties.
@@ -419,11 +425,13 @@ data NftListNode = NftListNode
   deriving anyclass (ToJSON, FromJSON)
 
 instance Ord NftListNode where
+  {-# INLINEABLE (<=) #-}
   x <= y = node'information x <= node'information y
 
 PlutusTx.unstableMakeIsData ''NftListNode
 PlutusTx.makeLift ''NftListNode
 instance Eq NftListNode where
+  {-# INLINEABLE (==) #-}
   (NftListNode a b c) == (NftListNode a' b' c') = a == a' && b == b' && c == c'
 
 -- | The datum of an Nft is either head or node.
@@ -436,6 +444,7 @@ data DatumNft
   deriving anyclass (ToJSON, FromJSON)
 
 instance Ord DatumNft where
+  {-# INLINEABLE (<=) #-}
   (HeadDatum _) <= _ = True
   (NodeDatum _) <= (HeadDatum _) = False
   (NodeDatum x) <= (NodeDatum y) = x <= y
@@ -555,6 +564,7 @@ instance Eq a => Eq (PointInfo a) where
     x == a && y == b -- && z == c && k == d
 
 instance Ord a => Ord (PointInfo a) where
+  {-# INLINEABLE (<=) #-}
   x <= y = pi'datum x <= pi'datum y
 
 instance (Ord a, Hask.Eq a) => Hask.Ord (PointInfo a) where

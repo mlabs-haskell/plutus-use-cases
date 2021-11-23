@@ -47,11 +47,13 @@ makeLenses ''LList
 makePrisms ''LList
 
 instance (Eq k, Eq h, Eq n) => Eq (LList k h n) where
+  {-# INLINEABLE (==) #-}
   (HeadLList a b) == (HeadLList a' b') = a == a' && b == b'
   (NodeLList a b c) == (NodeLList a' b' c') = a == a' && b == b' && c == c'
   _ == _ = False
 
 instance (Eq (LList key headInfo nodeInfo), Ord key) => Ord (LList key headInfo nodeInfo) where
+  {-# INLINEABLE (<=) #-}
   HeadLList {} <= NodeLList {} = True
   (NodeLList k1 _ _) <= (NodeLList k2 _ _) = k1 <= k2
   _ <= _ = False
