@@ -35,7 +35,7 @@ import Plutus.Contract (utxosTxOutTxAt)
 import Plutus.Contract qualified as Contract
 import PlutusTx qualified
 
-import Plutus.V1.Ledger.Value (symbols)
+import Plutus.V1.Ledger.Value (assetClassValueOf, symbols)
 
 import Ledger (
   Address,
@@ -84,8 +84,44 @@ getUId = UserId <$> Contract.ownPubKeyHash
 getAddrUtxos :: Address -> GenericContract (Map.Map TxOutRef ChainIndexTxOut)
 getAddrUtxos adr = Map.map fst <$> utxosTxOutTxAt adr
 
+{- | Get the Head of the List, by filtering away all the utxos that don't
+ contain the unique token.
+-}
+getHead :: UniqueToken -> GenericContract (Maybe (PointInfo NftListHead))
+getHead uT = do
+  utxos <- utxosTxOutTxAt $ txScrAddress uT
+  let headUtxos = Map.toList . Map.filter containUniqueToken $ utxos
+  case headUtxos of
+    [] -> pure Nothing
+    [(oRef, (xOut, x))] -> do
+      case readDatum' @NftListHead xOut of
+        Nothing -> Contract.throwError "Head has corrupted datum!"
+        Just datum ->
+          pure . Just $ PointInfo datum oRef xOut x
+    _ -> do
+      Contract.throwError $
+        mconcat
+          [ "This should have not happened! More than one Heads with Unique Tokens."
+          --, pack . Hask.show . fmap pi'data $ utxos
+          ]
+  where
+    containUniqueToken = (/= 0) . flip assetClassValueOf uT . (^. ciTxOutValue) . fst
+
+-- | Get the  Symbol
 getNftAppSymbol :: UniqueToken -> GenericContract NftAppSymbol
-getNftAppSymbol = error ()
+getNftAppSymbol uT = do
+  lHead <- getHead uT
+  case lHead of
+    Nothing -> err
+    Just headInfo -> do
+      let uTCS = fst . unAssetClass $ uT
+      let val = filter (\x -> x /= uTCS && x /= "") . symbols $ pi'CITxO headInfo ^. ciTxOutValue
+      case val of
+        [x] -> pure $ NftAppSymbol x
+        [] -> Contract.throwError $ "Could not establish App Symbol. Does it exist in the HEAD?"
+        _ -> Contract.throwError $ "Could not establish App Symbol. Too many symbols to distinguish from."
+  where
+    err = Contract.throwError $ "Could not establish App Symbol."
 
 -- | Get the ChainIndexTxOut at an address.
 getAddrValidUtxos :: UniqueToken -> GenericContract (Map.Map TxOutRef (ChainIndexTxOut, ChainIndexTx))

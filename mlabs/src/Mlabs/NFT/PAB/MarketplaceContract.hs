@@ -33,7 +33,7 @@ import Plutus.V1.Ledger.Value (CurrencySymbol (..), TokenName (..), assetClass)
 -}
 data MarketplaceContracts
   = -- | Contract for initialising NFT marketplace.
-    NftAdminContract 
+    NftAdminContract
   | -- | Contracts for NFT marketplace user - contracts for
     -- buying/selling NFT, auctions, and query.
     UserContract UniqueToken
