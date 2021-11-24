@@ -21,7 +21,6 @@ import Ledger (
   txInInfoResolved,
   txInfoInputs,
   txInfoOutputs,
-  txInfoSignatories,
   txOutAddress,
   txOutDatumHash,
   txOutValue,
@@ -143,8 +142,8 @@ mkGovMintPolicy appInstance act ctx =
         (oldHead, _) <- getMaybeOne inputsWithHeadDatum
         return $
           (isNothing (getNext oldHead) && (length outputsWithNodeDatum == 1) && null inputsWithNodeDatum)
-            || (null inputsWithNodeDatum && (length outputsWithNodeDatum == 1))
-            || ((length inputsWithNodeDatum == 1) && (length outputsWithNodeDatum == 2))
+            || (null inputsWithNodeDatum && length outputsWithNodeDatum == 1)
+            || (length inputsWithNodeDatum == 1 && length outputsWithNodeDatum == 2)
 
     burntWithCorrectValues =
       wrapMaybe $ do
@@ -167,13 +166,13 @@ mkGovMintPolicy appInstance act ctx =
             && headOutVal `geq` (headInVal <> (negate . lovelaceValueOf $ fee))
 
     nodeInsertedWithCorrectValues
-      | null inputsWithNodeDatum && (length outputsWithNodeDatum == 1) =
+      | null inputsWithNodeDatum && length outputsWithNodeDatum == 1 =
         wrapMaybe $ do
           (_, txNode) <- getMaybeOne outputsWithNodeDatum
           let newNodeVal = txOutValue txNode
           return $
             newNodeVal == assetClassValue listGov fee
-      | (length inputsWithNodeDatum == 1) && (length outputsWithNodeDatum == 2) =
+      | length inputsWithNodeDatum == 1 && length outputsWithNodeDatum == 2 =
         wrapMaybe $ do
           outputs <- getMaybeTwo outputsWithNodeDatum
           (_, txOldFirst) <- getMaybeOne inputsWithNodeDatum
@@ -229,7 +228,33 @@ mkGovMintPolicy appInstance act ctx =
     datumIsHead (HeadLList _ _) = True
     datumIsHead _ = False
 
-    userId = getPubKeyHash $ head (txInfoSignatories . scriptContextTxInfo $ ctx) -- FIXME more sophisticated way is needed
+    maybeUserId =
+      case act of
+        MintGov
+          | null inputsWithNodeDatum ->
+            do
+              (d, _) <- getMaybeOne outputsWithNodeDatum
+              key <- getKey d
+              return . getPubKeyHash . getUserId $ key
+          | otherwise ->
+            do
+              (d, _) <- getMaybeOne inputsWithNodeDatum
+              key <- getKey d
+              return . getPubKeyHash . getUserId $ key
+        _ ->
+          do
+            (d, _) <- getMaybeOne inputsWithNodeDatum
+            key <- getKey d
+            return . getPubKeyHash . getUserId $ key
+
+    userId = case maybeUserId of
+      Just uid -> uid
+      Nothing -> traceError "Didn't find UserId."
+
+    getKey :: GovDatum -> Maybe UserId
+    getKey (GovDatum (HeadLList _ _)) = Nothing
+    getKey (GovDatum (NodeLList _ _ k)) = k
+
     symbol = ownCurrencySymbol ctx
     asset tn = AssetClass (symbol, TokenName tn)
     freeGov = asset ("freeGov" <> userId)
@@ -287,7 +312,7 @@ govMintPolicy x =
 
 -- | Minting policy for GOV and xGOV tokens.
 mkGovScript :: UniqueToken -> GovDatum -> GovAct -> ScriptContext -> Bool
-mkGovScript ut datum act ctx =
+mkGovScript ut _ act ctx =
   case act of
     InitialiseGov ->
       False -- FIXME Why should anybody for good reason use it as the redeemer?!
@@ -337,9 +362,9 @@ mkGovScript ut datum act ctx =
       wrapMaybe $ do
         (oldHead, _) <- getMaybeOne inputsWithHeadDatum
         return $
-          (isNothing (getNext oldHead) && (length outputsWithNodeDatum == 1) && null inputsWithNodeDatum)
-            || (null inputsWithNodeDatum && (length outputsWithNodeDatum == 1))
-            || ((length inputsWithNodeDatum == 1) && (length outputsWithNodeDatum == 2))
+          (isNothing (getNext oldHead) && length outputsWithNodeDatum == 1 && null inputsWithNodeDatum)
+            || (null inputsWithNodeDatum && length outputsWithNodeDatum == 1)
+            || (length inputsWithNodeDatum == 1 && length outputsWithNodeDatum == 2)
 
     nodeInsertedWithCorrectPointers
       | isNothing (getNext oldHead) && null inputsWithNodeDatum && (length outputsWithNodeDatum == 1) =
@@ -464,30 +489,30 @@ mkGovScript ut datum act ctx =
 
     asset tn = AssetClass (ownCurrencySymbol', TokenName tn)
 
-    userId =
+    maybeUserId =
       case act of
-        MintGov ->
-          case gov'list datum of
-            HeadLList {} ->
-              do
-                (d, _) <- getMaybeOne outputsWithNodeDatum
-                key <- getKey d
-                return . getPubKeyHash . getUserId $ key
-            NodeLList {} ->
-              do
-                outputs <- getMaybeTwo outputsWithNodeDatum
-                key <- getKey . fst . snd . sort2 $ outputs
-                return . getPubKeyHash . getUserId $ key
+        MintGov
+          | null inputsWithNodeDatum ->
+            do
+              (d, _) <- getMaybeOne outputsWithNodeDatum
+              key <- getKey d
+              return . getPubKeyHash . getUserId $ key
+          | otherwise ->
+            do
+              (d, _) <- getMaybeOne inputsWithNodeDatum
+              key <- getKey d
+              return . getPubKeyHash . getUserId $ key
         _ ->
           do
             (d, _) <- getMaybeOne inputsWithNodeDatum
             key <- getKey d
             return . getPubKeyHash . getUserId $ key
 
-    (listGov, freeGov) =
-      case userId of
-        Just uId -> (asset ("listGov" <> uId), asset ("freeGov" <> uId))
-        Nothing -> traceError "Didn't find UserId"
+    userId = case maybeUserId of
+      Just uid -> uid
+      Nothing -> traceError "Didn't find UserId."
+
+    (listGov, freeGov) = (asset ("listGov" <> userId), asset ("freeGov" <> userId))
 
     valueIn = foldMap (txOutValue . txInInfoResolved) $ txInfoInputs . scriptContextTxInfo $ ctx
 
