@@ -38,9 +38,9 @@ import Mlabs.NFT.Validation (DatumNft (..), NftTrade, asRedeemer, curSymbol, min
 -}
 type InitContract a = forall s. Contract (Last NftAppInstance) s Text a
 
---------------------------------------------------------------------------------
--- Init --
-
+{- |
+  Initialise NFT marketplace, create HEAD of the list and unique token
+-}
 initApp :: [UserId] -> InitContract ()
 initApp admins = do
   appInstance <- createListHead admins

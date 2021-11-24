@@ -32,8 +32,11 @@ import Plutus.V1.Ledger.Value (CurrencySymbol (..), TokenName (..), assetClass)
  For concrete endpoints see `getContract`
 -}
 data MarketplaceContracts
-  = NftAdminContract
-  | UserContract UniqueToken
+  = -- | Contract for initialising NFT marketplace.
+    NftAdminContract 
+  | -- | Contracts for NFT marketplace user - contracts for
+    -- buying/selling NFT, auctions, and query.
+    UserContract UniqueToken
   deriving stock (Hask.Eq, Hask.Ord, Hask.Show, Generic)
   deriving anyclass (FromJSON, ToJSON, OpenApi.ToSchema)
 
@@ -52,7 +55,7 @@ instance HasDefinitions MarketplaceContracts where
     , UserContract uT
     ]
     where
-      uT = assetClass (CurrencySymbol "") (TokenName uniqueTokenName)
+      uT = assetClass (CurrencySymbol "ff") (TokenName uniqueTokenName)
 
   getContract = \case
     NftAdminContract -> SomeBuiltin Contract.NFT.adminEndpoints
