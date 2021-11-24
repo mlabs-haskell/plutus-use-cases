@@ -28,6 +28,7 @@ PlutusTx.unstableMakeIsData ''GovLHead
 PlutusTx.makeLift ''GovLHead
 
 instance Eq GovLHead where
+  {-# INLINEABLE (==) #-}
   (GovLHead a) == (GovLHead a') = a == a'
 
 -- | Datum for utxo containing GovLList Head token.
@@ -39,6 +40,7 @@ PlutusTx.unstableMakeIsData ''GovLNode
 PlutusTx.makeLift ''GovLNode
 
 instance Eq GovLNode where
+  {-# INLINEABLE (==) #-}
   _ == _ = True
 
 type GovLList = LList UserId GovLHead GovLNode

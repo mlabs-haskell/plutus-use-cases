@@ -168,7 +168,7 @@ fstUtxoAt address = do
 -- | Get the Head of the NFT List
 getNftHead :: NftAppSymbol -> GenericContract (Maybe (PointInfo DatumNft))
 getNftHead aSym = do
-  headX <- filter (isHead . pi'datum) <$> getDatumsTxsOrdered aSym
+  headX <- filter (isHead . pi'data) <$> getDatumsTxsOrdered aSym
   case headX of
     [] -> pure Nothing
     [x] -> pure $ Just x
@@ -177,7 +177,7 @@ getNftHead aSym = do
       Contract.throwError $
         mconcat
           [ "This should have not happened! More than one Head Datums. Datums are: "
-          , pack . Hask.show . fmap pi'datum $ utxos
+          , pack . Hask.show . fmap pi'data $ utxos
           ]
   where
     isHead = \case
@@ -187,7 +187,7 @@ getNftHead aSym = do
 -- | Get the Head of the Gov List
 getGovHead :: Address -> GenericContract (Maybe (PointInfo GovDatum))
 getGovHead addr = do
-  headX <- filter (isHead . gov'list . pi'datum) <$> getDatumsTxsOrderedFromAddr @GovDatum addr
+  headX <- filter (isHead . gov'list . pi'data) <$> getDatumsTxsOrderedFromAddr @GovDatum addr
   case headX of
     [] -> pure Nothing
     [x] -> pure $ Just x
@@ -196,7 +196,7 @@ getGovHead addr = do
       Contract.throwError $
         mconcat
           [ "This should have not happened! More than one Head Datums. Datums are: "
-          , pack . Hask.show . fmap pi'datum $ utxos
+          , pack . Hask.show . fmap pi'data $ utxos
           ]
   where
     isHead = \case

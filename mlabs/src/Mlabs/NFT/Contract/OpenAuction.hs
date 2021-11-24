@@ -31,12 +31,15 @@ import Mlabs.NFT.Contract.Aux
 import Mlabs.NFT.Types
 import Mlabs.NFT.Validation
 
+{- |
+  Attempts to start NFT auction, removes current price from NFT and starts auction.
+-}
 openAuction :: NftAppSymbol -> AuctionOpenParams -> Contract UserWriter s Text ()
 openAuction symbol (AuctionOpenParams nftId deadline minBid) = do
   ownOrefTxOut <- getUserAddr >>= fstUtxoAt
   ownPkh <- Contract.ownPubKeyHash
   PointInfo {..} <- findNft nftId symbol
-  node <- case pi'datum of
+  node <- case pi'data of
     NodeDatum n -> Hask.pure n
     _ -> Contract.throwError "NFT not found"
 

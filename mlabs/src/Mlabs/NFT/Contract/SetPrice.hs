@@ -35,16 +35,17 @@ import Mlabs.NFT.Contract.Aux
 import Mlabs.NFT.Types
 import Mlabs.NFT.Validation
 
---------------------------------------------------------------------------------
--- Set Price
-
+{- |
+  Attempts to set price of NFT, checks if price is being set by the owner
+  and that NFT is not on an auction.
+-}
 setPrice :: NftAppSymbol -> SetPriceParams -> Contract UserWriter s Text ()
 setPrice symbol SetPriceParams {..} = do
   when negativePrice $ Contract.throwError "New price can not be negative"
   ownOrefTxOut <- getUserAddr >>= fstUtxoAt
   ownPkh <- Contract.ownPubKeyHash
   PointInfo {..} <- findNft sp'nftId symbol
-  oldNode <- case pi'datum of
+  oldNode <- case pi'data of
     NodeDatum n -> Hask.pure n
     _ -> Contract.throwError "NFT not found"
   when (getUserId ((info'owner . node'information) oldNode) /= ownPkh) $

@@ -40,7 +40,7 @@ buy symbol BuyRequestUser {..} = do
   ownOrefTxOut <- getUserAddr >>= fstUtxoAt
   ownPkh <- Contract.ownPubKeyHash
   nftPi <- findNft ur'nftId symbol
-  node <- case pi'datum nftPi of
+  node <- case pi'data nftPi of
     NodeDatum n -> Hask.pure n
     _ -> Contract.throwError "NFT not found"
   price <- case info'price . node'information $ node of

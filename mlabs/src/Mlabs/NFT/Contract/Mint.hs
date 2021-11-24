@@ -40,7 +40,7 @@ mint symbol params = do
   case head' of
     Nothing -> Contract.throwError @Text "Couldn't find head"
     Just headX -> do
-      let appInstance = getAppInstance $ pi'datum headX
+      let appInstance = getAppInstance $ pi'data headX
           newNode = createNewNode appInstance params user
           nftPolicy = mintPolicy appInstance
       (InsertPoint lNode rNode) <- findInsertPoint symbol newNode
@@ -71,7 +71,7 @@ mint symbol params = do
         findPoint x = \case
           [] -> pure $ InsertPoint x Nothing
           (y : ys) ->
-            case compare (pi'datum y) (NodeDatum node) of
+            case compare (pi'data y) (NodeDatum node) of
               LT -> findPoint y ys
               EQ -> Contract.throwError @Text "NFT already minted."
               GT -> pure $ InsertPoint x (Just y)
@@ -89,7 +89,7 @@ mint symbol params = do
         newTokenDatum =
           NodeDatum $
             newNode
-              { node'next = Pointer . assetClass aSymbol . TokenName . getDatumValue . pi'datum <$> nextNode
+              { node'next = Pointer . assetClass aSymbol . TokenName . getDatumValue . pi'data <$> nextNode
               }
 
         mintRedeemer = asRedeemer . Mint . NftId . getDatumValue . NodeDatum $ newNode
@@ -115,12 +115,12 @@ mint symbol params = do
     updateNodePointer appInstance appSymbol insertPoint newNode = do
       pure (lookups, tx)
       where
-        token = Value.singleton (app'symbol appSymbol) (TokenName . getDatumValue . pi'datum $ insertPoint) 1
+        token = Value.singleton (app'symbol appSymbol) (TokenName . getDatumValue . pi'data $ insertPoint) 1
         newToken = assetClass (app'symbol appSymbol) (TokenName .getDatumValue . NodeDatum $ newNode)
         newDatum = updatePointer (Pointer newToken)
         oref = pi'TOR insertPoint
         redeemer = asRedeemer $ MintAct (NftId . getDatumValue . NodeDatum $ newNode) symbol
-        oldDatum = pi'datum insertPoint
+        oldDatum = pi'data insertPoint
         uniqueToken = assetClassValue (appInstance'AppAssetClass appInstance) 1
 
         updatePointer :: Pointer -> DatumNft

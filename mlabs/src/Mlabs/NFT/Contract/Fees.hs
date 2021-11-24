@@ -39,13 +39,13 @@ import Mlabs.NFT.Validation
 getCurrFeeRate :: forall w s. NftAppSymbol -> Contract w s Text Rational
 getCurrFeeRate symbol = do
   nftHead' <- getNftHead symbol
-  nftHead <- case pi'datum <$> nftHead' of
+  nftHead <- case pi'data <$> nftHead' of
     Just (HeadDatum x) -> Hask.pure x
     _ -> Contract.throwError "getCurrFeeRate: NFT HEAD not found"
 
   let govAddr = appInstance'Governance . head'appInstance $ nftHead
   govHead' <- getGovHead govAddr
-  govHead <- case gov'list . pi'datum <$> govHead' of
+  govHead <- case gov'list . pi'data <$> govHead' of
     Just (HeadLList x _) -> Hask.pure x
     _ -> Contract.throwError "getCurrFeeRate: GOV HEAD not found"
   Hask.pure $ govLHead'feeRate govHead
@@ -56,7 +56,7 @@ getFeesConstraints symbol nftId price = do
   user <- getUId
   ownPkh <- Contract.ownPubKeyHash
   nftPi <- findNft nftId symbol
-  node <- case pi'datum nftPi of
+  node <- case pi'data nftPi of
     NodeDatum n -> Hask.pure n
     _ -> Contract.throwError "getFeesConstraints:NFT not found"
   let newGovDatum = GovDatum $ NodeLList user GovLNode Nothing
@@ -92,7 +92,7 @@ getFeesConstraints symbol nftId price = do
           [ Constraints.mustSpendScriptOutput (pi'TOR govHead) govRedeemer
           , Constraints.mustPayToOtherScript
               govScriptHash
-              (toDatum $ pi'datum govHead)
+              (toDatum $ pi'data govHead)
               (Ada.lovelaceValueOf feeValue <> headPrevValue)
           ]
       sharedGovTx =
@@ -115,14 +115,14 @@ getFeesConstraints symbol nftId price = do
                 Constraints.mustSpendScriptOutput (pi'TOR govPi) govRedeemer
               , Constraints.mustPayToOtherScript
                   govScriptHash
-                  (toDatum . pi'datum $ govPi)
+                  (toDatum . pi'data $ govPi)
                   (mintedListGov <> prevValue)
               , payFeeToHead
               ]
         -- Inserting new Node
         Right govIp ->
-          let updatedNewNode = pointNodeToMaybe' newGovDatum (fmap pi'datum . next $ govIp)
-              updatedPrevNode = pointNodeTo' (pi'datum . prev $ govIp) updatedNewNode
+          let updatedNewNode = pointNodeToMaybe' newGovDatum (fmap pi'data . next $ govIp)
+              updatedPrevNode = pointNodeTo' (pi'data . prev $ govIp) updatedNewNode
               prevValue =
                 txOutValue
                   . fst
@@ -173,7 +173,7 @@ getFeesConstraints symbol nftId price = do
         findPoint x = \case
           [] -> pure $ Right $ InsertPoint x Nothing
           (y : ys) ->
-            case Hask.compare (pi'datum y) node of
+            case Hask.compare (pi'data y) node of
               LT -> findPoint y ys
               EQ -> pure $ Left y
               GT -> pure $ Right $ InsertPoint x (Just y)
