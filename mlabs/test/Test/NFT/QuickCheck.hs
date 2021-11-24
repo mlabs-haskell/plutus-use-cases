@@ -42,6 +42,7 @@ import Prelude qualified as Hask
 import Mlabs.NFT.Api
 import Mlabs.NFT.Contract
 import Mlabs.NFT.Types
+import Mlabs.NFT.Types (NftAppInstance (appInstance'UniqueToken))
 import Mlabs.NFT.Validation
 import Test.NFT.Init
 
@@ -120,7 +121,7 @@ instance ContractModel NftModel where
     deriving (Hask.Show, Hask.Eq)
 
   data ContractInstanceKey NftModel w s e where
-    InitKey :: Wallet -> ContractInstanceKey NftModel (Last NftAppSymbol) NFTAppSchema Text
+    InitKey :: Wallet -> ContractInstanceKey NftModel (Last NftAppInstance) NFTAppSchema Text
 
   instanceTag key _ = fromString $ Hask.show key
 
@@ -289,10 +290,10 @@ instance ContractModel NftModel where
       let hAdmin = h $ InitKey wAdmin
       callEndpoint @"app-init" hAdmin [toUserId wAdmin]
       void $ Trace.waitNSlots 2
-      void getSymbol
+      void getToken
     action@ActionMint {} -> do
-      aSymbol <- getSymbol
-      h1 <- activateContractWallet (aPerformer action) $ endpoints aSymbol
+      uToken <- getToken
+      h1 <- activateContractWallet (aPerformer action) $ endpoints uToken
       callEndpoint @"mint" h1 $
         MintParams
           { mp'content = getMockContent $ aContent action
@@ -302,8 +303,8 @@ instance ContractModel NftModel where
           }
       void $ Trace.waitNSlots 2
     action@ActionSetPrice {} -> do
-      aSymbol <- getSymbol
-      h1 <- activateContractWallet (aPerformer action) $ endpoints aSymbol
+      uToken <- getToken
+      h1 <- activateContractWallet (aPerformer action) $ endpoints uToken
       callEndpoint @"set-price" h1 $
         SetPriceParams
           { sp'nftId = aNftId action
@@ -311,8 +312,8 @@ instance ContractModel NftModel where
           }
       void $ Trace.waitNSlots 2
     action@ActionBuy {} -> do
-      aSymbol <- getSymbol
-      h1 <- activateContractWallet (aPerformer action) $ endpoints aSymbol
+      uToken <- getToken
+      h1 <- activateContractWallet (aPerformer action) $ endpoints uToken
       callEndpoint @"buy" h1 $
         BuyRequestUser
           { ur'nftId = aNftId action
@@ -321,8 +322,8 @@ instance ContractModel NftModel where
           }
       void $ Trace.waitNSlots 2
     action@ActionAuctionOpen {} -> do
-      aSymbol <- getSymbol
-      h1 <- activateContractWallet (aPerformer action) $ endpoints aSymbol
+      uToken <- getToken
+      h1 <- activateContractWallet (aPerformer action) $ endpoints uToken
       callEndpoint @"auction-open" h1 $
         AuctionOpenParams
           { op'nftId = aNftId action
@@ -331,8 +332,8 @@ instance ContractModel NftModel where
           }
       void $ Trace.waitNSlots 2
     action@ActionAuctionBid {} -> do
-      aSymbol <- getSymbol
-      h1 <- activateContractWallet (aPerformer action) $ endpoints aSymbol
+      uToken <- getToken
+      h1 <- activateContractWallet (aPerformer action) $ endpoints uToken
       callEndpoint @"auction-bid" h1 $
         AuctionBidParams
           { bp'nftId = aNftId action
@@ -340,20 +341,20 @@ instance ContractModel NftModel where
           }
       void $ Trace.waitNSlots 2
     action@ActionAuctionClose {} -> do
-      aSymbol <- getSymbol
-      h1 <- activateContractWallet (aPerformer action) $ endpoints aSymbol
+      uToken <- getToken
+      h1 <- activateContractWallet (aPerformer action) $ endpoints uToken
       callEndpoint @"auction-close" h1 $
         AuctionCloseParams
           { cp'nftId = aNftId action
           }
       void $ Trace.waitNSlots 2
     where
-      getSymbol = do
+      getToken = do
         let hAdmin = h $ InitKey wAdmin
         oState <- Trace.observableState hAdmin
         case getLast oState of
-          Nothing -> Trace.throwError $ Trace.GenericError "App Symbol Could not be established."
-          Just aS -> return aS
+          Nothing -> Trace.throwError $ Trace.GenericError "App Instance Could not be established."
+          Just aI -> return $ appInstance'UniqueToken aI
 
 deriving instance Hask.Eq (ContractInstanceKey NftModel w s e)
 deriving instance Hask.Show (ContractInstanceKey NftModel w s e)

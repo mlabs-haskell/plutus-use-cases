@@ -34,29 +34,30 @@ import Wallet.Emulator qualified as Emulator
 import Mlabs.NFT.Api
 import Mlabs.NFT.Contract.Aux (hashData)
 import Mlabs.NFT.Types
+import Mlabs.NFT.Types (NftAppInstance (appInstance'UniqueToken))
 import Mlabs.Utils.Wallet (walletFromNumber)
 
 -- | Generic application Trace Handle.
 type AppTraceHandle = Trace.ContractHandle UserWriter NFTAppSchema Text
 
 -- | Initialisation Trace Handle.
-type AppInitHandle = Trace.ContractHandle (Last NftAppSymbol) NFTAppSchema Text
+type AppInitHandle = Trace.ContractHandle (Last NftAppInstance) NFTAppSchema Text
 
 -- | Initialise the Application
-appInitTrace :: EmulatorTrace NftAppSymbol
+appInitTrace :: EmulatorTrace NftAppInstance
 appInitTrace = do
   let admin = walletFromNumber 4 :: Emulator.Wallet
   hAdmin :: AppInitHandle <- activateContractWallet admin adminEndpoints
   callEndpoint @"app-init" hAdmin [UserId . Emulator.walletPubKeyHash $ admin]
   void $ Trace.waitNSlots 2
   oState <- Trace.observableState hAdmin
-  aSymbol <- case getLast oState of
-    Nothing -> Trace.throwError $ Trace.GenericError "App Symbol Could not be established."
+  appInstace <- case getLast oState of
+    Nothing -> Trace.throwError $ Trace.GenericError "App Instance Could not be established."
     Just aS -> return aS
   void $ Trace.waitNSlots 1
-  return aSymbol
+  return appInstace
 
-mintTrace :: NftAppSymbol -> Emulator.Wallet -> EmulatorTrace NftId
+mintTrace :: UniqueToken -> Emulator.Wallet -> EmulatorTrace NftId
 mintTrace aSymb wallet = do
   h1 :: AppTraceHandle <- activateContractWallet wallet $ endpoints aSymb
   callEndpoint @"mint" h1 artwork
@@ -74,9 +75,11 @@ mintTrace aSymb wallet = do
 -- | Emulator Trace 1. Mints one NFT.
 mint1Trace :: EmulatorTrace ()
 mint1Trace = do
-  aSymb <- appInitTrace
-  let wallet1 = walletFromNumber 1 :: Emulator.Wallet
-  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
+  appInstance <- appInitTrace
+  let uniqueToken = appInstance'UniqueToken appInstance
+      wallet1 = walletFromNumber 1 :: Emulator.Wallet
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints uniqueToken
+
   callEndpoint @"mint" h1 artwork
   void $ Trace.waitNSlots 1
   where
@@ -90,13 +93,15 @@ mint1Trace = do
 
 getContentTrace1 :: EmulatorTrace ()
 getContentTrace1 = do
-  aSymb <- appInitTrace
+  appInstance <- appInitTrace
+  let uniqueToken = appInstance'UniqueToken appInstance
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
-  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints uniqueToken
+
   callEndpoint @"mint" h1 artwork
   void $ Trace.waitNSlots 1
 
-  h1' :: AppTraceHandle <- activateContractWallet wallet1 $ queryEndpoints aSymb
+  h1' :: AppTraceHandle <- activateContractWallet wallet1 $ queryEndpoints uniqueToken
 
   callEndpoint @"query-content" h1' $ Content "A painting."
   void $ Trace.waitNSlots 1
@@ -117,11 +122,12 @@ getContentTrace1 = do
 -- | Two users mint two different artworks.
 getContentTrace2 :: EmulatorTrace ()
 getContentTrace2 = do
-  aSymb <- appInitTrace
+  appInstance <- appInitTrace
+  let uniqueToken = appInstance'UniqueToken appInstance
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
-  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints uniqueToken
   void $ Trace.waitNSlots 1
-  h1' :: AppTraceHandle <- activateContractWallet wallet1 $ queryEndpoints aSymb
+  h1' :: AppTraceHandle <- activateContractWallet wallet1 $ queryEndpoints uniqueToken
 
   callEndpoint @"mint" h1 artwork
   void $ Trace.waitNSlots 1
@@ -161,9 +167,10 @@ getContentTrace2 = do
 -- | Two users mint two different artworks.
 mintTrace2 :: EmulatorTrace ()
 mintTrace2 = do
-  aSymb <- appInitTrace
+  appInstance <- appInitTrace
+  let uniqueToken = appInstance'UniqueToken appInstance
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
-  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints uniqueToken
   callEndpoint @"mint" h1 artwork
   void $ Trace.waitNSlots 1
   callEndpoint @"mint" h1 artwork2
@@ -192,9 +199,10 @@ findNftId x = case getLast x of
 -- | Two users mint the same artwork.  Should Fail
 mintFail1 :: EmulatorTrace ()
 mintFail1 = do
-  aSymb <- appInitTrace
+  appInstance <- appInitTrace
+  let uniqueToken = appInstance'UniqueToken appInstance
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
-  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints uniqueToken
   callEndpoint @"mint" h1 artwork
   void $ Trace.waitNSlots 1
   callEndpoint @"mint" h1 artwork
@@ -212,9 +220,12 @@ eTrace1 :: EmulatorTrace ()
 eTrace1 = do
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
       wallet2 = walletFromNumber 2 :: Emulator.Wallet
-  aSymb <- appInitTrace
-  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
-  h2 :: AppTraceHandle <- activateContractWallet wallet2 $ endpoints aSymb
+
+  appInstance <- appInitTrace
+  let uniqueToken = appInstance'UniqueToken appInstance
+
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints uniqueToken
+  h2 :: AppTraceHandle <- activateContractWallet wallet2 $ endpoints uniqueToken
   callEndpoint @"mint" h1 artwork
   -- callEndpoint @"mint" h2 artwork2
   void $ Trace.waitNSlots 1
@@ -242,10 +253,13 @@ severalBuysTrace = do
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
       wallet2 = walletFromNumber 2 :: Emulator.Wallet
       wallet3 = walletFromNumber 4 :: Emulator.Wallet
-  aSymb <- appInitTrace
-  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
-  h2 :: AppTraceHandle <- activateContractWallet wallet2 $ endpoints aSymb
-  h3 :: AppTraceHandle <- activateContractWallet wallet3 $ endpoints aSymb
+
+  appInstance <- appInitTrace
+  let uniqueToken = appInstance'UniqueToken appInstance
+
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints uniqueToken
+  h2 :: AppTraceHandle <- activateContractWallet wallet2 $ endpoints uniqueToken
+  h3 :: AppTraceHandle <- activateContractWallet wallet3 $ endpoints uniqueToken
   callEndpoint @"mint" h1 artwork
   -- callEndpoint @"mint" h2 artwork2
   void $ Trace.waitNSlots 1
@@ -368,13 +382,14 @@ testGetContent2 = runEmulatorTraceIO getContentTrace2
 
 auctionTrace1 :: EmulatorTrace ()
 auctionTrace1 = do
-  aSymb <- appInitTrace
+  appInstance <- appInitTrace
+  let uniqueToken = appInstance'UniqueToken appInstance
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
       wallet2 = walletFromNumber 2 :: Emulator.Wallet
       wallet3 = walletFromNumber 3 :: Emulator.Wallet
-  h1 :: AppTraceHandle <- activateContractWallet wallet1 (endpoints aSymb)
-  h2 :: AppTraceHandle <- activateContractWallet wallet2 (endpoints aSymb)
-  h3 :: AppTraceHandle <- activateContractWallet wallet3 (endpoints aSymb)
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints uniqueToken
+  h2 :: AppTraceHandle <- activateContractWallet wallet2 $ endpoints uniqueToken
+  h3 :: AppTraceHandle <- activateContractWallet wallet3 $ endpoints uniqueToken
   callEndpoint @"mint" h1 artwork
 
   void $ Trace.waitNSlots 1

@@ -87,10 +87,12 @@ import Mlabs.NFT.Types (
   BuyRequestUser (..),
   Content (..),
   MintParams (..),
+  NftAppInstance (appInstance'UniqueToken),
   NftAppSymbol (..),
   NftId (..),
   SetPriceParams (..),
   Title (..),
+  UniqueToken,
   UserId (..),
  )
 import Mlabs.Utils.Wallet (walletFromNumber)
@@ -103,17 +105,17 @@ w3 = walletFromNumber 3
 wA = walletFromNumber 4 -- Admin Wallet
 
 -- | Calls initialisation of state for Nft pool
-callStartNft :: Wallet -> EmulatorTrace NftAppSymbol
+callStartNft :: Wallet -> EmulatorTrace NftAppInstance
 callStartNft wal = do
   hAdmin <- activateContractWallet wal adminEndpoints
   callEndpoint @"app-init" hAdmin [UserId . walletPubKeyHash $ wal]
   void $ waitNSlots 2
   oState <- observableState hAdmin
-  aSymbol <- case getLast oState of
+  appInstance <- case getLast oState of
     Nothing -> throwError $ GenericError "App Symbol Could not be established."
     Just aS -> pure aS
   void $ waitNSlots 1
-  pure aSymbol
+  pure appInstance
 
 callStartNftFail :: Wallet -> ScriptM ()
 callStartNftFail wal = do
@@ -125,7 +127,7 @@ callStartNftFail wal = do
 
 type ScriptM a =
   ReaderT
-    NftAppSymbol
+    UniqueToken
     ( Eff
         '[ RunContract
          , Assert
@@ -151,9 +153,9 @@ toUserId = UserId . walletPubKeyHash
 -}
 runScript :: Wallet -> Script -> EmulatorTrace ()
 runScript wal script = do
-  symbol <- callStartNft wal
+  appInstance <- callStartNft wal
   next
-  runReaderT script symbol
+  runReaderT script $ appInstance'UniqueToken appInstance
 
 userMint :: Wallet -> MintParams -> ScriptM NftId
 userMint wal mp = do

@@ -1,13 +1,16 @@
 module Mlabs.NFT.Contract.Init (
-  initApp,
-  getAppSymbol,
   createListHead,
+  getAppSymbol,
+  initApp,
+  uniqueTokenName,
 ) where
 
 import Control.Monad (void)
 import Data.Monoid (Last (..))
 import Data.Text (Text, pack)
 import Text.Printf (printf)
+
+--import PlutusTx.Prelude hiding (mconcat, (<>))
 import Prelude (mconcat, (<>))
 import Prelude qualified as Hask
 
@@ -33,7 +36,7 @@ import Mlabs.NFT.Validation (DatumNft (..), NftTrade, asRedeemer, curSymbol, min
 {- | The App Symbol is written to the Writter instance of the Contract to be
  recovered for future opperations, and ease of use in Trace.
 -}
-type InitContract a = forall s. Contract (Last NftAppSymbol) s Text a
+type InitContract a = forall s. Contract (Last NftAppInstance) s Text a
 
 --------------------------------------------------------------------------------
 -- Init --
@@ -41,9 +44,8 @@ type InitContract a = forall s. Contract (Last NftAppSymbol) s Text a
 initApp :: [UserId] -> InitContract ()
 initApp admins = do
   appInstance <- createListHead admins
-  let appSymbol = getAppSymbol appInstance
-  Contract.tell . Last . Just $ appSymbol
-  Contract.logInfo @Hask.String $ printf "Finished Initialisation: App symbol: %s" (Hask.show appSymbol)
+  Contract.tell . Last . Just $ appInstance
+  Contract.logInfo @Hask.String $ printf "Finished Initialisation: App Instance: %s" (Hask.show appInstance)
 
 {- | Initialise the application at the address of the script by creating the
  HEAD of the list, and coupling the one time token with the Head of the list.
@@ -52,13 +54,14 @@ createListHead :: [UserId] -> GenericContract NftAppInstance
 createListHead admins = do
   uniqueToken <- generateUniqueToken
   let govAddr = govScrAddress uniqueToken
-  mintListHead $ NftAppInstance txScrAddress uniqueToken govAddr admins
+      scrAddr = txScrAddress uniqueToken
+  mintListHead $ NftAppInstance scrAddr uniqueToken govAddr admins
   where
     -- Mint the Linked List Head and its associated token.
     mintListHead :: NftAppInstance -> GenericContract NftAppInstance
     mintListHead appInstance = do
       let -- Unique Token
-          uniqueToken = appInstance'AppAssetClass appInstance
+          uniqueToken = appInstance'UniqueToken appInstance
           uniqueTokenValue = assetClassValue uniqueToken 1
           emptyTokenName = TokenName PlutusTx.Prelude.emptyByteString
       let -- Script Head Specific Information
@@ -76,7 +79,7 @@ createListHead admins = do
           -- NFT App Head
           (lookups, tx) =
             ( mconcat
-                [ Constraints.typedValidatorLookups txPolicy
+                [ Constraints.typedValidatorLookups (txPolicy uniqueToken)
                 , Constraints.mintingPolicy headPolicy
                 , Constraints.mintingPolicy govHeadPolicy
                 ]
@@ -95,7 +98,7 @@ createListHead admins = do
     generateUniqueToken :: GenericContract AssetClass
     generateUniqueToken = do
       self <- ownPubKeyHash
-      let nftTokenName = TokenName "Unique App Token" --PlutusTx.Prelude.emptyByteString
+      let nftTokenName = TokenName uniqueTokenName --PlutusTx.Prelude.emptyByteString
       x <-
         mapError
           (pack . Hask.show @CurrencyError)
@@ -120,3 +123,9 @@ createListHead admins = do
 -- | Given an App Instance return the NftAppSymbol for that app instance.
 getAppSymbol :: NftAppInstance -> NftAppSymbol
 getAppSymbol = NftAppSymbol . curSymbol
+
+{-# INLINEABLE uniqueTokenName #-}
+
+-- | Token Name with which Unique Tokens are parametrised.
+uniqueTokenName :: BuiltinByteString
+uniqueTokenName = "Unique App Token"

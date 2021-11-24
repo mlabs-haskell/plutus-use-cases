@@ -22,16 +22,18 @@ import Plutus.PAB.Effects.Contract.Builtin qualified as Builtin
 import Plutus.PAB.Run.PSGenerator (HasPSTypes (..))
 
 import Mlabs.NFT.Api qualified as Contract.NFT
-import Mlabs.NFT.Types (NftAppSymbol (..))
+import Mlabs.NFT.Contract.Init (uniqueTokenName)
+import Mlabs.NFT.Types (UniqueToken)
 
-import Plutus.V1.Ledger.Value (CurrencySymbol (..))
+import Plutus.Contracts.Currency ()
+import Plutus.V1.Ledger.Value (CurrencySymbol (..), TokenName (..), assetClass)
 
 {- | Contracts available through PAB.
  For concrete endpoints see `getContract`
 -}
 data MarketplaceContracts
   = NftAdminContract
-  | UserContract NftAppSymbol
+  | UserContract UniqueToken
   deriving stock (Hask.Eq, Hask.Ord, Hask.Show, Generic)
   deriving anyclass (FromJSON, ToJSON, OpenApi.ToSchema)
 
@@ -43,19 +45,18 @@ instance HasPSTypes MarketplaceContracts where
     [ equal . genericShow . argonaut $ mkSumType @MarketplaceContracts
     ]
 
+-- todo: fix put correct currencySymbol.
 instance HasDefinitions MarketplaceContracts where
   getDefinitions =
     [ NftAdminContract
-    , UserContract someAppSymbol
+    , UserContract uT
     ]
     where
-      someAppSymbol = NftAppSymbol $ CurrencySymbol "ff"
+      uT = assetClass (CurrencySymbol "") (TokenName uniqueTokenName)
 
   getContract = \case
-    NftAdminContract ->
-      SomeBuiltin Contract.NFT.adminEndpoints
-    UserContract appSymbol ->
-      SomeBuiltin $ Contract.NFT.nftMarketUserEndpoints appSymbol
+    NftAdminContract -> SomeBuiltin Contract.NFT.adminEndpoints
+    UserContract uT -> SomeBuiltin $ Contract.NFT.nftMarketUserEndpoints uT
 
   getSchema = \case
     NftAdminContract -> Builtin.endpointsToSchemas @Contract.NFT.NFTAppSchema

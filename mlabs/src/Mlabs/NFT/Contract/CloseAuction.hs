@@ -33,10 +33,10 @@ import Mlabs.NFT.Contract.Fees
 import Mlabs.NFT.Types
 import Mlabs.NFT.Validation
 
-closeAuction :: NftAppSymbol -> AuctionCloseParams -> Contract UserWriter s Text ()
-closeAuction symbol (AuctionCloseParams nftId) = do
+closeAuction :: UniqueToken -> AuctionCloseParams -> Contract UserWriter s Text ()
+closeAuction uT (AuctionCloseParams nftId) = do
   ownOrefTxOut <- getUserAddr >>= fstUtxoAt
-  PointInfo {..} <- findNft nftId symbol
+  PointInfo {..} <- findNft nftId uT
   node <- case pi'data of
     NodeDatum n -> Hask.pure n
     _ -> Contract.throwError "NFT not found"
@@ -48,10 +48,11 @@ closeAuction symbol (AuctionCloseParams nftId) = do
   userUtxos <- getUserUtxos
   (bidDependentTxConstraints, bidDependentLookupConstraints) <- getBidDependentConstraints auctionState node
 
-  let newOwner =
-        case as'highestBid auctionState of
-          Nothing -> info'owner . node'information $ node
-          Just (AuctionBid _ bidder) -> bidder
+  symbol <- getNftAppSymbol uT
+
+  let newOwner = case as'highestBid auctionState of
+        Nothing -> info'owner . node'information $ node
+        Just (AuctionBid _ bidder) -> bidder
 
       nftDatum = NodeDatum $ updateDatum newOwner node
       nftVal = Value.singleton (app'symbol symbol) (Value.TokenName . nftId'contentHash $ nftId) 1
@@ -64,8 +65,8 @@ closeAuction symbol (AuctionCloseParams nftId) = do
           [ Constraints.unspentOutputs userUtxos
           , Constraints.unspentOutputs $ Map.fromList [ownOrefTxOut]
           , Constraints.unspentOutputs $ Map.fromList [(pi'TOR, pi'CITxO)]
-          , Constraints.typedValidatorLookups txPolicy
-          , Constraints.otherScript (validatorScript txPolicy)
+          , Constraints.typedValidatorLookups (txPolicy uT)
+          , Constraints.otherScript (validatorScript $ txPolicy uT)
           ]
             <> bidDependentLookupConstraints
 
@@ -98,7 +99,7 @@ closeAuction symbol (AuctionCloseParams nftId) = do
     getBidDependentConstraints auctionState node = case as'highestBid auctionState of
       Nothing -> Hask.pure ([], [])
       Just (AuctionBid bid _bidder) -> do
-        feeRate <- getCurrFeeRate symbol
+        feeRate <- getCurrFeeRate uT
         let feeValue = round $ fromInteger bid * feeRate
             (amountPaidToOwner, amountPaidToAuthor) =
               calculateShares (bid - feeValue) (info'share . node'information $ node)
@@ -106,5 +107,5 @@ closeAuction symbol (AuctionCloseParams nftId) = do
               [ Constraints.mustPayToPubKey (getUserId . info'owner . node'information $ node) amountPaidToOwner
               , Constraints.mustPayToPubKey (getUserId . info'author . node'information $ node) amountPaidToAuthor
               ]
-        (govTx, govLookups) <- getFeesConstraints symbol nftId bid
+        (govTx, govLookups) <- getFeesConstraints uT nftId bid
         Hask.pure (govTx <> payTx, govLookups)

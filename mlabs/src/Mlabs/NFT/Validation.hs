@@ -100,6 +100,7 @@ import Mlabs.NFT.Types (
   NftListHead (head'appInstance),
   NftListNode (node'appInstance, node'information, node'next),
   Pointer (pointer'assetClass),
+  UniqueToken,
   UserAct (..),
   UserId (..),
   getAppInstance,
@@ -280,8 +281,8 @@ mintPolicy appInstance =
 {-# INLINEABLE mkTxPolicy #-}
 
 -- | A validator script for the user actions.
-mkTxPolicy :: DatumNft -> UserAct -> ScriptContext -> Bool
-mkTxPolicy !datum' !act !ctx =
+mkTxPolicy :: UniqueToken -> DatumNft -> UserAct -> ScriptContext -> Bool
+mkTxPolicy _ !datum' !act !ctx =
   --  traceIfFalse "Fees must be paid" proofPaidBack &&
   case datum' of
     HeadDatum headDat -> case act of
@@ -299,7 +300,7 @@ mkTxPolicy !datum' !act !ctx =
           _ -> traceError "Input datum is Node."
 
         !proofPaidBack =
-          let (currency, tokenName) = unAssetClass . appInstance'AppAssetClass . head'appInstance $ headDat
+          let (currency, tokenName) = unAssetClass . appInstance'UniqueToken . head'appInstance $ headDat
               paysBack tx = valueOf (txOutValue tx) currency tokenName == 1
            in any paysBack . txInfoOutputs . scriptContextTxInfo $ ctx
 
@@ -670,21 +671,21 @@ instance ValidatorTypes NftTrade where
   type RedeemerType NftTrade = UserAct
 
 {-# INLINEABLE txPolicy #-}
-txPolicy :: TypedValidator NftTrade
-txPolicy =
+txPolicy :: UniqueToken -> TypedValidator NftTrade
+txPolicy x =
   mkTypedValidator @NftTrade
-    $$(PlutusTx.compile [||mkTxPolicy||])
+    ($$(PlutusTx.compile [||mkTxPolicy||]) `PlutusTx.applyCode` PlutusTx.liftCode x)
     $$(PlutusTx.compile [||wrap||])
   where
     wrap = wrapValidator @DatumNft @UserAct
 
 {-# INLINEABLE txValHash #-}
-txValHash :: ValidatorHash
-txValHash = validatorHash txPolicy
+txValHash :: UniqueToken -> ValidatorHash
+txValHash = validatorHash . txPolicy
 
 {-# INLINEABLE txScrAddress #-}
-txScrAddress :: Ledger.Address
-txScrAddress = validatorAddress txPolicy
+txScrAddress :: UniqueToken -> Ledger.Address
+txScrAddress = validatorAddress . txPolicy
 
 {-# INLINEABLE curSymbol #-}
 
