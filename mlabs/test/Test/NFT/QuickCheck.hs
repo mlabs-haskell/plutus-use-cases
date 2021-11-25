@@ -42,7 +42,6 @@ import Prelude qualified as Hask
 import Mlabs.NFT.Api
 import Mlabs.NFT.Contract
 import Mlabs.NFT.Types
-import Mlabs.NFT.Types (NftAppInstance (appInstance'UniqueToken))
 import Mlabs.NFT.Validation
 import Test.NFT.Init
 

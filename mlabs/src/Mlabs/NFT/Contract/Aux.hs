@@ -94,10 +94,10 @@ getHead uT = do
   case headUtxos of
     [] -> pure Nothing
     [(oRef, (xOut, x))] -> do
-      case readDatum' @NftListHead xOut of
-        Nothing -> Contract.throwError "Head has corrupted datum!"
-        Just datum ->
+      case readDatum' @DatumNft xOut of
+        Just (HeadDatum datum) ->
           pure . Just $ PointInfo datum oRef xOut x
+        _ -> Contract.throwError "Head has corrupted datum!"
     _ -> do
       Contract.throwError $
         mconcat
@@ -118,10 +118,10 @@ getNftAppSymbol uT = do
       let val = filter (\x -> x /= uTCS && x /= "") . symbols $ pi'CITxO headInfo ^. ciTxOutValue
       case val of
         [x] -> pure $ NftAppSymbol x
-        [] -> Contract.throwError $ "Could not establish App Symbol. Does it exist in the HEAD?"
-        _ -> Contract.throwError $ "Could not establish App Symbol. Too many symbols to distinguish from."
+        [] -> Contract.throwError "Could not establish App Symbol. Does it exist in the HEAD?"
+        _ -> Contract.throwError "Could not establish App Symbol. Too many symbols to distinguish from."
   where
-    err = Contract.throwError $ "Could not establish App Symbol."
+    err = Contract.throwError "Could not establish App Symbol."
 
 -- | Get the ChainIndexTxOut at an address.
 getAddrValidUtxos :: UniqueToken -> GenericContract (Map.Map TxOutRef (ChainIndexTxOut, ChainIndexTx))

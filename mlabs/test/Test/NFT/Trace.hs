@@ -34,7 +34,6 @@ import Wallet.Emulator qualified as Emulator
 import Mlabs.NFT.Api
 import Mlabs.NFT.Contract.Aux (hashData)
 import Mlabs.NFT.Types
-import Mlabs.NFT.Types (NftAppInstance (appInstance'UniqueToken))
 import Mlabs.Utils.Wallet (walletFromNumber)
 
 -- | Generic application Trace Handle.
@@ -420,9 +419,6 @@ auctionTrace1 = do
   callEndpoint @"set-price" h3 (SetPriceParams nftId (Just 20))
   void $ Trace.waitNSlots 5
 
-  -- callEndpoint @"auction-close" h1 (closeParams nftId)
-  -- void $ Trace.waitNSlots 3
-
   logInfo @Hask.String "auction1 test end"
   where
     artwork =
@@ -434,12 +430,8 @@ auctionTrace1 = do
         }
 
     slotTenTime = slotToBeginPOSIXTime def 10
-    slotTwentyTime = slotToBeginPOSIXTime def 20
-
-    buyParams nftId = BuyRequestUser nftId 6 (Just 200)
     openParams nftId = AuctionOpenParams nftId slotTenTime 400
     closeParams nftId = AuctionCloseParams nftId
-
     bidParams = AuctionBidParams
 
 -- | Test for prototyping.

@@ -7,8 +7,6 @@ import Ledger qualified
 import Mlabs.NFT.Types qualified as NFT
 import Mlabs.NFT.Validation qualified as NFT
 
-import PlutusTx qualified
-
 import PlutusTx.Prelude hiding ((<>))
 
 import PlutusTx qualified
