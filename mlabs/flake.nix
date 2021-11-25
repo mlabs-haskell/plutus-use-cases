@@ -37,49 +37,64 @@
   };
 
   outputs = { self, flake-utils, plutusSrc, nixpkgs, haskellNix, ... }:
-    flake-utils.lib.eachSystem [ "x86_64-linux" ]
-      (
-        system:
-          let
-            plutus = import plutusSrc { inherit system; };
+    let
+      inherit (flake-utils.lib) defaultSystems;
 
-            overlays = [
-              haskellNix.overlay
-              (
-                final: _: {
-                  mlabs-plutus-use-cases = import ./nix/haskell.nix {
-                    inherit final pkgs plutus;
-                  };
-                }
-              )
-            ];
+      perSystem = nixpkgs.lib.genAttrs defaultSystems;
 
-            pkgs = import nixpkgs {
-              inherit system overlays;
-              inherit (haskellNix) config;
-            };
+      nixpkgsFor = system: import nixpkgs {
+        overlays = [ haskellNix.overlay ];
+        inherit (haskellNix) config;
+        inherit system;
+      };
 
-            flake = pkgs.mlabs-plutus-use-cases.flake {};
+      projectFor = system:
+        let
+          pkgs = nixpkgsFor system;
+          plutus = import plutusSrc { inherit system; };
+        in
+          import ./nix/haskell.nix {
+            inherit system pkgs plutus;
+          };
 
-          in
-            flake // {
-              defaultPackage =
-                flake.packages."mlabs-plutus-use-cases:lib:mlabs-plutus-use-cases";
+    in
+      {
+        flake = perSystem (system: (projectFor system).flake {});
 
-              checks = flake.checks // {
+        defaultPackage = perSystem (
+          system:
+            self.flake.${system}.packages."mlabs-plutus-use-cases:lib:mlabs-plutus-use-cases"
+        );
+
+        packages = perSystem (system: self.flake.${system}.packages);
+
+        apps = perSystem (system: self.flake.${system}.apps);
+
+        devShell = perSystem (system: self.flake.${system}.devShell);
+
+        # NOTE `nix flake check` will not work at the moment due to use of
+        # IFD in haskell.nix
+        checks = perSystem (
+          system:
+            let
+              flakePkgs = self.flake.${system}.packages;
+            in
+              {
+                tests =
+                  flakePkgs."mlabs-plutus-use-cases:test:mlabs-plutus-use-cases-tests";
                 deploy-app =
-                  flake.packages."mlabs-plutus-use-cases:exe:deploy-app";
+                  flakePkgs."mlabs-plutus-use-cases:exe:deploy-app";
                 governance-demo =
-                  flake.packages."mlabs-plutus-use-cases:exe:governance-demo";
+                  flakePkgs."mlabs-plutus-use-cases:exe:governance-demo";
                 lendex-demo =
-                  flake.packages."mlabs-plutus-use-cases:exe:lendex-demo";
+                  flakePkgs."mlabs-plutus-use-cases:exe:lendex-demo";
                 mlabs-plutus-use-cases =
-                  flake.packages."mlabs-plutus-use-cases:exe:mlabs-plutus-use-cases";
-                nft-demo = flake.packages."mlabs-plutus-use-cases:exe:nft-demo";
+                  flakePkgs."mlabs-plutus-use-cases:exe:mlabs-plutus-use-cases";
+                nft-demo = flakePkgs."mlabs-plutus-use-cases:exe:nft-demo";
                 nft-marketplace =
-                  flake.packages."mlabs-plutus-use-cases:exe:nft-marketplace";
-              };
+                  flakePkgs."mlabs-plutus-use-cases:exe:nft-marketplace";
+              }
+        );
 
-            }
-      );
+      };
 }

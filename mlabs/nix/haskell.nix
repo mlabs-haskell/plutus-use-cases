@@ -1,9 +1,4 @@
-# NOTE
-# This module is intended to be used with an overlay with
-# `haskell.nix` to add our project to the package set
-# (hence the `final` arg)
-{ final
-, pkgs
+{ pkgs
 , plutus
 , doCoverage ? false
 , deferPluginErrors ? true
@@ -11,17 +6,16 @@
 }:
 
 let
-  src = final.haskell-nix.haskellLib.cleanGit {
+  src = pkgs.haskell-nix.haskellLib.cleanGit {
     name = "mlabs-plutus-use-cases";
-    src = ../..;
-    subDir = "mlabs";
+    src = ./..;
   };
 
   plutusPkgs = plutus.pkgs;
 
   sources = import ./sources.nix {};
 in
-final.haskell-nix.cabalProject {
+pkgs.haskell-nix.cabalProject {
   inherit src;
 
   name = "mlabs-plutus-use-cases";
@@ -71,6 +65,7 @@ final.haskell-nix.cabalProject {
         entr
         ghcid
         git
+
         # Use plutus for these packages for now, the versions from haskell.nix
         # nixpkgs are too new and require builds
         plutusPkgs.haskellPackages.fourmolu
