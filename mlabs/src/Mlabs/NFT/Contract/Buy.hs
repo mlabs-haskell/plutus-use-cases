@@ -53,7 +53,8 @@ buy symbol BuyRequestUser {..} = do
   userUtxos <- getUserUtxos
   feeRate <- getCurrFeeRate symbol
 
-  (govTx, govLookups) <- getFeesConstraints symbol ur'nftId ur'price
+  user <- getUId
+  (govTx, govLookups) <- getFeesConstraints symbol ur'nftId ur'price user
 
   let feeValue = round $ fromInteger ur'price * feeRate
       (paidToOwner, paidToAuthor) =

@@ -51,10 +51,15 @@ getCurrFeeRate symbol = do
   Hask.pure $ govLHead'feeRate govHead
 
 -- | Returns constraints for minting GOV tokens, and paying transaction fee for given NFT
-getFeesConstraints :: forall s. NftAppSymbol -> NftId -> Integer -> Contract UserWriter s Text ([Constraints.TxConstraints UserAct DatumNft], [Constraints.ScriptLookups NftTrade])
-getFeesConstraints symbol nftId price = do
-  user <- getUId
-  ownPkh <- Contract.ownPubKeyHash
+getFeesConstraints ::
+  forall s.
+  NftAppSymbol ->
+  NftId ->
+  Integer ->
+  UserId ->
+  Contract UserWriter s Text ([Constraints.TxConstraints UserAct DatumNft], [Constraints.ScriptLookups NftTrade])
+getFeesConstraints symbol nftId price user = do
+  let ownPkh = getUserId user
   nftPi <- findNft nftId symbol
   node <- case pi'data nftPi of
     NodeDatum n -> Hask.pure n
