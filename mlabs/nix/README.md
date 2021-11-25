@@ -20,6 +20,9 @@ niv update <dependency_name> -r <dependency_tag>
 This will update both the revision, and the sha256 of the said dependency, that
 will then get pulled by haskell-nix.
 
+To update all of the dependencies with `niv`, run the `update-sha256map.sh` script
+in the repository root.
+
 # Updating plutus
 
 In the case of a `plutus` upgrade, you _must_ also update the `rev` field of `plutusSrc`
@@ -35,7 +38,6 @@ then
 # ../flake.nix
 {
   inputs = {
-  ...
 
     plutusSrc = {
       type = "github";
@@ -45,10 +47,7 @@ then
       flake = false;
     };
 
-    ...
   }
-
-  ...
 
 }
 ```
@@ -65,6 +64,9 @@ equivalents of old `nix-*` commands.
 **Note**: You will need Nix version 2.4 or greater to use the new `nix` command
 and subcommands
 
+**Note**: Due to the use of IFD ("import from derivation") in haskell.nix, `nix flake show`
+and `nix flake check` do not currently work.
+
 ## `nix-shell`
 
 Use `nix develop`
@@ -73,7 +75,7 @@ Use `nix develop`
 
 Use `nix build`
 
-## Building project components
+### Building project components
 
 Previously, to build specific project components, `nix-build -A mlabs-plutus-use-cases.components.*`
 could be used. Project components can now be identified using the flake selector `#` followed by
@@ -89,15 +91,20 @@ New:
 
 `nix build .#mlabs-plutus-use-cases:exe:deploy-app`
 
-## Build all derivations that will be built in CI
+### Build all derivations that will be built in CI
+
+(See note about IFD problem above).
 
 As currently configured, `nix flake check` will build all project components, including the tests
 and executables. If the `-L` flag is included, the build logs will be fully printed to stdout.
 
+You can also run the `run-tests.sh` script in the repository root which will build all project
+components.
+
 ## More helpful commands
 
 See all of the flake outputs: `nix flake show`
-See flake metadata, including inputs: `nix flake info`
+See flake metadata, including inputs: `nix flake metadata`
 
 ## Compatibility
 
