@@ -6,24 +6,24 @@ module Mlabs.NFT.Contract.Mint (
   mintParamsToInfo,
 ) where
 
-import PlutusTx.Prelude hiding (mconcat, mempty, (<>))
+import PlutusTx.Prelude hiding (mconcat, mempty)
 import Prelude (mconcat)
 import Prelude qualified as Hask
 
 import Control.Monad (void)
 import Data.Map qualified as Map
-import Data.Monoid (Last (..), (<>))
+import Data.Monoid (Last (..))
 import Data.Text (Text)
 import Text.Printf (printf)
 
+import Plutus.ChainIndex.Tx (txOutRefMapForAddr)
 import Plutus.Contract (Contract)
 import Plutus.Contract qualified as Contract
 
-import Ledger (MintingPolicy)
-
+import Ledger (MintingPolicy, txOutValue)
 import Ledger.Constraints qualified as Constraints
 import Ledger.Typed.Scripts (validatorScript)
-import Ledger.Value as Value (TokenName (..), assetClass, assetClassValue, singleton)
+import Ledger.Value as Value (TokenName (..), assetClass, singleton)
 
 import Mlabs.NFT.Contract.Aux
 import Mlabs.NFT.Types
@@ -112,16 +112,19 @@ mint symbol params = do
       PointInfo DatumNft ->
       NftListNode ->
       GenericContract (Constraints.ScriptLookups NftTrade, Constraints.TxConstraints i0 DatumNft)
-    updateNodePointer appInstance appSymbol insertPoint newNode = do
+    updateNodePointer _ appSymbol insertPoint newNode = do
       pure (lookups, tx)
       where
-        token = Value.singleton (app'symbol appSymbol) (TokenName . getDatumValue . pi'data $ insertPoint) 1
+        scriptAddr = appInstance'Address . node'appInstance $ newNode
+        token =
+          txOutValue
+            . fst
+            $ (txOutRefMapForAddr scriptAddr (pi'CITx insertPoint) Map.! pi'TOR insertPoint)
         newToken = assetClass (app'symbol appSymbol) (TokenName .getDatumValue . NodeDatum $ newNode)
         newDatum = updatePointer (Pointer newToken)
         oref = pi'TOR insertPoint
         redeemer = asRedeemer $ MintAct (NftId . getDatumValue . NodeDatum $ newNode) symbol
         oldDatum = pi'data insertPoint
-        uniqueToken = assetClassValue (appInstance'AppAssetClass appInstance) 1
 
         updatePointer :: Pointer -> DatumNft
         updatePointer newPointer =
@@ -137,9 +140,7 @@ mint symbol params = do
             ]
         tx =
           mconcat
-            [ case oldDatum of
-                NodeDatum _ -> Constraints.mustPayToTheScript newDatum token
-                HeadDatum _ -> Constraints.mustPayToTheScript newDatum (token <> uniqueToken)
+            [ Constraints.mustPayToTheScript newDatum token
             , Constraints.mustSpendScriptOutput oref redeemer
             ]
 
