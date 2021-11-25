@@ -34,4 +34,5 @@ jobs:
             dist-newstyle
           key: ${{ runner.os }}-cabal
       - name: Build all project components
-        run: nix flake check ./mlabs -L
+        working-directory: ./mlabs
+        run: ./run-tests.sh
