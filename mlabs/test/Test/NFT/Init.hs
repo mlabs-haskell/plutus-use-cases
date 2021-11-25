@@ -25,6 +25,7 @@ module Test.NFT.Init (
   userStartAuction,
   userCloseAuction,
   userWait,
+  waitInit,
 ) where
 
 import Control.Lens ((&), (.~))
@@ -104,12 +105,20 @@ w2 = walletFromNumber 2
 w3 = walletFromNumber 3
 wA = walletFromNumber 4 -- Admin Wallet
 
+{- it was 2 before, but after switching
+   `Plutus.Contracts.Currency.mintContract`
+   to `Mlabs.Plutus.Contracts.Currency.mintContract`
+   tests start to fail with 2 slots waiting
+-}
+waitInit :: EmulatorTrace ()
+waitInit = void $ waitNSlots 3
+
 -- | Calls initialisation of state for Nft pool
 callStartNft :: Wallet -> EmulatorTrace NftAppInstance
 callStartNft wal = do
   hAdmin <- activateContractWallet wal adminEndpoints
   callEndpoint @"app-init" hAdmin [UserId . walletPubKeyHash $ wal]
-  void $ waitNSlots 2
+  waitInit
   oState <- observableState hAdmin
   appInstance <- case getLast oState of
     Nothing -> throwError $ GenericError "App Symbol Could not be established."
@@ -123,7 +132,7 @@ callStartNftFail wal = do
   lift $ do
     hAdmin <- activateContractWallet wal adminEndpoints
     callEndpoint @"app-init" hAdmin [toUserId w5]
-    next
+    waitInit
 
 type ScriptM a =
   ReaderT
