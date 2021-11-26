@@ -2,6 +2,7 @@ module Mlabs.IntegrationTest.Types (
   TestError (..),
   BalanceInfo (..),
   SignInfo (..),
+  MintInfo (..),
   TxBodyContent,
 ) where
 
@@ -14,15 +15,13 @@ import Data.Yaml (ParseException)
 
 import GHC.Generics (Generic)
 
-import Ledger (TxIn, Value)
+import Ledger (TokenName, TxIn, Value, CurrencySymbol)
 import Ledger.Constraints (MkTxError)
 import Ledger.Tx.CardanoAPI (ToCardanoError)
 
 import Network.HTTP.Req qualified as Req
 
-import Plutus.ChainIndex (
-  ChainIndexTxOutputs (..),
- )
+import Plutus.ChainIndex (ChainIndexTxOutputs (..))
 
 import Prelude
 
@@ -70,5 +69,12 @@ data SignInfo = SignInfo
   { balancedWitnesses :: [C.KeyWitness C.AlonzoEra]
   , signedWitnesses :: [C.KeyWitness C.AlonzoEra]
   , witnessDiff :: [C.KeyWitness C.AlonzoEra]
+  }
+  deriving stock (Show, Eq, Generic)
+
+data MintInfo = MintInfo
+  { amount :: (TokenName, Integer)
+  , totalUtxosValue :: Value
+  , symbol :: CurrencySymbol
   }
   deriving stock (Show, Eq, Generic)

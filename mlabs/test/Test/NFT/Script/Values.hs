@@ -17,6 +17,7 @@ import Mlabs.NFT.Validation qualified as NFT
 import Plutus.V1.Ledger.Ada qualified as Ada
 import PlutusTx.Prelude hiding ((<>))
 import Wallet.Emulator.Wallet qualified as Emu
+import Ledger.CardanoWallet qualified as CardanoWallet
 
 -- test values
 

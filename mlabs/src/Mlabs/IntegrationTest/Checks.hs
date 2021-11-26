@@ -18,6 +18,7 @@ module Mlabs.IntegrationTest.Checks (
   feeMustBeAdded,
   inputsMustBeAdded,
   unbalancedInsOutsShouldNotChange,
+  currencyMustBeMinted,
 ) where
 
 import Prelude
@@ -28,8 +29,9 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 
-import Ledger (TxIn, Value)
+import Ledger (CurrencySymbol, TokenName, TxIn)
 import Ledger.Ada qualified as Ada
+import Ledger.Value (Value (Value))
 import Ledger.Value qualified as Value
 
 import Mlabs.IntegrationTest.Types
@@ -37,6 +39,7 @@ import Mlabs.IntegrationTest.Utils
 
 import Plutus.ChainIndex (ChainIndexTxOutputs (..))
 
+import PlutusTx.AssocMap qualified as AssocMap
 import PlutusTx.Prelude qualified as PP
 
 class Reportable a where
@@ -207,6 +210,37 @@ instance Reportable (Check WitnessesAdded) where
         WitnessesAdded -> True
         NoWitnessesAdded -> False
 
+-- TODO
+data HasBeenMinted
+  = HasBeenMinted TokenName Integer
+  | HasNotBeenMinted
+  deriving stock (Show)
+
+instance Reportable (Check HasBeenMinted) where
+  report c@(Check ctx res) = case ctx of
+    Success ->
+      mconcat
+        [ "Minting check is OK\n"
+        , "+ utxos of wallet were expected to "
+        , say asIs c
+        , "and contain "
+        , tshow res
+        ]
+    Fail ->
+      mconcat
+        [ "Minting check is FAILED\n"
+        , "- utxos of wallet were expected to "
+        , say not c
+        ]
+
+  say f (Check _ minted)
+   | f hasBeenMinted = "contain minted 'Value'"
+   | otherwise = "not contain minted currency"
+   where
+     hasBeenMinted = case minted of
+       HasBeenMinted {} -> True
+       HasNotBeenMinted -> False
+
 cNot :: Check a -> Check a
 cNot = \case
   Check Success a -> Check Fail a
@@ -272,3 +306,17 @@ unbalancedInsOutsShouldNotChange BalanceInfo {..}
       (InvalidTx, InvalidTx) -> True
       (ValidTx unbOuts', ValidTx bcdOuts') -> all (`L.elem` bcdOuts') unbOuts'
       _ -> False
+
+currencyMustBeMinted :: MintInfo -> Check HasBeenMinted
+currencyMustBeMinted MintInfo {..}
+  | hasBeenMinted = Check Success $ HasBeenMinted tokenName quantity
+  | otherwise = Check Fail HasNotBeenMinted
+  where
+    hasBeenMinted = valueOf tokenName symbol totalUtxosValue PP.== quantity
+    (tokenName, quantity) = amount
+
+valueOf :: TokenName -> CurrencySymbol -> Value -> Integer
+valueOf tokenName symbol (Value value) =
+  fromMaybe 0 $
+    AssocMap.lookup tokenName
+      =<< AssocMap.lookup symbol value
