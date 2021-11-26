@@ -51,11 +51,13 @@ import Mlabs.NFT.Types (
   BuyRequestUser (..),
   Content (..),
   MintParams (..),
+  NftAppInstance,
   NftAppSymbol (..),
   NftId (..),
   QueryResponse,
   SetPriceParams (..),
   Title (..),
+  UniqueToken,
   UserId (..),
  )
 import Mlabs.NFT.Validation (calculateShares)
@@ -136,7 +138,7 @@ instance ContractModel NftModel where
     deriving (Hask.Show, Hask.Eq)
 
   data ContractInstanceKey NftModel w s e where
-    InitKey :: Wallet -> ContractInstanceKey NftModel (Last NftAppSymbol) NFTAppSchema Text
+    InitKey :: Wallet -> ContractInstanceKey NftModel (Last NftAppInstance) NFTAppSchema Text
     UserKey :: Wallet -> ContractInstanceKey NftModel (Last (Either NftId QueryResponse)) NFTAppSchema Text
 
   instanceTag key _ = fromString $ Hask.show key
@@ -410,10 +412,10 @@ mkFreeGov :: Wallet -> Integer -> Plutus.V1.Ledger.Value.Value
 mkFreeGov wal = assetClassValue (AssetClass (cur, tn))
   where
     tn = TokenName . ("freeGov" <>) . getPubKeyHash . getUserId . toUserId $ wal
-    cur = "1d79944385979bd148187828546675f2431558107852ec5bb1437ca8"
+    cur = "8db955eed8cebff614f8aff4a6dac4c99f4714e2fe282dd80143912a"
 
-appSymbol :: NftAppSymbol
-appSymbol = NftAppSymbol "453e33199db9ffca12a3ffe19962a59c0955f6b376cdebba2cc9426f"
+appSymbol :: UniqueToken
+appSymbol = AssetClass ("038ecf2f85dcb99b41d7ebfcbc0d988f4ac2971636c3e358aa8d6121", "Unique App Token")
 
 wallets :: [Wallet]
 wallets = [w1, w2, w3]
