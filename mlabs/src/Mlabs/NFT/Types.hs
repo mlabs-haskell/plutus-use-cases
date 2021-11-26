@@ -1,6 +1,9 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Mlabs.NFT.Types (
+  UserContract,
+  UserWriter,
+  AdminContract,
   UserId (..),
   QueryResponse (..),
   NftId (..),
@@ -25,12 +28,21 @@ module Mlabs.NFT.Types (
   getDatumValue,
   GenericContract,
   PointInfo (..),
+  AuctionBid (..),
+  AuctionState (..),
+  AuctionOpenParams (..),
+  AuctionBidParams (..),
+  AuctionCloseParams (..),
+  UniqueToken,
+  InsertPoint (..),
 ) where
 
 import PlutusTx.Prelude
 import Prelude qualified as Hask
 
 import Plutus.Contract (Contract)
+
+import Data.Monoid (Last (..))
 
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
@@ -41,10 +53,12 @@ import Ledger (
   AssetClass,
   ChainIndexTxOut,
   CurrencySymbol,
+  POSIXTime,
   PubKeyHash,
   TxOutRef,
  )
 
+import Data.OpenApi.Schema qualified as OpenApi
 import Ledger.Value (TokenName (..), unAssetClass)
 import Plutus.ChainIndex (ChainIndexTx)
 import PlutusTx qualified
@@ -74,7 +88,7 @@ instance Eq Title where
   (Title t1) == (Title t2) = t1 == t2
 
 newtype UserId = UserId {getUserId :: PubKeyHash}
-  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving stock (Hask.Show, Generic, Hask.Eq, Hask.Ord)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 PlutusTx.unstableMakeIsData ''UserId
 PlutusTx.makeLift ''UserId
@@ -82,6 +96,10 @@ PlutusTx.makeLift ''UserId
 instance Eq UserId where
   {-# INLINEABLE (==) #-}
   (UserId u1) == (UserId u2) = u1 == u2
+
+instance Ord UserId where
+  {-# INLINEABLE (<=) #-}
+  (UserId u1) <= (UserId u2) = u1 <= u2
 
 {- | Unique identifier of NFT.
  The NftId contains a human readable title, the hashed information of the
@@ -196,21 +214,90 @@ instance Eq BuyRequestUser where
   (BuyRequestUser nftId1 price1 newPrice1) == (BuyRequestUser nftId2 price2 newPrice2) =
     nftId1 == nftId2 && price1 == price2 && newPrice1 == newPrice2
 
--- | A datatype used by the QueryContract to return a response
-data QueryResponse
-  = QueryCurrentOwner UserId
-  | QueryCurrentPrice (Maybe Integer)
+data AuctionOpenParams = AuctionOpenParams
+  { -- | nftId
+    op'nftId :: NftId
+  , -- | Auction deadline
+    op'deadline :: POSIXTime
+  , -- | Auction minimum bid in lovelace
+    op'minBid :: Integer
+  }
   deriving stock (Hask.Show, Generic, Hask.Eq)
-  deriving anyclass (FromJSON, ToJSON)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
+PlutusTx.unstableMakeIsData ''AuctionOpenParams
+PlutusTx.makeLift ''AuctionOpenParams
 
-PlutusTx.unstableMakeIsData ''MintAct
-PlutusTx.unstableMakeIsData ''NftId
+instance Eq AuctionOpenParams where
+  {-# INLINEABLE (==) #-}
+  (AuctionOpenParams nftId1 deadline1 minBid1) == (AuctionOpenParams nftId2 deadline2 minBid2) =
+    nftId1 == nftId2 && deadline1 == deadline2 && minBid1 == minBid2
 
-PlutusTx.makeLift ''MintAct
-PlutusTx.makeLift ''NftId
+data AuctionBidParams = AuctionBidParams
+  { -- | nftId
+    bp'nftId :: NftId
+  , -- | Bid amount in lovelace
+    bp'bidAmount :: Integer
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
+PlutusTx.unstableMakeIsData ''AuctionBidParams
+PlutusTx.makeLift ''AuctionBidParams
+
+instance Eq AuctionBidParams where
+  {-# INLINEABLE (==) #-}
+  (AuctionBidParams nftId1 bid1) == (AuctionBidParams nftId2 bid2) =
+    nftId1 == nftId2 && bid1 == bid2
+
+newtype AuctionCloseParams = AuctionCloseParams
+  { -- | nftId
+    cp'nftId :: NftId
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
+PlutusTx.unstableMakeIsData ''AuctionCloseParams
+PlutusTx.makeLift ''AuctionCloseParams
+
+instance Eq AuctionCloseParams where
+  {-# INLINEABLE (==) #-}
+  (AuctionCloseParams nftId1) == (AuctionCloseParams nftId2) =
+    nftId1 == nftId2
 
 --------------------------------------------------------------------------------
 -- Validation
+
+data AuctionBid = AuctionBid
+  { -- | Bid in Lovelace
+    ab'bid :: Integer
+  , -- | Bidder's wallet pubkey
+    ab'bidder :: UserId
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
+PlutusTx.unstableMakeIsData ''AuctionBid
+PlutusTx.makeLift ''AuctionBid
+
+instance Eq AuctionBid where
+  {-# INLINEABLE (==) #-}
+  (AuctionBid bid1 bidder1) == (AuctionBid bid2 bidder2) =
+    bid1 == bid2 && bidder1 == bidder2
+
+data AuctionState = AuctionState
+  { -- | Highest bid
+    as'highestBid :: Maybe AuctionBid
+  , -- | Deadline
+    as'deadline :: POSIXTime
+  , -- | Minimum bid amount
+    as'minBid :: Integer
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
+PlutusTx.unstableMakeIsData ''AuctionState
+PlutusTx.makeLift ''AuctionState
+
+instance Eq AuctionState where
+  {-# INLINEABLE (==) #-}
+  (AuctionState bid1 deadline1 minBid1) == (AuctionState bid2 deadline2 minBid2) =
+    bid1 == bid2 && deadline1 == deadline2 && minBid1 == minBid2
 
 -- | NFT Information.
 data InformationNft = InformationNft
@@ -224,28 +311,44 @@ data InformationNft = InformationNft
     info'owner :: UserId
   , -- | Price in Lovelace. If Nothing, NFT not for sale.
     info'price :: Maybe Integer
+  , -- | Auction state
+    info'auctionState :: Maybe AuctionState
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
 
+PlutusTx.unstableMakeIsData ''MintAct
+PlutusTx.unstableMakeIsData ''NftId
+
+PlutusTx.makeLift ''MintAct
+PlutusTx.makeLift ''NftId
+
 instance Ord InformationNft where
+  {-# INLINEABLE (<=) #-}
   x <= y = info'id x <= info'id y
 
 PlutusTx.unstableMakeIsData ''InformationNft
 PlutusTx.makeLift ''InformationNft
 instance Eq InformationNft where
   {-# INLINEABLE (==) #-}
-  (InformationNft a b c d e) == (InformationNft a' b' c' d' e') =
-    a == a' && b == b' && c == c' && d == d' && e == e'
+  (InformationNft a b c d e f) == (InformationNft a' b' c' d' e' f') =
+    a == a' && b == b' && c == c' && d == d' && e == e' && f == f'
 
-{- | App Instace is parametrised by the one time nft consumed at the creation of
- the HEAD and the script address.
+-- | Unique Token is an AssetClass.
+type UniqueToken = AssetClass
+
+{- | App Instace is parametrised by the Unique Token located in the head of the
+ list.
 -}
 data NftAppInstance = NftAppInstance
   { -- | Script Address where all the NFTs can be found
     appInstance'Address :: Address
   , -- | AssetClass with which all the NFTs are parametrised - guarantees the proof of uniqueness.
-    appInstance'AppAssetClass :: AssetClass
+    appInstance'AppAssetClass :: UniqueToken
+  , -- | Governance Address
+    appInstance'Governance :: Address
+  , -- | List of admins who can initiate the application
+    appInstance'Admins :: [UserId]
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
@@ -257,16 +360,18 @@ instanceCurrency = fst . unAssetClass . appInstance'AppAssetClass
 PlutusTx.unstableMakeIsData ''NftAppInstance
 PlutusTx.makeLift ''NftAppInstance
 instance Eq NftAppInstance where
-  (NftAppInstance a b) == (NftAppInstance a' b') = a == a' && b == b'
+  {-# INLINEABLE (==) #-}
+  (NftAppInstance a b c d) == (NftAppInstance a' b' c' d') = a == a' && b == b' && c == c' && d == d'
 
 newtype NftAppSymbol = NftAppSymbol {app'symbol :: CurrencySymbol}
-  deriving stock (Hask.Show, Generic, Hask.Eq)
-  deriving anyclass (ToJSON, FromJSON)
+  deriving stock (Hask.Show, Generic, Hask.Eq, Hask.Ord)
+  deriving anyclass (ToJSON, FromJSON, OpenApi.ToSchema)
 
 PlutusTx.unstableMakeIsData ''NftAppSymbol
 PlutusTx.makeLift ''NftAppSymbol
 
 instance Eq NftAppSymbol where
+  {-# INLINEABLE (==) #-}
   (NftAppSymbol a) == (NftAppSymbol a') = a == a'
 
 {- | The AssetClass is the pointer itself. Each NFT has the same CurrencySymbol,
@@ -282,9 +387,11 @@ PlutusTx.unstableMakeIsData ''Pointer
 PlutusTx.makeLift ''Pointer
 
 instance Eq Pointer where
+  {-# INLINEABLE (==) #-}
   (Pointer a) == (Pointer a') = a == a'
 
 instance Ord Pointer where
+  {-# INLINEABLE compare #-}
   (Pointer a) `compare` (Pointer a') = a `compare` a'
 
 {- | The head datum is unique for each list. Its token is minted when the unique
@@ -302,6 +409,7 @@ data NftListHead = NftListHead
 PlutusTx.unstableMakeIsData ''NftListHead
 PlutusTx.makeLift ''NftListHead
 instance Eq NftListHead where
+  {-# INLINEABLE (==) #-}
   (NftListHead a b) == (NftListHead a' b') = a == a' && b == b'
 
 -- | The nft list node is based on the above described properties.
@@ -317,11 +425,13 @@ data NftListNode = NftListNode
   deriving anyclass (ToJSON, FromJSON)
 
 instance Ord NftListNode where
+  {-# INLINEABLE (<=) #-}
   x <= y = node'information x <= node'information y
 
 PlutusTx.unstableMakeIsData ''NftListNode
 PlutusTx.makeLift ''NftListNode
 instance Eq NftListNode where
+  {-# INLINEABLE (==) #-}
   (NftListNode a b c) == (NftListNode a' b' c') = a == a' && b == b' && c == c'
 
 -- | The datum of an Nft is either head or node.
@@ -334,6 +444,7 @@ data DatumNft
   deriving anyclass (ToJSON, FromJSON)
 
 instance Ord DatumNft where
+  {-# INLINEABLE (<=) #-}
   (HeadDatum _) <= _ = True
   (NodeDatum _) <= (HeadDatum _) = False
   (NodeDatum x) <= (NodeDatum y) = x <= y
@@ -397,6 +508,22 @@ data UserAct
       , -- | Nft symbol
         act'symbol :: NftAppSymbol
       }
+  | -- | Start NFT auction
+    OpenAuctionAct
+      { -- | Nft symbol
+        act'symbol :: NftAppSymbol
+      }
+  | -- | Make a bid in an auction
+    BidAuctionAct
+      { -- | Bid amount in lovelace
+        act'bid :: Integer
+      , -- | Nft symbol
+        act'symbol :: NftAppSymbol
+      }
+  | CloseAuctionAct
+      { -- | Nft symbol
+        act'symbol :: NftAppSymbol
+      }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (ToJSON, FromJSON)
 
@@ -413,25 +540,45 @@ instance Eq UserAct where
 
 -- OffChain utility types.
 
+-- | A datatype used by the QueryContract to return a response
+data QueryResponse
+  = QueryCurrentOwner (Maybe UserId)
+  | QueryCurrentPrice (Maybe Integer)
+  | QueryContent (Maybe InformationNft)
+  | QueryListNfts [InformationNft]
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON)
+
 -- | Easy type to find and use Nodes by.
-data PointInfo = PointInfo
-  { pi'datum :: DatumNft
+data PointInfo a = PointInfo
+  { pi'data :: a
   , pi'TOR :: TxOutRef
   , pi'CITxO :: ChainIndexTxOut
   , pi'CITx :: ChainIndexTx
   }
   deriving stock (Hask.Eq, Hask.Show)
 
-instance Eq PointInfo where
+instance Eq a => Eq (PointInfo a) where
   {-# INLINEABLE (==) #-}
   (PointInfo x y _ _) == (PointInfo a b _ _) =
     x == a && y == b -- && z == c && k == d
 
-instance Ord PointInfo where
-  x <= y = pi'datum x <= pi'datum y
+instance Ord a => Ord (PointInfo a) where
+  {-# INLINEABLE (<=) #-}
+  x <= y = pi'data x <= pi'data y
 
-instance Hask.Ord PointInfo where
-  x <= y = pi'datum x <= pi'datum y
+instance (Ord a, Hask.Eq a) => Hask.Ord (PointInfo a) where
+  x <= y = pi'data x <= pi'data y
+
+-- | Two positions in on-chain list between which new NFT will be "inserted"
+data InsertPoint a = InsertPoint
+  { prev :: PointInfo a
+  , next :: Maybe (PointInfo a)
+  }
+  deriving stock (Hask.Show)
 
 -- Contract types
 type GenericContract a = forall w s. Contract w s Text a
+type UserWriter = Last (Either NftId QueryResponse)
+type UserContract s a = Contract UserWriter s Text a
+type AdminContract s a = Contract (Last NftAppSymbol) s Text a

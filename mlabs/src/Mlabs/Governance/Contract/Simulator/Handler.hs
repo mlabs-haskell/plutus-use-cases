@@ -30,7 +30,6 @@ import Data.Default (Default (def))
 import Data.Monoid (Last (..))
 import Data.OpenApi.Schema qualified as OpenApi
 import Data.Text (Text, pack)
-import Data.Text.Prettyprint.Doc (Pretty (..), viaShow)
 import GHC.Generics (Generic)
 
 import Control.Monad.Freer (interpret)
@@ -47,6 +46,8 @@ import Plutus.PAB.Core (EffectHandlers)
 import Plutus.PAB.Effects.Contract.Builtin (Builtin, BuiltinHandler (contractHandler), HasDefinitions (..), SomeBuiltin (..), endpointsToSchemas, handleBuiltin)
 import Plutus.PAB.Simulator ()
 import Plutus.PAB.Simulator as Simulator
+
+import Prettyprinter (Pretty (..), viaShow)
 
 -- FIXME this was passed as `BootstrapCfg` before update from calling side,
 --       but now coz `bootstrapGovernance` moved here, had to hardcode them till can figure out better way

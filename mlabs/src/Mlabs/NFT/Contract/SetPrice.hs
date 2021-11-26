@@ -35,20 +35,24 @@ import Mlabs.NFT.Contract.Aux
 import Mlabs.NFT.Types
 import Mlabs.NFT.Validation
 
---------------------------------------------------------------------------------
--- Set Price
-
-setPrice :: NftAppSymbol -> SetPriceParams -> Contract (Last NftId) s Text ()
+{- |
+  Attempts to set price of NFT, checks if price is being set by the owner
+  and that NFT is not on an auction.
+-}
+setPrice :: NftAppSymbol -> SetPriceParams -> Contract UserWriter s Text ()
 setPrice symbol SetPriceParams {..} = do
   when negativePrice $ Contract.throwError "New price can not be negative"
   ownOrefTxOut <- getUserAddr >>= fstUtxoAt
   ownPkh <- Contract.ownPubKeyHash
   PointInfo {..} <- findNft sp'nftId symbol
-  oldNode <- case pi'datum of
+  oldNode <- case pi'data of
     NodeDatum n -> Hask.pure n
     _ -> Contract.throwError "NFT not found"
   when (getUserId ((info'owner . node'information) oldNode) /= ownPkh) $
     Contract.throwError "Only owner can set price"
+  when (isJust . info'auctionState . node'information $ oldNode) $
+    Contract.throwError "Can't set price auction is already in progress"
+
   let nftDatum = NodeDatum $ updateDatum oldNode
       nftVal = pi'CITxO ^. ciTxOutValue
       action = SetPriceAct sp'price symbol
@@ -69,7 +73,7 @@ setPrice symbol SetPriceParams {..} = do
           ]
 
   void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
-  Contract.tell . Last . Just $ sp'nftId
+  Contract.tell . Last . Just . Left $ sp'nftId
   Contract.logInfo @Hask.String "set-price successful!"
   where
     updateDatum node = node {node'information = (node'information node) {info'price = sp'price}}

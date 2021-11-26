@@ -40,7 +40,7 @@ import Plutus.Contract (
   logInfo,
   submitTxConstraintsWith,
   throwError,
-  utxosAt,
+  utxosAt, ownPubKeyHash
  )
 import Plutus.Contracts.Currency (
   OneShotCurrency (..),
@@ -76,6 +76,7 @@ runMintTest mint@Mint {..} = do
 
 mintToken :: Mint -> Contract () MintSchema Text OneShotCurrency
 mintToken Mint {..} = do
+  ownPkh <- ownPubKeyHash
   (txOutRef, mciTxOut, pkScript) <-
     mapTShowableErr @PubKey.PubKeyError
       . PubKey.pubKeyContract pkh
@@ -90,11 +91,14 @@ mintToken Mint {..} = do
             Hask.mconcat
               [ Constraints.mintingPolicy curVali
               , Constraints.unspentOutputs utxos
-              , Constraints.otherScript (Scripts.validatorScript pkScript)
+              , Constraints.otherScript $ Scripts.validatorScript pkScript
               ]
           mintTx =
-            Constraints.mustSpendScriptOutput txOutRef unitRedeemer
-              Hask.<> Constraints.mustMintValue (mintedValue theCurrency)
+            Hask.mconcat
+              [ Constraints.mustSpendScriptOutput txOutRef unitRedeemer
+              , Constraints.mustMintValue $ mintedValue theCurrency
+              , Constraints.mustBeSignedBy ownPkh
+              ]
       txId <-
         getCardanoTxId
           <$> submitTxConstraintsWith @Scripts.Any lookups mintTx

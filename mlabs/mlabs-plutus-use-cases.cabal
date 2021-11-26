@@ -44,6 +44,7 @@ common common-imports
     , cardano-api
     , cardano-ledger-alonzo
     , plutus-extra
+    , purescript-bridge
     , transformers
     -- wbe testing stuff
     , memory
@@ -116,20 +117,21 @@ library
     -Wmissing-export-lists
     -Wmissing-deriving-strategies
     -- -Werror
-    
+
   hs-source-dirs:
     src/
     
   exposed-modules:
     Mlabs.Control.Check
     Mlabs.Control.Monad.State
+    Mlabs.Data.LinkedList
     Mlabs.Data.List
     Mlabs.Data.Ord
+    Mlabs.Demo.Contract.Burn
+    Mlabs.Demo.Contract.Mint
     Mlabs.Deploy.Governance
     Mlabs.Deploy.Nft
     Mlabs.Deploy.Utils
-    Mlabs.Demo.Contract.Burn
-    Mlabs.Demo.Contract.Mint
     Mlabs.Emulator.App
     Mlabs.Emulator.Blockchain
     Mlabs.Emulator.Scene
@@ -142,35 +144,53 @@ library
     Mlabs.Governance.Contract.Validation
     Mlabs.Lending.Contract
     Mlabs.Lending.Contract.Api
-    Mlabs.Lending.Contract.Forge
     Mlabs.Lending.Contract.Emulator.Client
-    Mlabs.Lending.Contract.Simulator.Handler
+    Mlabs.Lending.Contract.Forge
     Mlabs.Lending.Contract.Server
+    Mlabs.Lending.Contract.Simulator.Handler
     Mlabs.Lending.Contract.StateMachine
     Mlabs.Lending.Logic.App
     Mlabs.Lending.Logic.InterestRate
     Mlabs.Lending.Logic.React
     Mlabs.Lending.Logic.State
     Mlabs.Lending.Logic.Types
+    Mlabs.NFT.Api
+    Mlabs.NFT.Contract
+    Mlabs.NFT.Contract.Aux
+    Mlabs.NFT.Contract.BidAuction
+    Mlabs.NFT.Contract.Buy
+    Mlabs.NFT.Contract.CloseAuction
+    Mlabs.NFT.Contract.Fees
+    Mlabs.NFT.Contract.Init
+    Mlabs.NFT.Contract.Mint
+    Mlabs.NFT.Contract.OpenAuction
+    Mlabs.NFT.Contract.Query
+    Mlabs.NFT.Contract.SetPrice
+    Mlabs.NFT.Governance
+    Mlabs.NFT.Governance.Types
+    Mlabs.NFT.Governance.Validation
+    Mlabs.NFT.PAB.MarketplaceContract
+    Mlabs.NFT.PAB.Run
+    Mlabs.NFT.PAB.Simulator
+    Mlabs.NFT.Types
+    Mlabs.NFT.Validation
+    Mlabs.Nft.Contract
+    Mlabs.Nft.Contract.Api
+    Mlabs.Nft.Contract.Emulator.Client
+    Mlabs.Nft.Contract.Forge
+    Mlabs.Nft.Contract.Server
+    Mlabs.Nft.Contract.Simulator.Handler
+    Mlabs.Nft.Contract.StateMachine
     Mlabs.Nft.Logic.App
     Mlabs.Nft.Logic.React
     Mlabs.Nft.Logic.State
     Mlabs.Nft.Logic.Types
-    Mlabs.Nft.Contract
-    Mlabs.Nft.Contract.Emulator.Client
-    Mlabs.Nft.Contract.Simulator.Handler
-    Mlabs.Nft.Contract.Api
-    Mlabs.Nft.Contract.Forge
-    Mlabs.Nft.Contract.Server
-    Mlabs.Nft.Contract.StateMachine
     Mlabs.Plutus.Contract
     Mlabs.Plutus.PAB
     Mlabs.System.Console.PrettyLogger
     Mlabs.System.Console.Utils
-    Mlabs.Utils.Wallet 
-    Mlabs.NFT.Types
-    Mlabs.NFT.Contract
-    Mlabs.NFT.Validation
+    Mlabs.Utils.Wallet
+    Mlabs.Plutus.Contracts.Currency
     Mlabs.IntegrationTest.TxBuilder
     Mlabs.IntegrationTest.Types
     Mlabs.IntegrationTest.Checks
@@ -189,12 +209,6 @@ library
     Mlabs.IntegrationTest.PabWbe.Contracts.Payment
     Mlabs.IntegrationTest.PabWbe.Contracts.Mint
     Mlabs.IntegrationTest.PabWbe.Contracts.IntegrationTest
-    Mlabs.NFT.Api
-    Mlabs.NFT.Contract.Init
-    Mlabs.NFT.Contract.Mint
-    Mlabs.NFT.Contract.Aux
-    Mlabs.NFT.Contract.SetPrice
-    Mlabs.NFT.Contract.Buy
 
 executable mlabs-plutus-use-cases
   import:  common-imports
@@ -244,6 +258,15 @@ executable lendex-demo
   import:  common-ghc-options  
 
   main-is: lendex-demo/Main.hs
+  build-depends: mlabs-plutus-use-cases
+
+executable nft-marketplace
+  import:  common-imports
+  import:  common-language
+  import:  common-configs
+  import:  common-ghc-options  
+
+  main-is: nft-marketplace/Main.hs
   build-depends: mlabs-plutus-use-cases
 
 executable pab-integration-test
@@ -318,10 +341,12 @@ Test-suite mlabs-plutus-use-cases-tests
     Test.NFT.Trace
     Test.NFT.Contract
     Test.NFT.QuickCheck
+    Test.NFT.Script.Auction
     Test.NFT.Script.Main
     Test.NFT.Script.Dealing
     Test.NFT.Script.Minting
     Test.NFT.Script.Values
+    Test.NFT.Size
 
   default-extensions:
     RecordWildCards

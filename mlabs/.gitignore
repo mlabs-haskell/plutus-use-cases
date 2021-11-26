@@ -9,5 +9,7 @@ stack.yaml.lock
 result*
 *~
 *#
+plutus-pab.yaml
+pab-core.db
+.direnv/
 .envrc
-.direnv

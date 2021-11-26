@@ -7,8 +7,12 @@ import Ledger qualified
 import Ledger.Value (TokenName (..))
 import Ledger.Value qualified as Value
 
+import Ledger.CardanoWallet qualified as CardanoWallet
 import Mlabs.NFT.Contract.Aux qualified as NFT
-import Mlabs.NFT.Types (Content (..), NftAppInstance (..), NftAppSymbol (..), NftId (..))
+
+import Mlabs.NFT.Governance qualified as Gov
+import Mlabs.NFT.Types (Content (..), NftAppInstance (..), NftAppSymbol (..), NftId (..), UserId (..))
+
 import Mlabs.NFT.Validation qualified as NFT
 import Plutus.V1.Ledger.Ada qualified as Ada
 import PlutusTx.Prelude hiding ((<>))
@@ -38,8 +42,19 @@ userOnePkh = Emu.walletPubKeyHash userOneWallet
 userTwoWallet :: Emu.Wallet
 userTwoWallet = Emu.fromWalletNumber (CardanoWallet.WalletNumber 3)
 
+userTwoPkh :: Ledger.PubKeyHash
+userTwoPkh = Emu.walletPubKeyHash userTwoWallet
+
+-- User 3
+userThreeWallet :: Emu.Wallet
+userThreeWallet = Emu.fromWalletNumber (CardanoWallet.WalletNumber 4)
+
+userThreePkh :: Ledger.PubKeyHash
+userThreePkh = Emu.walletPubKeyHash userThreeWallet
+
 testTxId :: Ledger.TxId
 testTxId = fromJust $ Aeson.decode "{\"getTxId\" : \"61626364\"}"
+
 testTokenName :: TokenName
 testTokenName = TokenName hData
   where
@@ -66,9 +81,17 @@ adaValue = Ada.lovelaceValueOf . (* 1_000_000)
 testStateAddr :: Ledger.Address
 testStateAddr = NFT.txScrAddress
 
--- FIXME
+{-
+   We can't get rid of hard-coding the CurrencySymbol of UniqueToken at the moment since the mintContract produces it
+   which works inside the Contract monad. Getting this value from our initApp endpoint need to encapsulate almost everything here
+   to a Contract monad or using a similar approach such as ScriptM, which is operationally heavy and isn't worth doing.
+   We can almost make sure that this value won't change unless upgrading weird things in plutus, or predetermining
+   the initial state UTxOs to something other than the default.
+-}
 appInstance :: NftAppInstance
-appInstance = NftAppInstance testStateAddr (Value.AssetClass ("00a6b45b792d07aa2a778d84c49c6a0d0c0b2bf80d6c1c16accdbe01", "Unique App Token"))
+appInstance = NftAppInstance testStateAddr uniqueAsset (Gov.govScrAddress uniqueAsset) [UserId userOnePkh]
+  where
+    uniqueAsset = Value.AssetClass ("00a6b45b792d07aa2a778d84c49c6a0d0c0b2bf80d6c1c16accdbe01", "Unique App Token")
 
 appSymbol :: NftAppSymbol
 appSymbol = NftAppSymbol . NFT.curSymbol $ appInstance

@@ -25,6 +25,7 @@ import Control.Monad.Freer.Extras.Log (LogMsg)
 import Control.Monad.Reader (ReaderT, ask, lift, runReaderT)
 import Data.Map qualified as M
 import Plutus.Contract.Test (CheckOptions, Wallet (..), defaultCheckOptions, emulatorConfig, walletPubKeyHash)
+import Plutus.Trace.Effects.Assert (Assert)
 import Plutus.Trace.Effects.EmulatedWalletAPI (EmulatedWalletAPI)
 import Plutus.Trace.Effects.EmulatorControl (EmulatorControl)
 import Plutus.Trace.Effects.RunContract (RunContract)
