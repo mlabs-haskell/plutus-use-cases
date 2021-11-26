@@ -267,6 +267,7 @@ executable nft-marketplace
   import:  common-ghc-options  
 
   main-is: nft-marketplace/Main.hs
+  build-depends: mlabs-plutus-use-cases
 
 executable pab-integration-test
   import:  common-imports

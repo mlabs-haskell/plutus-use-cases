@@ -139,7 +139,7 @@ pkgs.haskell-nix.cabalProject {
       sources.plutus.sha256;
     "https://github.com/input-output-hk/plutus-apps.git"."${sources.plutus-apps.rev}" =
       sources.plutus-apps.sha256;
-    "https://github.com/Liqwid-Labs/plutus-extra.git"."${sources.plutus-extra.rev}" =
+    "https://github.com/ngua/plutus-extra.git"."${sources.plutus-extra.rev}" =
       sources.plutus-extra.sha256;
 
     # `cardano-*`
