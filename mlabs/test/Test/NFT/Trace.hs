@@ -14,6 +14,7 @@ module Test.NFT.Trace (
   testGetContent2,
   testGetContent1,
   test2Admins,
+  burnGovTest,
 ) where
 
 import PlutusTx.Prelude
@@ -48,7 +49,7 @@ appInitTrace = do
   let admin = walletFromNumber 4 :: Emulator.Wallet
   hAdmin :: AppInitHandle <- activateContractWallet admin adminEndpoints
   callEndpoint @"app-init" hAdmin [UserId . Emulator.walletPubKeyHash $ admin]
-  void $ Trace.waitNSlots 2
+  void $ Trace.waitNSlots 3
   oState <- Trace.observableState hAdmin
   appInstace <- case getLast oState of
     Nothing -> Trace.throwError $ Trace.GenericError "App Instance Could not be established."
@@ -251,7 +252,7 @@ severalBuysTrace :: EmulatorTrace ()
 severalBuysTrace = do
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
       wallet2 = walletFromNumber 2 :: Emulator.Wallet
-      wallet3 = walletFromNumber 4 :: Emulator.Wallet
+      wallet3 = walletFromNumber 3 :: Emulator.Wallet
 
   appInstance <- appInitTrace
   let uniqueToken = appInstance'UniqueToken appInstance
@@ -306,6 +307,62 @@ setPriceTrace = do
   void $ Trace.waitNSlots 1
   callEndpoint @"set-price" userUseH (SetPriceParams nftId (Just 30))
   void $ Trace.waitNSlots 1
+
+burnGovTrace :: EmulatorTrace ()
+burnGovTrace = do
+  let wallet1 = walletFromNumber 1 :: Emulator.Wallet
+      wallet2 = walletFromNumber 2 :: Emulator.Wallet
+      wallet3 = walletFromNumber 3 :: Emulator.Wallet
+
+  appInstance <- appInitTrace
+  let uniqueToken = appInstance'UniqueToken appInstance
+
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints uniqueToken
+  h2 :: AppTraceHandle <- activateContractWallet wallet2 $ endpoints uniqueToken
+  h3 :: AppTraceHandle <- activateContractWallet wallet3 $ endpoints uniqueToken
+  callEndpoint @"mint" h1 artwork
+  void $ Trace.waitNSlots 1
+  oState <- Trace.observableState h1
+  nft1 <- case findNftId oState of
+    Nothing -> Trace.throwError (Trace.GenericError "NftId not found")
+    Just nid -> return nid
+  void $ Trace.waitNSlots 1
+
+  callEndpoint @"mint" h1 artwork2
+  void $ Trace.waitNSlots 1
+  oState <- Trace.observableState h1
+  nft2 <- case findNftId oState of
+    Nothing -> Trace.throwError (Trace.GenericError "NftId not found")
+    Just nid -> return nid
+  void $ Trace.waitNSlots 1
+
+  callEndpoint @"buy" h2 (BuyRequestUser nft1 1_000_000 Nothing)
+  void $ Trace.waitNSlots 1
+
+  callEndpoint @"buy" h3 (BuyRequestUser nft2 1_000_000 Nothing)
+  void $ Trace.waitNSlots 1
+
+  callEndpoint @"burn-gov" h2 1000
+  void $ Trace.waitNSlots 1
+
+  callEndpoint @"burn-gov" h3 5000
+  void $ Trace.waitNSlots 1
+  where
+    artwork =
+      MintParams
+        { mp'content = Content "A painting."
+        , mp'title = Title "Fiona Lisa"
+        , mp'share = 1 % 10
+        , mp'price = Just 1_000_000
+        }
+    artwork2 =
+      MintParams
+        { mp'content = Content "Another painting."
+        , mp'title = Title "Fiona Lisa"
+        , mp'share = 1 % 10
+        , mp'price = Just 1_000_000
+        }
+    buyParams nftId bid = BuyRequestUser nftId bid (Just 200)
 
 -- queryPriceTrace :: EmulatorTrace ()
 -- queryPriceTrace = do
@@ -440,6 +497,9 @@ test = runEmulatorTraceIO eTrace1
 
 severalBuysTest :: Hask.IO ()
 severalBuysTest = runEmulatorTraceIO severalBuysTrace
+
+burnGovTest :: Hask.IO ()
+burnGovTest = runEmulatorTraceIO burnGovTrace
 
 -- testSetPrice :: Hask.IO ()
 -- testSetPrice = runEmulatorTraceIO setPriceTrace

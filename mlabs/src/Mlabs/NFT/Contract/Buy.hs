@@ -27,7 +27,7 @@ import Ledger (
 import Ledger.Typed.Scripts (validatorScript)
 
 import Mlabs.NFT.Contract.Aux
-import Mlabs.NFT.Contract.Fees
+import Mlabs.NFT.Contract.Gov.Fees
 import Mlabs.NFT.Types
 import Mlabs.NFT.Validation
 
@@ -51,7 +51,7 @@ buy uT BuyRequestUser {..} = do
     Contract.logError @Hask.String "Bid price is too low."
 
   userUtxos <- getUserUtxos
-  feeRate <- getCurrFeeRate uT
+  feeRate <- queryCurrFeeRate uT
 
   user <- getUId
   (govTx, govLookups) <- getFeesConstraints uT ur'nftId ur'price user
