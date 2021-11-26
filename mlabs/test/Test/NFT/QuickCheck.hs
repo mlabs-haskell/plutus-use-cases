@@ -383,7 +383,7 @@ instance ContractModel NftModel where
     ActionAuctionBid {..} -> do
       let h1 = h $ UserKey aPerformer
       callEndpoint @"auction-bid" h1 $
-        AuctionBidParamsg
+        AuctionBidParams
           { bp'nftId = aNftId
           , bp'bidAmount = aBid
           }
