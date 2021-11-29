@@ -62,7 +62,7 @@ import Mlabs.NFT.Types (
   UserId (..),
  )
 import Mlabs.NFT.Validation (calculateShares)
-import Test.NFT.Init (checkOptions, toUserId, w1, w2, w3, wA)
+import Test.NFT.Init (checkOptions, toUserId, w1, w2, w3, wA, mkFreeGov, appSymbol)
 
 data MockAuctionState = MockAuctionState
   { _auctionHighestBid :: Maybe (Integer, Wallet)
@@ -406,17 +406,6 @@ deriving instance Hask.Show (ContractInstanceKey NftModel w s e)
 
 feeRate :: Rational
 feeRate = 5 % 1000
-
--- We do not have any better way for testing GOV than hardcoding GOV currency.
--- If tests fail after updating validator change currency here.
-mkFreeGov :: Wallet -> Integer -> Plutus.V1.Ledger.Value.Value
-mkFreeGov wal = assetClassValue (AssetClass (cur, tn))
-  where
-    tn = TokenName . ("freeGov" <>) . getPubKeyHash . getUserId . toUserId $ wal
-    cur = "8db955eed8cebff614f8aff4a6dac4c99f4714e2fe282dd80143912a"
-
-appSymbol :: UniqueToken
-appSymbol = AssetClass ("038ecf2f85dcb99b41d7ebfcbc0d988f4ac2971636c3e358aa8d6121", "Unique App Token")
 
 wallets :: [Wallet]
 wallets = [w1, w2, w3]
