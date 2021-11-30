@@ -48,7 +48,7 @@ appInitTrace = do
   let admin = walletFromNumber 4 :: Emulator.Wallet
   hAdmin :: AppInitHandle <- activateContractWallet admin adminEndpoints
   callEndpoint @"app-init" hAdmin [UserId . Emulator.walletPubKeyHash $ admin]
-  void $ Trace.waitNSlots 2
+  void $ Trace.waitNSlots 4
   oState <- Trace.observableState hAdmin
   appInstace <- case getLast oState of
     Nothing -> Trace.throwError $ Trace.GenericError "App Instance Could not be established."
@@ -68,7 +68,7 @@ mintTrace aSymb wallet = do
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
 
 -- | Emulator Trace 1. Mints one NFT.
@@ -87,7 +87,7 @@ mint1Trace = do
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
 
 getContentTrace1 :: EmulatorTrace ()
@@ -115,7 +115,7 @@ getContentTrace1 = do
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
 
 -- | Two users mint two different artworks.
@@ -146,21 +146,21 @@ getContentTrace2 = do
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
     artwork2 =
       MintParams
         { mp'content = Content "Another painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
     artwork3 =
       MintParams
         { mp'content = Content "Another painting2."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
 
 -- | Two users mint two different artworks.
@@ -180,14 +180,14 @@ mintTrace2 = do
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
     artwork2 =
       MintParams
         { mp'content = Content "Another painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
 
 findNftId :: forall a b. Last (Either a b) -> Maybe a
@@ -211,7 +211,7 @@ mintFail1 = do
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
 
 -- | Emulator Trace 1. Mints one NFT.
@@ -243,9 +243,9 @@ eTrace1 = do
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
-    buyParams nftId = BuyRequestUser nftId 6 (Just 200)
+    buyParams nftId = BuyRequestUser nftId 6_000_000 (Just 200_000_000)
 
 severalBuysTrace :: EmulatorTrace ()
 severalBuysTrace = do
@@ -267,11 +267,11 @@ severalBuysTrace = do
     Nothing -> Trace.throwError (Trace.GenericError "NftId not found")
     Just nid -> return nid
   void $ Trace.waitNSlots 1
-  callEndpoint @"buy" h2 (buyParams nftId 6)
+  callEndpoint @"buy" h2 (buyParams nftId 6_000_000)
   void $ Trace.waitNSlots 1
-  callEndpoint @"buy" h3 (buyParams nftId 200)
+  callEndpoint @"buy" h3 (buyParams nftId 200_000_000)
   void $ Trace.waitNSlots 1
-  callEndpoint @"set-price" h2 (SetPriceParams nftId (Just 20))
+  callEndpoint @"set-price" h2 (SetPriceParams nftId (Just 20_000_000))
   where
     -- logInfo @Hask.String $ Hask.show oState
 
@@ -280,9 +280,9 @@ severalBuysTrace = do
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
-    buyParams nftId bid = BuyRequestUser nftId bid (Just 200)
+    buyParams nftId bid = BuyRequestUser nftId bid (Just 200_000_000)
 
 setPriceTrace :: EmulatorTrace ()
 setPriceTrace = do
@@ -297,14 +297,14 @@ setPriceTrace = do
   logInfo $ Hask.show nftId
   void $ Trace.waitNSlots 1
   authUseH :: AppTraceHandle <- activateContractWallet wallet1 (endpoints $ error ())
-  callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just 20))
+  callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just 20_000_000))
   void $ Trace.waitNSlots 1
-  callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just (-20)))
+  callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just (-20_000_000)))
   void $ Trace.waitNSlots 1
   userUseH :: AppTraceHandle <- activateContractWallet wallet2 (endpoints $ error ())
   callEndpoint @"set-price" userUseH (SetPriceParams nftId Nothing)
   void $ Trace.waitNSlots 1
-  callEndpoint @"set-price" userUseH (SetPriceParams nftId (Just 30))
+  callEndpoint @"set-price" userUseH (SetPriceParams nftId (Just 30_000_000))
   void $ Trace.waitNSlots 1
 
 -- queryPriceTrace :: EmulatorTrace ()
@@ -416,7 +416,7 @@ auctionTrace1 = do
   callEndpoint @"auction-close" h1 (closeParams nftId)
   void $ Trace.waitNSlots 2
 
-  callEndpoint @"set-price" h3 (SetPriceParams nftId (Just 20))
+  callEndpoint @"set-price" h3 (SetPriceParams nftId (Just 20_000_000))
   void $ Trace.waitNSlots 5
 
   logInfo @Hask.String "auction1 test end"
@@ -426,7 +426,7 @@ auctionTrace1 = do
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
 
     slotTenTime = slotToBeginPOSIXTime def 10

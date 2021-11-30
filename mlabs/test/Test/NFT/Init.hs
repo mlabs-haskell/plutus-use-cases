@@ -111,7 +111,7 @@ wA = walletFromNumber 4 -- Admin Wallet
    tests start to fail with 2 slots waiting
 -}
 waitInit :: EmulatorTrace ()
-waitInit = void $ waitNSlots 3
+waitInit = void $ waitNSlots 4
 
 -- | Calls initialisation of state for Nft pool
 callStartNft :: Wallet -> EmulatorTrace NftAppInstance
@@ -123,7 +123,7 @@ callStartNft wal = do
   appInstance <- case getLast oState of
     Nothing -> throwError $ GenericError "App Symbol Could not be established."
     Just aS -> pure aS
-  void $ waitNSlots 1
+  void $ waitNSlots 4
   pure appInstance
 
 callStartNftFail :: Wallet -> ScriptM ()

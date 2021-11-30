@@ -13,6 +13,7 @@ import Ledger.TimeSlot (slotToBeginPOSIXTime)
 import Plutus.Contract.Test (assertFailedTransaction, assertInstanceLog)
 import Plutus.Contract.Trace (walletPubKeyHash)
 import PlutusTx.Prelude hiding (check, mconcat)
+import PlutusTx.Ratio qualified as R
 import Test.Tasty (TestTree, testGroup)
 import Prelude (mconcat)
 import Prelude qualified as Hask
@@ -119,9 +120,11 @@ testBuyOnce = check "Buy once" (checkScene scene) w1 script
       userSetPrice w1 $ SetPriceParams nft1 (Just 1_000_000)
       userBuy w2 $ BuyRequestUser nft1 1_000_000 Nothing
       userSetPrice w2 $ SetPriceParams nft1 (Just 2_000_000)
+    feeRate = 5 R.% 1000
+    fee = round $ fromInteger 1_000_000 * feeRate
     scene =
       mconcat
-        [ w1 `ownsAda` 1_000_000
+        [ w1 `ownsAda` (1_000_000 - fee)
         , w2 `ownsAda` (-1_000_000)
         ]
 
