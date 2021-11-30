@@ -28,6 +28,7 @@ module Test.NFT.Init (
   userWait,
   waitInit,
   mkFreeGov,
+  getFreeGov,
   appSymbol,
 ) where
 
@@ -318,10 +319,16 @@ artwork2 =
     }
 
 mkFreeGov :: Wallet -> Integer -> Plutus.V1.Ledger.Value.Value
-mkFreeGov wal = assetClassValue (AssetClass (cur, tn))
+mkFreeGov wal = assetClassValue (AssetClass (govCurrency, tn))
   where
     tn = TokenName . ("freeGov" <>) . getPubKeyHash . getUserId . toUserId $ wal
-    cur = "e25f547dc5e320cd3c9d227d7e3f00b3104df7c204f081753548d2a1"
+
+govCurrency = "e25f547dc5e320cd3c9d227d7e3f00b3104df7c204f081753548d2a1"
+
+getFreeGov :: Wallet -> Plutus.V1.Ledger.Value.Value -> Integer
+getFreeGov wal val = valueOf val govCurrency tn
+  where
+    tn = TokenName . ("freeGov" <>) . getPubKeyHash . getUserId . toUserId $ wal
 
 appSymbol :: UniqueToken
 appSymbol = AssetClass ("038ecf2f85dcb99b41d7ebfcbc0d988f4ac2971636c3e358aa8d6121", "Unique App Token")

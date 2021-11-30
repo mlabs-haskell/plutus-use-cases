@@ -5,7 +5,7 @@
 module Test.NFT.QuickCheck where
 
 import Control.Lens (at, makeLenses, set, view, (^.))
-import Control.Monad (void, when)
+import Control.Monad (forM_, void, when)
 import Data.Default (def)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -20,12 +20,22 @@ import Plutus.Contract.Test.ContractModel (
   Actions,
   ContractInstanceSpec (..),
   ContractModel (..),
+  DL,
+  action,
+  anyActions_,
+  assertModel,
+  balanceChange,
   contractState,
   currentSlot,
   deposit,
+  forAllDL,
+  getContractState,
   getModelState,
+  lockedValue,
   propRunActionsWithOptions,
   transfer,
+  viewContractState,
+  viewModelState,
   wait,
   withdraw,
   ($=),
@@ -35,7 +45,7 @@ import Plutus.Trace.Emulator (callEndpoint)
 import Plutus.Trace.Emulator qualified as Trace
 import Plutus.V1.Ledger.Ada (lovelaceValueOf)
 import Plutus.V1.Ledger.Slot (Slot (..))
-import Plutus.V1.Ledger.Value (AssetClass (..), TokenName (..), Value, assetClassValue)
+import Plutus.V1.Ledger.Value (AssetClass (..), TokenName (..), Value, assetClassValue, valueOf)
 import PlutusTx.Prelude hiding ((<$>), (<*>), (==))
 import Test.QuickCheck qualified as QC
 import Test.Tasty (TestTree, testGroup)
@@ -62,7 +72,7 @@ import Mlabs.NFT.Types (
   UserId (..),
  )
 import Mlabs.NFT.Validation (calculateShares)
-import Test.NFT.Init (checkOptions, toUserId, w1, w2, w3, wA, mkFreeGov, appSymbol)
+import Test.NFT.Init (appSymbol, checkOptions, getFreeGov, mkFreeGov, toUserId, w1, w2, w3, wA)
 
 data MockAuctionState = MockAuctionState
   { _auctionHighestBid :: Maybe (Integer, Wallet)
@@ -136,6 +146,13 @@ instance ContractModel NftModel where
         { aPerformer :: Wallet
         , aNftId :: ~NftId
         }
+    | ActionBurn
+        { aPerformer :: Wallet
+        , aBurnAmount :: Integer
+        }
+    | ActionWait -- This action should not be generated (do NOT add it to arbitraryAction)
+        { aWaitSlots :: Integer
+        }
     deriving (Hask.Show, Hask.Eq)
 
   data ContractInstanceKey NftModel w s e where
@@ -186,6 +203,9 @@ instance ContractModel NftModel where
           , ActionAuctionClose
               <$> genWallet
               <*> genNftId
+          , ActionBurn
+              <$> genWallet
+              <*> genNonNeg
           ]
 
   initialState = NftModel Map.empty 0 False
@@ -222,6 +242,9 @@ instance ContractModel NftModel where
       && (s ^. contractState . mMintedCount > 0)
       && isJust ((s ^. contractState . mMarket . at aNftId) >>= _nftAuctionState)
       && (Just (s ^. currentSlot) > (view auctionDeadline <$> ((s ^. contractState . mMarket . at aNftId) >>= _nftAuctionState)))
+  precondition s ActionBurn {..} =
+    getFreeGov aPerformer (s ^. balanceChange aPerformer) >= aBurnAmount
+  precondition s ActionWait {} = True
 
   nextState ActionInit {} = do
     mStarted $= True
@@ -341,6 +364,12 @@ instance ContractModel NftModel where
                 deposit (nft ^. nftAuthor) authorShare
                 deposit newOwner (mkFreeGov newOwner feeValue)
     wait 5
+  nextState ActionBurn {..} = do
+    deposit aPerformer (lovelaceValueOf aBurnAmount)
+    withdraw aPerformer (mkFreeGov aPerformer aBurnAmount)
+    wait 5
+  nextState ActionWait {..} = do
+    wait aWaitSlots
 
   perform h _ = \case
     ActionInit -> do
@@ -400,6 +429,12 @@ instance ContractModel NftModel where
           { cp'nftId = aNftId
           }
       void $ Trace.waitNSlots 5
+    ActionBurn {..} -> do
+      let h1 = h $ UserKey aPerformer
+      callEndpoint @"burn-gov" h1 aBurnAmount
+      void $ Trace.waitNSlots 5
+    ActionWait {..} -> do
+      void . Trace.waitNSlots . Hask.fromInteger $ aWaitSlots
 
 deriving instance Hask.Eq (ContractInstanceKey NftModel w s e)
 deriving instance Hask.Show (ContractInstanceKey NftModel w s e)
@@ -430,5 +465,42 @@ propContract =
       instanceSpec
       (const $ Hask.pure True)
 
+noLockedFunds :: DL NftModel ()
+noLockedFunds = do
+  action ActionInit
+  anyActions_
+
+  nfts <- viewContractState mMarket
+
+  -- Wait for all auctions to end
+  forM_ nfts $ \nft -> do
+    case nft ^. nftAuctionState of
+      Just as -> do
+        action $ ActionWait $ getSlot (as ^. auctionDeadline)
+      Nothing -> Hask.pure ()
+
+  -- Close all auctions
+  forM_ nfts $ \nft -> do
+    case nft ^. nftAuctionState of
+      Just _ -> do
+        action $ ActionAuctionClose w1 (nft ^. nftId)
+      Nothing -> Hask.pure ()
+
+  -- Burn all gov tokens
+  forM_ wallets $ \w -> do
+    gov <- getFreeGov w <$> viewModelState (balanceChange w)
+    when (gov > 0) $
+      action $ ActionBurn w gov
+
+  assertModel "Locked funds should be zero" $ (== 0) . (\v -> valueOf v "" "") . lockedValue
+
+propNoLockedFunds :: QC.Property
+propNoLockedFunds = QC.withMaxSuccess 10 $ forAllDL noLockedFunds propContract
+
 test :: TestTree
-test = testGroup "QuickCheck" [testProperty "Contract" propContract]
+test =
+  testGroup
+    "QuickCheck"
+    [ testProperty "Can get funds out" propNoLockedFunds
+    , testProperty "Contract" propContract
+    ]
