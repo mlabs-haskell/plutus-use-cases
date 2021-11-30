@@ -42,6 +42,7 @@ preBalanceTxFrom addr utx = do
       newUtx = 
         set (tx . fee)  txFee
         $ over (tx . inputs) (Set.union insForBalancing)
+        $ set (tx . collateralInputs) (insForBalancing)
         $ over (tx . outputs) (changeOut : )
         $ utx
   logInfo @Hask.String $ "PRE Unbalanced:"

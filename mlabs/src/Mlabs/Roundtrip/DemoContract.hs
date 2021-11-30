@@ -57,8 +57,7 @@ runDemo (ContractArgs ownAddress) = endpoint @"call-demo" $ \ps -> do
     run PayToWalletParams{lovelaceAmount, receiverAddress} = do
       addr <- parseAddress ownAddress
       receiverPKH <- parseAddress receiverAddress >>= getPKH
-      utx <- mkTxConstraints @Void 
-             $ Hask.mempty (mustPayToPubKey receiverPKH $ Ada.lovelaceValueOf lovelaceAmount)
+      utx <- mkTxConstraints @Void (Hask.mempty) (mustPayToPubKey receiverPKH $ Ada.lovelaceValueOf lovelaceAmount)
       PrebTx pUtx <- preBalanceTxFrom addr utx
       logInfo @Hask.String $ "Yielding tx"
       yieldUnbalancedTx pUtx
