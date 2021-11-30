@@ -107,10 +107,9 @@ mkGovMintPolicy appInstance act ctx =
 
     checkListHeadInit =
       any
-        . filter
-          ( \(datum', txO) ->
-              datumIsHead (gov'list datum') && uTokenPresent txO
-          )
+        ( \(datum', txO) ->
+            datumIsHead (gov'list datum') && uTokenPresent txO
+        )
         $ getInputDatumsWithTx @GovDatum ctx
       where
         uTokenPresent txO = assetClassValueOf (txOutValue txO) uniqueToken == 1
@@ -533,10 +532,9 @@ mkGovScript ut _ act ctx =
 
     checkUniqueToken =
       any
-        . filter
-          ( \(datum', txO) ->
-              datumIsHead (gov'list datum') && uTokenPresent txO
-          )
+        ( \(datum', txO) ->
+            datumIsHead (gov'list datum') && uTokenPresent txO
+        )
         $ getInputDatumsWithTx @GovDatum ctx
 
     checkProofTokenMinted =

@@ -67,11 +67,11 @@ test =
   testGroup
     "Contract"
     [ testInitApp
-    , -- FIXME fix tests (#280)
-      -- , testBuyOnce
+     -- FIXME fix tests (#280)
+--       , testBuyOnce
       -- , testBuyTwice
       -- , testChangePriceWithoutOwnership
-      testBuyLockedScript
+      , testBuyLockedScript
     , -- , testBuyNotEnoughPriceScript
       testGroup
         "Auction"
