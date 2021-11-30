@@ -209,6 +209,11 @@ library
     Mlabs.IntegrationTest.PabWbe.Contracts.Payment
     Mlabs.IntegrationTest.PabWbe.Contracts.Mint
     Mlabs.IntegrationTest.PabWbe.Contracts.IntegrationTest
+    Mlabs.Roundtrip.DemoContract
+    Mlabs.Roundtrip.PKH
+    Mlabs.Roundtrip.PreBalance
+    Mlabs.Roundtrip.PAB.Contracts
+    Mlabs.Roundtrip.PAB.Run
 
 executable mlabs-plutus-use-cases
   import:  common-imports
@@ -267,6 +272,15 @@ executable nft-marketplace
   import:  common-ghc-options  
 
   main-is: nft-marketplace/Main.hs
+  build-depends: mlabs-plutus-use-cases
+
+executable roundtrip-demo
+  import:  common-imports
+  import:  common-language
+  import:  common-configs
+  import:  common-ghc-options  
+
+  main-is: roundtrip-demo/Main.hs
   build-depends: mlabs-plutus-use-cases
 
 executable pab-integration-test
