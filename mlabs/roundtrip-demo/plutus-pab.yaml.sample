@@ -1,5 +1,5 @@
 dbConfig:
-    dbConfigFile: nft-marketplace/pab-core.db
+    dbConfigFile: pab-core.db
     dbConfigPoolSize: 20
 
 pabWebserverConfig:
@@ -12,15 +12,16 @@ pabWebserverConfig:
   endpointTimeout: 5
 
 walletServerConfig:
-  baseUrl: http://localhost:8090
-  wallet:
-    getWallet: 1
+  tag: LocalWalletConfig
+  walletSettings:
+    baseUrl: http://localhost:9081
+
 
 nodeServerConfig:
-  mscBaseUrl: "localhost"
-  mscSocketPath: /PATH/TO/node.socket
+  mscBaseUrl: http://localhost:9082
+  mscSocketPath: ./node-server.sock
   mscKeptBlocks: 100
-  mscNetworkId: "1097911063" # Testnet network ID (main net = empty string)
+  mscNetworkId: "8" # Testnet network ID (main net = empty string)
   mscSlotConfig:
     scSlotZeroTime: 1591566291000 # Wednesday, July 29, 2020 21:44:51 - shelley launch time in milliseconds
     scSlotLength: 1000 # In milliseconds

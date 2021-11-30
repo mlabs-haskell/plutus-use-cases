@@ -25,20 +25,20 @@ type OutsValue = Value
 type FeeValue = Value
 
 preBalanceTxFrom 
-  :: PubKeyHash
+  :: Address
   -> UnbalancedTx
   -> Contract w s ContractError PrebalancedTx
-preBalanceTxFrom pkh utx = do
+preBalanceTxFrom addr utx = do
   logInfo @Hask.String $ "Getting UTxOs"
   txFee <- getFee
   let outsValue :: Value = mconcat $ fmap txOutValue (utx ^. tx . outputs)
-  (insValue, insForBalancing) <- getBalanceInputs pkh outsValue
+  (insValue, insForBalancing) <- getBalanceInputs addr outsValue
   logInfo @Hask.String $ "Inputs Value:" Hask.++ (Hask.show insValue)
   logInfo @Hask.String $ "Ins:" Hask.++ (Hask.show insForBalancing)
   logInfo @Hask.String $ "Unbalanced:"
   logInfo @Hask.String $ (Hask.show utx)
   let 
-      changeOut = mkChangeOut pkh insValue outsValue txFee
+      changeOut = mkChangeOut addr insValue outsValue txFee
       newUtx = 
         set (tx . fee)  txFee
         $ over (tx . inputs) (Set.union insForBalancing)
@@ -52,27 +52,33 @@ getFee :: Contract w s e Value
 getFee = pure $ Ada.adaValueOf 2
 
 getBalanceInputs 
-  :: PubKeyHash 
+  :: Address 
   -> OutsValue 
   -> Contract w s ContractError (Value, Set TxIn)
-getBalanceInputs pkh outsValue = do
-  utxos <- Map.toList <$> utxosAt (pubKeyHashAddress pkh)
-  maybe
-    (throwError $ OtherError "Not enough inputs to balance transaction")
-    pure
-    (enoughInputs utxos)
+getBalanceInputs addr outsValue = do
+  utxos <- Map.toList <$> utxosAt addr
+  let (insValue, insRefs) = getEnoughInputs utxos
+  if insValue `Value.geq` outsValue
+    then pure $ (insValue, insRefs)
+    else do
+      logInfo @Hask.String $ "Inputs from address dont have enough value: " 
+      logInfo @Hask.String $ "Total UTXOs at address: " Hask.++ (Hask.show $ length utxos) 
+      logInfo @Hask.String $ "Outs Value: " Hask.++ (Hask.show outsValue) 
+      logInfo @Hask.String $ "Ins Value: " Hask.++ (Hask.show insValue) 
+      logInfo @Hask.String $ "Ins refs used: " Hask.++ (Hask.show $ Set.size insRefs) 
+      logInfo @Hask.String $ "Ins refs: " Hask.++ (Hask.show insRefs) 
+      throwError $ OtherError "Not enough inputs to balance transaction"
   where
-    enoughInputs :: [(TxOutRef, ChainIndexTxOut)] -> Maybe (Value, Set TxIn)
-    enoughInputs utxoList =
-      if insValue `Value.geq` outsValue
-        then Just (insValue,  Set.fromList $ (`TxIn` (Just ConsumePublicKeyAddress)) <$> insORefs)
-        else Nothing
+    getEnoughInputs :: [(TxOutRef, ChainIndexTxOut)] -> (Value, Set TxIn)
+    getEnoughInputs utxoList = 
+      fmap (Set.fromList . fmap (`TxIn` (Just ConsumePublicKeyAddress)) ) 
+      $ go (mempty, []) utxoList
       where
-        (insValue, insORefs) = go (mempty, []) utxoList
+        -- (insValue, insORefs) = go (mempty, []) utxoList
         go (v,l) [] = (v,l) 
         go (v,l) _ | v `Value.geq` outsValue = (v,l)
         go (v,l) ((oref, ci):ocs) = go (v + (ci ^. ciTxOutValue), oref:l) ocs
 
-mkChangeOut :: PubKeyHash -> InsValue -> OutsValue -> FeeValue -> TxOut
-mkChangeOut pkh insValue outsValue feeValue = 
-   TxOut (pubKeyHashAddress pkh) (insValue - outsValue - feeValue) Nothing
+mkChangeOut :: Address -> InsValue -> OutsValue -> FeeValue -> TxOut
+mkChangeOut addr insValue outsValue feeValue = 
+   TxOut addr (insValue - outsValue - feeValue) Nothing

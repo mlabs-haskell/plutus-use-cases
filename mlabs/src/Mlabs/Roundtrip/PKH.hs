@@ -27,5 +27,7 @@ import Plutus.Contract (
   )
 
 getPKH :: Contract () EmptySchema Text ()
-getPKH = 
-  ownPubKeyHash >>= logInfo @Hask.String . Hask.show
+getPKH = do
+  logInfo @Hask.String $ "Running Owh PKH: it won't work for remote client!" 
+  ownPKH <- ownPubKeyHash
+  logInfo @Hask.String $ "Owh PKH: " Hask.++ Hask.show ownPKH

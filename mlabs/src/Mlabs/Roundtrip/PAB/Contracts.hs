@@ -34,8 +34,8 @@ instance HasPSTypes DemoContracts where
         ]
 
 instance HasDefinitions DemoContracts where
-    getDefinitions = [Roundtrip someArgs]
-      where someArgs = Mlabs.Contracts.ContractArgs (PubKeyHash "ff")
+    getDefinitions = [LogPKH, Roundtrip someArgs]
+      where someArgs = Mlabs.Contracts.ContractArgs "addr_test1qq7e0hr837nwr799y7gk7nzs4gq603c6lx2lufvjt5jyqrskgm69l6d3fjd3lkp0knc97t8rsk9r35jrg88kc0m9sj3q52xml6"
 
     getSchema = \case
       LogPKH -> Builtin.endpointsToSchemas @Builtin.Empty

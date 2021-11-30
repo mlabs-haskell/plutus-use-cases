@@ -1,5 +1,6 @@
 module Mlabs.Roundtrip.PAB.Run (
-  DemoContracts
+  DemoContracts,
+  runRoundtripDemo
 ) where
 
 
@@ -9,7 +10,7 @@ import Prelude
 
 import Mlabs.Roundtrip.PAB.Contracts (DemoContracts)
 
--- | Start PAB for NFT contract
+-- | Start PAB for roundtrip demo
 runRoundtripDemo :: IO ()
-runNftMarketplace = do
+runRoundtripDemo = do
   runWith (Builtin.handleBuiltin @DemoContracts)
