@@ -3,6 +3,7 @@ module Mlabs.NFT.Governance.Validation (
   govMintPolicy,
   govScrAddress,
   GovManage,
+  mkGovMintPolicy,
 ) where
 
 import Ledger (
