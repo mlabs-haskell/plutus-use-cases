@@ -1,4 +1,4 @@
-module Test.NFT.GovernanceScript where
+module Test.NFT.GovernanceScript.Main where
 
 import Test.NFT.GovernanceScript.Minting
 import Test.Tasty (TestTree, testGroup)
