@@ -1,19 +1,23 @@
 module Mlabs.NFT.Contract.Init (
-  initApp,
-  getAppSymbol,
   createListHead,
+  getAppSymbol,
+  initApp,
+  uniqueTokenName,
 ) where
 
 import Control.Monad (void)
+import Data.Map qualified as Map
 import Data.Monoid (Last (..))
 import Data.Text (Text, pack)
 import Text.Printf (printf)
+
+--import PlutusTx.Prelude hiding (mconcat, (<>))
 import Prelude (mconcat, (<>))
 import Prelude qualified as Hask
 
-import Ledger (AssetClass, scriptCurrencySymbol)
+import Ledger (AssetClass, getCardanoTxId, scriptCurrencySymbol)
 import Ledger.Constraints qualified as Constraints
-import Ledger.Typed.Scripts (validatorHash)
+import Ledger.Typed.Scripts (validatorHash, validatorScript)
 import Ledger.Value as Value (singleton)
 import Plutus.Contract (Contract, mapError, ownPubKeyHash)
 import Plutus.Contract qualified as Contract
@@ -31,16 +35,16 @@ import PlutusTx.Prelude hiding (mconcat, (<>))
 import PlutusTx.Ratio qualified as R
 
 import Mlabs.Data.LinkedList (LList (..))
-import Mlabs.NFT.Contract.Aux (toDatum)
+import Mlabs.NFT.Contract.Aux (getGovHead, toDatum)
 import Mlabs.NFT.Governance.Types (GovAct (..), GovDatum (..), GovLHead (..))
-import Mlabs.NFT.Governance.Validation (govMintPolicy, govScrAddress, govScript)
-import Mlabs.NFT.Types (GenericContract, MintAct (..), NftAppInstance (..), NftAppSymbol (..), NftListHead (..), UserId (..))
+import Mlabs.NFT.Governance.Validation (GovManage, govMintPolicy, govScrAddress, govScript)
+import Mlabs.NFT.Types (GenericContract, MintAct (..), NftAppInstance (..), NftAppSymbol (..), NftListHead (..), PointInfo (..), UserId (..))
 import Mlabs.NFT.Validation (DatumNft (..), NftTrade, asRedeemer, curSymbol, mintPolicy, txPolicy, txScrAddress)
 
 {- | The App Symbol is written to the Writter instance of the Contract to be
  recovered for future opperations, and ease of use in Trace.
 -}
-type InitContract a = forall s. Contract (Last NftAppSymbol) s Text a
+type InitContract a = forall s. Contract (Last NftAppInstance) s Text a
 
 {- |
   Initialise NFT marketplace, create HEAD of the list and unique token
@@ -48,9 +52,8 @@ type InitContract a = forall s. Contract (Last NftAppSymbol) s Text a
 initApp :: [UserId] -> InitContract ()
 initApp admins = do
   appInstance <- createListHead admins
-  let appSymbol = getAppSymbol appInstance
-  Contract.tell . Last . Just $ appSymbol
-  Contract.logInfo @Hask.String $ printf "Finished Initialisation: App symbol: %s" (Hask.show appSymbol)
+  Contract.tell . Last . Just $ appInstance
+  Contract.logInfo @Hask.String $ printf "Finished Initialisation: App Instance: %s" (Hask.show appInstance)
 
 {- | Initialise the application at the address of the script by creating the
  HEAD of the list, and coupling the one time token with the Head of the list.
@@ -59,13 +62,14 @@ createListHead :: [UserId] -> GenericContract NftAppInstance
 createListHead admins = do
   uniqueToken <- generateUniqueToken
   let govAddr = govScrAddress uniqueToken
-  mintListHead $ NftAppInstance txScrAddress uniqueToken govAddr admins
+      scrAddr = txScrAddress uniqueToken
+  mintListHead $ NftAppInstance scrAddr uniqueToken govAddr admins
   where
     -- Mint the Linked List Head and its associated token.
     mintListHead :: NftAppInstance -> GenericContract NftAppInstance
     mintListHead appInstance = do
       let -- Unique Token
-          uniqueToken = appInstance'AppAssetClass appInstance
+          uniqueToken = appInstance'UniqueToken appInstance
           uniqueTokenValue = assetClassValue uniqueToken 1
           emptyTokenName = TokenName PlutusTx.Prelude.emptyByteString
       let -- Script Head Specific Information
@@ -77,24 +81,45 @@ createListHead admins = do
           govHeadDatum :: GovDatum = govHeadInit
           govHeadPolicy = govMintPolicy appInstance
           govScr = govScript uniqueToken
+          govValidScr = validatorScript . govScript $ uniqueToken
           govProofTokenValue = Value.singleton (scriptCurrencySymbol govHeadPolicy) emptyTokenName 1
           govInitRedeemer = asRedeemer InitialiseGov
 
-          -- NFT App Head
-          (lookups, tx) =
+          -- NFT Gov Head
+          (lookups1, tx1) =
+            ( Constraints.typedValidatorLookups govScr
+            , Constraints.mustPayToTheScript govHeadDatum uniqueTokenValue
+            )
+
+      ledgerTx1 <- Contract.submitTxConstraintsWith @GovManage lookups1 tx1
+      void $ Contract.awaitTxConfirmed $ getCardanoTxId ledgerTx1
+      headPoint' <- getGovHead $ appInstance'Governance appInstance
+      Contract.logInfo @Hask.String "What happened?"
+      headPoint <- case headPoint' of
+        Nothing -> Contract.throwError @Text "Couldn't find head" -- This should never happen
+        Just h -> return h
+
+      Contract.logInfo @Hask.String $ printf "Head is found %s" (Hask.show headPoint)
+
+      let -- NFT App Head
+          (lookups2, tx2) =
             ( mconcat
-                [ Constraints.typedValidatorLookups txPolicy
+                [ Constraints.typedValidatorLookups (txPolicy uniqueToken)
+                , Constraints.otherScript govValidScr
+                , Constraints.unspentOutputs $ Map.singleton (pi'TOR headPoint) (pi'CITxO headPoint)
                 , Constraints.mintingPolicy headPolicy
                 , Constraints.mintingPolicy govHeadPolicy
                 ]
             , mconcat
                 [ Constraints.mustPayToTheScript headDatum (proofTokenValue <> uniqueTokenValue)
+                , Constraints.mustSpendScriptOutput (pi'TOR headPoint) govInitRedeemer
                 , Constraints.mustPayToOtherScript (validatorHash govScr) (toDatum govHeadDatum) (govProofTokenValue <> uniqueTokenValue)
                 , Constraints.mustMintValueWithRedeemer initRedeemer proofTokenValue
                 , Constraints.mustMintValueWithRedeemer govInitRedeemer govProofTokenValue
                 ]
             )
-      void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
+      ledgerTx2 <- Contract.submitTxConstraintsWith @NftTrade lookups2 tx2
+      void $ Contract.awaitTxConfirmed $ getCardanoTxId ledgerTx2
       Contract.logInfo @Hask.String $ printf "Forged Script Head & Governance Head for %s" (Hask.show appInstance)
       return appInstance
 
@@ -102,7 +127,7 @@ createListHead admins = do
     generateUniqueToken :: GenericContract AssetClass
     generateUniqueToken = do
       self <- ownPubKeyHash
-      let nftTokenName = TokenName "Unique App Token" --PlutusTx.Prelude.emptyByteString
+      let nftTokenName = TokenName uniqueTokenName --PlutusTx.Prelude.emptyByteString
       x <-
         mapError
           (pack . Hask.show @CurrencyError)
@@ -127,3 +152,9 @@ createListHead admins = do
 -- | Given an App Instance return the NftAppSymbol for that app instance.
 getAppSymbol :: NftAppInstance -> NftAppSymbol
 getAppSymbol = NftAppSymbol . curSymbol
+
+{-# INLINEABLE uniqueTokenName #-}
+
+-- | Token Name with which Unique Tokens are parametrised.
+uniqueTokenName :: BuiltinByteString
+uniqueTokenName = "Unique App Token"

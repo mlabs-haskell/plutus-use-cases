@@ -51,15 +51,16 @@ import Mlabs.NFT.Types (
   NftAppInstance,
   UniqueToken,
   UserId (..),
-  appInstance'Address,
-  appInstance'AppAssetClass,
+  appInstance'Governance,
+  appInstance'UniqueToken,
  )
 
-import Plutus.V1.Ledger.Ada (adaSymbol, lovelaceValueOf)
+import Plutus.V1.Ledger.Ada (adaSymbol, adaToken, lovelaceValueOf)
 import Plutus.V1.Ledger.Value (
   AssetClass (..),
   TokenName (..),
   Value (..),
+  assetClass,
   assetClassValue,
   assetClassValueOf,
   flattenValue,
@@ -82,8 +83,8 @@ mkGovMintPolicy appInstance act ctx =
   case act of
     InitialiseGov ->
       traceIfFalse "NFT-Gov-Mint: Only allowed to mint a proof token" checkOnlyProofMinted
-        && traceIfFalse "NFT-Gov-Mint: uniquetoken and proofToken are not sent to the right address" checkProofTokenToRightAddress
-        && traceIfFalse "NFT-Gov-Mint: The unique token is not present" checkUniqueTokenIsPresent
+        && traceIfFalse "NFT-Gov-Mint: uniquetoken and proofToken are not sent to the head" checkProofTokenToHead
+        && traceIfFalse "NFT-Gov-Mint: List head with the unique token is not present" checkListHeadInit
     MintGov ->
       traceIfFalse "NFT-Gov-Mint: Fee must be paid to the list head." checkFeeToTheListHead -- It automatically checks that the list head is present.
         && traceIfFalse
@@ -92,16 +93,27 @@ mkGovMintPolicy appInstance act ctx =
           || (nodeCanBeInserted && nodeInsertedWithCorrectValues)
         && traceIfFalse "NFT-Gov-Mint: Equal amounts of listGov and freeGov tokens must be minted/burned." checkListGovFreeGovEquality
         && traceIfFalse "NFT-Gov-Mint: Only allowd to mint/burn listGov and freeGov" checkOnlyListGovFreeGovMinted
+        && traceIfFalse "NFT-Gov-Mint: The minted amount of listGov must be positive." checkListGovPositive
         && traceIfFalse "NFT-Gov-Mint: The minted amount of listGov must be equal to the fee." checkListGovEqualToFee
     Proof -> traceError "NFT-Gov-Mint: Not allowed to mint using Proof as the redeemer."
     ProofAndBurn ->
       traceIfFalse "NFT-Gov-Mint: Only allowd to mint/burn freeGov and listGov" checkOnlyListGovFreeGovMinted
         && traceIfFalse "NFT-Gov-Mint: Equal amounts of listGov and freeGov tokens must be minted/burned." checkListGovFreeGovEquality
+        && traceIfFalse "NFT-Gov-Mint: The burnt amount of listGov must be positive." checkListGovNegative
         && traceIfFalse "NFT-Gov-Mint: Node value is updated incorrectly" checkBurntWithCorrectValues
         && traceIfFalse "NFT-Gov-Mint: Stakes must be withdrawn correctly." checkStakeWithdrawnCorrectly
   where
     ------------------------------------------------------------------------------
     -- Checks
+
+    checkListHeadInit =
+      any
+        ( \(datum', txO) ->
+            datumIsHead (gov'list datum') && uTokenPresent txO
+        )
+        $ getInputDatumsWithTx @GovDatum ctx
+      where
+        uTokenPresent txO = assetClassValueOf (txOutValue txO) uniqueToken == 1
 
     -- Checks whether fees are paid to head correctly or not
     checkFeeToTheListHead =
@@ -150,7 +162,7 @@ mkGovMintPolicy appInstance act ctx =
             -- The number of minted listGov is correct
             && assetClassValueOf nodeAddedVal listGov == fee
 
-    -- MingGov is used as the redeemer and number of output list nodes is more than the number of input list nodes by one
+    -- MintGov is used as the redeemer and number of output list nodes is more than the number of input list nodes by one
     -- means that we want to insert a new node to list.
     nodeCanBeInserted =
       wrapMaybe $ do
@@ -224,15 +236,17 @@ mkGovMintPolicy appInstance act ctx =
     checkOnlyProofMinted =
       valueMinted == assetClassValue proofToken 1
 
-    checkProofTokenToRightAddress = length outputsWithHeadDatum == 1
-
-    checkUniqueTokenIsPresent = assetClassValueOf valueIn uniqueToken >= 1
+    checkProofTokenToHead = length outputsWithHeadDatum == 1
 
     checkListGovEqualToFee =
       wrapMaybe $ do
         (h, _) <- getMaybeOne outputsWithHeadDatum
         feeRate <- getFeeRate h
         return $ freeGovMinted == getFee feeRate
+
+    checkListGovPositive = listGovMinted > 0
+
+    checkListGovNegative = listGovMinted < 0
 
     ------------------------------------------------------------------------------
     -- Helpers
@@ -241,7 +255,7 @@ mkGovMintPolicy appInstance act ctx =
     outputsWithHeadDatum =
       filter
         ( \(datum', txO) ->
-            datumIsHead (gov'list datum') && tokenPresent txO
+            datumIsHead (gov'list datum') && tokensPresent txO
         )
         $ getOutputDatumsWithTx @GovDatum ctx
 
@@ -249,7 +263,7 @@ mkGovMintPolicy appInstance act ctx =
     outputsWithNodeDatum =
       filter
         ( \(datum', txO) ->
-            datumIsNode (gov'list datum') && tokenPresent txO
+            datumIsNode (gov'list datum') && toScriptAddress txO
         )
         $ getOutputDatumsWithTx @GovDatum ctx
 
@@ -257,7 +271,7 @@ mkGovMintPolicy appInstance act ctx =
     inputsWithHeadDatum =
       filter
         ( \(datum', txO) ->
-            datumIsHead (gov'list datum') && tokenPresent txO
+            datumIsHead (gov'list datum') && tokensPresent txO
         )
         $ getInputDatumsWithTx @GovDatum ctx
 
@@ -269,23 +283,24 @@ mkGovMintPolicy appInstance act ctx =
         )
         $ getInputDatumsWithTx @GovDatum ctx
 
-    tokenPresent txO =
+    tokensPresent txO =
       assetClassValueOf (txOutValue txO) proofToken == 1
         && assetClassValueOf (txOutValue txO) uniqueToken >= 1
 
-    toScriptAddress txO = txOutAddress txO == appInstance'Address appInstance
+    toScriptAddress txO = txOutAddress txO == appInstance'Governance appInstance
 
     maybeUserId =
       case act of
         MintGov
-          | null inputsWithNodeDatum ->
+          | length outputsWithNodeDatum == 1 ->
             do
               (d, _) <- getMaybeOne outputsWithNodeDatum
               key <- getKey d
               return . getPubKeyHash . getUserId $ key
           | otherwise ->
             do
-              (d, _) <- getMaybeOne inputsWithNodeDatum
+              nodes <- getMaybeTwo outputsWithNodeDatum
+              let (d, _) = snd . sort2 $ nodes
               key <- getKey d
               return . getPubKeyHash . getUserId $ key
         _ ->
@@ -297,14 +312,14 @@ mkGovMintPolicy appInstance act ctx =
     userId :: BuiltinByteString
     userId = case maybeUserId of
       Just uid -> uid
-      Nothing -> traceError "Didn't find UserId."
+      Nothing -> traceError "NFT-Gov-Mint: Didn't find UserId."
 
     symbol = ownCurrencySymbol ctx
     asset tn = AssetClass (symbol, TokenName tn)
     freeGov = asset ("freeGov" <> userId)
     listGov = asset ("listGov" <> userId)
     proofToken = asset emptyByteString
-    uniqueToken = appInstance'AppAssetClass appInstance
+    uniqueToken = appInstance'UniqueToken appInstance
 
     valueIn, valueOut, valueMinted :: Value
     valueIn = foldMap (txOutValue . txInInfoResolved) $ txInfoInputs . scriptContextTxInfo $ ctx
@@ -330,19 +345,34 @@ mkGovMintPolicy appInstance act ctx =
     getMaybeTwo [x, y] = Just (x, y)
     getMaybeTwo _ = Nothing
 
-    price = 10 -- FIXME
+    --    price = 6_000_000 -- FIXME
+
+    --    getFee :: Ratio Integer -> Integer
+    --    getFee feeRate = round $ fromInteger price * feeRate
+
     getFee :: Ratio Integer -> Integer
-    getFee feeRate = round $ fromInteger price * feeRate
+    getFee _ =
+      case sillyCalculateFee of
+        Just fee -> fee
+        Nothing -> traceError "NFT-Gov-Mint: Silly calculate fee error."
+      where
+        sillyCalculateFee =
+          do
+            (_, headIn) <- getMaybeOne inputsWithHeadDatum
+            (_, headOut) <- getMaybeOne outputsWithHeadDatum
+            let diff = txOutValue headOut <> (negate . txOutValue $ headIn)
+            return $
+              assetClassValueOf diff $ assetClass adaSymbol adaToken
 
     getFeeRate :: GovDatum -> Maybe Rational
     getFeeRate (GovDatum datum) =
       case datum of
-        HeadLList (GovLHead fee) _ -> Just fee
+        HeadLList (GovLHead feeRate) _ -> Just feeRate
         _ -> Nothing
 
     getKey :: GovDatum -> Maybe UserId
     getKey (GovDatum (HeadLList _ _)) = Nothing
-    getKey (GovDatum (NodeLList _ _ k)) = k
+    getKey (GovDatum (NodeLList k _ _)) = Just k
 
     getNext :: GovDatum -> Maybe UserId
     getNext (GovDatum (HeadLList _ next)) = next
@@ -371,22 +401,24 @@ mkGovScript :: UniqueToken -> GovDatum -> GovAct -> ScriptContext -> Bool
 mkGovScript ut _ act ctx =
   case act of
     InitialiseGov ->
-      False -- FIXME Why should anybody for good reason use it as the redeemer?!
+      traceIfFalse "NFT-Gov-Script-Validator: Unique token is not present." checkUniqueToken
+        && traceIfFalse "NFT-Gov-Script-Validator: Proof token must be minted." checkProofTokenMinted
+        && traceIfFalse "NFT-Gov-Script-Validator: A new head with both unique and proof tokens in outputs is missing." checkHeadInOutputs
     MintGov ->
-      traceIfFalse "New listGov tokens must be minted" checkListGovIsMinted -- We need to ensure that our minting policy verifications are called.
+      traceIfFalse "NFT-Gov-Script-Validator: New listGov tokens must be minted" checkListGovIsMinted -- We need to ensure that our minting policy verifications are called.
         && traceIfFalse
-          "List node incorrectly minted or updated"
+          "NFT-Gov-Script-Validator: List node incorrectly minted or updated."
           (nodeCanBeUpdated && nodeUpdatedWithCorrectPointers)
           || (nodeCanBeInserted && nodeInsertedWithCorrectPointers)
     Proof ->
-      traceIfFalse "Free Gov tokens are required to unlock." checkFreeGovPresent
-        && traceIfFalse "ListGov must be sent bach unchanged." listGovSentBackUnchanged
-        && traceIfFalse "FreeGov must be sent bach unchanged." freeGovSentBackUnchanged
+      traceIfFalse "NFT-Gov-Script-Validator: Free Gov tokens are required to unlock." checkFreeGovPresent
+        && traceIfFalse "NFT-Gov-Script-Validator: ListGov must be sent bach unchanged." listGovSentBackUnchanged
+        && traceIfFalse "NFT-Gov-Script-Validator: FreeGov must be sent bach unchanged." freeGovSentBackUnchanged
     ProofAndBurn ->
-      traceIfFalse "Free Gov tokens are required to unlock." checkFreeGovPresent
-        && traceIfFalse "New head's datum be the same as old head's datum" checkHeadDatumUnchanged
-        && traceIfFalse "New node's datum be the same as old node's datum" checkBurntNodeDatumUnchanged
-        && traceIfFalse "Free Gov tokens must be burnt." checkGovBurnt -- We need to ensure that our minting policy verifications are called.
+      traceIfFalse "NFT-Gov-Script-Validator: Free Gov tokens must be burnt." checkGovBurnt -- We need to ensure that our minting policy verifications are called.
+        && traceIfFalse "NFT-Gov-Script-Validator: Free Gov tokens are required to unlock." checkFreeGovPresent
+        && traceIfFalse "NFT-Gov-Script-Validator: New head's datum be the same as old head's datum." checkHeadDatumUnchanged
+        && traceIfFalse "NFT-Gov-Script-Validator: New node's datum be the same as old node's datum." checkBurntNodeDatumUnchanged
   where
     ------------------------------------------------------------------------------
     -- Checks
@@ -499,6 +531,18 @@ mkGovScript ut _ act ctx =
             Just h -> h
             Nothing -> traceError "No head found in outputs"
 
+    checkUniqueToken =
+      any
+        ( \(datum', txO) ->
+            datumIsHead (gov'list datum') && uTokenPresent txO
+        )
+        $ getInputDatumsWithTx @GovDatum ctx
+
+    checkProofTokenMinted =
+      assetClassValueOf valueMinted proofToken == 1
+
+    checkHeadInOutputs = length outputsWithHeadDatum == 1
+
     -- The node's datum whose listGov is being burnt must remain unchanged.
     checkBurntNodeDatumUnchanged =
       wrapMaybe $ do
@@ -530,7 +574,7 @@ mkGovScript ut _ act ctx =
     outputsWithHeadDatum =
       filter
         ( \(datum', txO) ->
-            datumIsHead (gov'list datum') && tokenPresent txO
+            datumIsHead (gov'list datum') && uTokenPresent txO && pTokenPresent txO
         )
         $ getDatumsWithTx @GovDatum (getContinuingOutputs ctx) ctx
 
@@ -551,7 +595,7 @@ mkGovScript ut _ act ctx =
         $ getInputDatumsWithTx @GovDatum ctx
 
     inputsWithHeadDatum, inputsWithNodeDatum :: [(GovDatum, TxOut)]
-    inputsWithHeadDatum = filter (\(d, _) -> datumIsHead . gov'list $ d) inputsFromScriptAddress
+    inputsWithHeadDatum = filter (\(d, txO) -> pTokenPresent txO && uTokenPresent txO && (datumIsHead . gov'list $ d)) inputsFromScriptAddress
     inputsWithNodeDatum = filter (\(d, _) -> datumIsNode . gov'list $ d) inputsFromScriptAddress
 
     ownAddress :: Address
@@ -567,12 +611,16 @@ mkGovScript ut _ act ctx =
         [] -> traceError "Gov Proof Token must be in the list head."
         _ -> traceError "Illegal currency symbols found in the input."
       where
+        (_, outputHeadTx) =
+          head $
+            filter
+              ( \(datum', txO) ->
+                  datumIsHead (gov'list datum') && uTokenPresent txO
+              )
+              $ getDatumsWithTx @GovDatum (getContinuingOutputs ctx) ctx
         fst3 (a, _, _) = a
-        value = txOutValue . txInInfoResolved <$> findOwnInput ctx
-        allCurrencySymbols =
-          case value of
-            Nothing -> traceError "Own input wasn't find!"
-            Just v -> fst3 <$> flattenValue v
+        value = txOutValue outputHeadTx
+        allCurrencySymbols = fst3 <$> flattenValue value
         validSymbols = [fst . unAssetClass $ ut, adaSymbol]
         otherSymbols = filter (`notElem` validSymbols) allCurrencySymbols
 
@@ -581,14 +629,15 @@ mkGovScript ut _ act ctx =
     maybeUserId =
       case act of
         MintGov
-          | null inputsWithNodeDatum ->
+          | length outputsWithNodeDatum == 1 ->
             do
               (d, _) <- getMaybeOne outputsWithNodeDatum
               key <- getKey d
               return . getPubKeyHash . getUserId $ key
           | otherwise ->
             do
-              (d, _) <- getMaybeOne inputsWithNodeDatum
+              nodes <- getMaybeTwo outputsWithNodeDatum
+              let (d, _) = snd . sort2 $ nodes
               key <- getKey d
               return . getPubKeyHash . getUserId $ key
         _ ->
@@ -600,9 +649,11 @@ mkGovScript ut _ act ctx =
     userId :: BuiltinByteString
     userId = case maybeUserId of
       Just uid -> uid
-      Nothing -> traceError "Didn't find UserId."
+      Nothing -> traceError "NFT-Gov-Script-Validator: Didn't find UserId."
 
-    (listGov, freeGov) = (asset ("listGov" <> userId), asset ("freeGov" <> userId))
+    listGov = asset $ "listGov" <> userId
+    freeGov = asset $ "freeGov" <> userId
+    proofToken = asset emptyByteString
 
     valueIn, valueOut, valueMinted :: Value
     valueIn = foldMap (txOutValue . txInInfoResolved) $ txInfoInputs . scriptContextTxInfo $ ctx
@@ -616,7 +667,8 @@ mkGovScript ut _ act ctx =
 
     listGovMinted = assetClassValueOf valueMinted listGov
     freeGovMinted = assetClassValueOf valueMinted freeGov
-    tokenPresent txO = 1 == assetClassValueOf (txOutValue txO) ut
+    uTokenPresent txO = 1 == assetClassValueOf (txOutValue txO) ut
+    pTokenPresent txO = 1 == assetClassValueOf (txOutValue txO) proofToken
 
     wrapMaybe :: Maybe Bool -> Bool
     wrapMaybe v = Just True == v
@@ -641,7 +693,7 @@ mkGovScript ut _ act ctx =
 
     getKey :: GovDatum -> Maybe UserId
     getKey (GovDatum (HeadLList _ _)) = Nothing
-    getKey (GovDatum (NodeLList _ _ k)) = k
+    getKey (GovDatum (NodeLList k _ _)) = Just k
 
     datumIsHead (HeadLList _ _) = True
     datumIsHead _ = False

@@ -40,23 +40,23 @@ import Mlabs.Utils.Wallet (walletFromNumber)
 type AppTraceHandle = Trace.ContractHandle UserWriter NFTAppSchema Text
 
 -- | Initialisation Trace Handle.
-type AppInitHandle = Trace.ContractHandle (Last NftAppSymbol) NFTAppSchema Text
+type AppInitHandle = Trace.ContractHandle (Last NftAppInstance) NFTAppSchema Text
 
 -- | Initialise the Application
-appInitTrace :: EmulatorTrace NftAppSymbol
+appInitTrace :: EmulatorTrace NftAppInstance
 appInitTrace = do
   let admin = walletFromNumber 4 :: Emulator.Wallet
   hAdmin :: AppInitHandle <- activateContractWallet admin adminEndpoints
   callEndpoint @"app-init" hAdmin [UserId . Emulator.walletPubKeyHash $ admin]
-  void $ Trace.waitNSlots 2
+  void $ Trace.waitNSlots 4
   oState <- Trace.observableState hAdmin
-  aSymbol <- case getLast oState of
-    Nothing -> Trace.throwError $ Trace.GenericError "App Symbol Could not be established."
+  appInstace <- case getLast oState of
+    Nothing -> Trace.throwError $ Trace.GenericError "App Instance Could not be established."
     Just aS -> return aS
   void $ Trace.waitNSlots 1
-  return aSymbol
+  return appInstace
 
-mintTrace :: NftAppSymbol -> Emulator.Wallet -> EmulatorTrace NftId
+mintTrace :: UniqueToken -> Emulator.Wallet -> EmulatorTrace NftId
 mintTrace aSymb wallet = do
   h1 :: AppTraceHandle <- activateContractWallet wallet $ endpoints aSymb
   callEndpoint @"mint" h1 artwork
@@ -68,15 +68,17 @@ mintTrace aSymb wallet = do
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
 
 -- | Emulator Trace 1. Mints one NFT.
 mint1Trace :: EmulatorTrace ()
 mint1Trace = do
-  aSymb <- appInitTrace
-  let wallet1 = walletFromNumber 1 :: Emulator.Wallet
-  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
+  appInstance <- appInitTrace
+  let uniqueToken = appInstance'UniqueToken appInstance
+      wallet1 = walletFromNumber 1 :: Emulator.Wallet
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints uniqueToken
+
   callEndpoint @"mint" h1 artwork
   void $ Trace.waitNSlots 1
   where
@@ -85,18 +87,20 @@ mint1Trace = do
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
 
 getContentTrace1 :: EmulatorTrace ()
 getContentTrace1 = do
-  aSymb <- appInitTrace
+  appInstance <- appInitTrace
+  let uniqueToken = appInstance'UniqueToken appInstance
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
-  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints uniqueToken
+
   callEndpoint @"mint" h1 artwork
   void $ Trace.waitNSlots 1
 
-  h1' :: AppTraceHandle <- activateContractWallet wallet1 $ queryEndpoints aSymb
+  h1' :: AppTraceHandle <- activateContractWallet wallet1 $ queryEndpoints uniqueToken
 
   callEndpoint @"query-content" h1' $ Content "A painting."
   void $ Trace.waitNSlots 1
@@ -111,17 +115,18 @@ getContentTrace1 = do
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
 
 -- | Two users mint two different artworks.
 getContentTrace2 :: EmulatorTrace ()
 getContentTrace2 = do
-  aSymb <- appInitTrace
+  appInstance <- appInitTrace
+  let uniqueToken = appInstance'UniqueToken appInstance
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
-  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints uniqueToken
   void $ Trace.waitNSlots 1
-  h1' :: AppTraceHandle <- activateContractWallet wallet1 $ queryEndpoints aSymb
+  h1' :: AppTraceHandle <- activateContractWallet wallet1 $ queryEndpoints uniqueToken
 
   callEndpoint @"mint" h1 artwork
   void $ Trace.waitNSlots 1
@@ -141,29 +146,30 @@ getContentTrace2 = do
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
     artwork2 =
       MintParams
         { mp'content = Content "Another painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
     artwork3 =
       MintParams
         { mp'content = Content "Another painting2."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
 
 -- | Two users mint two different artworks.
 mintTrace2 :: EmulatorTrace ()
 mintTrace2 = do
-  aSymb <- appInitTrace
+  appInstance <- appInitTrace
+  let uniqueToken = appInstance'UniqueToken appInstance
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
-  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints uniqueToken
   callEndpoint @"mint" h1 artwork
   void $ Trace.waitNSlots 1
   callEndpoint @"mint" h1 artwork2
@@ -174,14 +180,14 @@ mintTrace2 = do
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
     artwork2 =
       MintParams
         { mp'content = Content "Another painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
 
 findNftId :: forall a b. Last (Either a b) -> Maybe a
@@ -192,9 +198,10 @@ findNftId x = case getLast x of
 -- | Two users mint the same artwork.  Should Fail
 mintFail1 :: EmulatorTrace ()
 mintFail1 = do
-  aSymb <- appInitTrace
+  appInstance <- appInitTrace
+  let uniqueToken = appInstance'UniqueToken appInstance
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
-  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints uniqueToken
   callEndpoint @"mint" h1 artwork
   void $ Trace.waitNSlots 1
   callEndpoint @"mint" h1 artwork
@@ -204,7 +211,7 @@ mintFail1 = do
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
 
 -- | Emulator Trace 1. Mints one NFT.
@@ -212,9 +219,12 @@ eTrace1 :: EmulatorTrace ()
 eTrace1 = do
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
       wallet2 = walletFromNumber 2 :: Emulator.Wallet
-  aSymb <- appInitTrace
-  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
-  h2 :: AppTraceHandle <- activateContractWallet wallet2 $ endpoints aSymb
+
+  appInstance <- appInitTrace
+  let uniqueToken = appInstance'UniqueToken appInstance
+
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints uniqueToken
+  h2 :: AppTraceHandle <- activateContractWallet wallet2 $ endpoints uniqueToken
   callEndpoint @"mint" h1 artwork
   -- callEndpoint @"mint" h2 artwork2
   void $ Trace.waitNSlots 1
@@ -233,19 +243,22 @@ eTrace1 = do
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
-    buyParams nftId = BuyRequestUser nftId 6 (Just 200)
+    buyParams nftId = BuyRequestUser nftId 6_000_000 (Just 200_000_000)
 
 severalBuysTrace :: EmulatorTrace ()
 severalBuysTrace = do
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
       wallet2 = walletFromNumber 2 :: Emulator.Wallet
       wallet3 = walletFromNumber 4 :: Emulator.Wallet
-  aSymb <- appInitTrace
-  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints aSymb
-  h2 :: AppTraceHandle <- activateContractWallet wallet2 $ endpoints aSymb
-  h3 :: AppTraceHandle <- activateContractWallet wallet3 $ endpoints aSymb
+
+  appInstance <- appInitTrace
+  let uniqueToken = appInstance'UniqueToken appInstance
+
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints uniqueToken
+  h2 :: AppTraceHandle <- activateContractWallet wallet2 $ endpoints uniqueToken
+  h3 :: AppTraceHandle <- activateContractWallet wallet3 $ endpoints uniqueToken
   callEndpoint @"mint" h1 artwork
   -- callEndpoint @"mint" h2 artwork2
   void $ Trace.waitNSlots 1
@@ -254,11 +267,11 @@ severalBuysTrace = do
     Nothing -> Trace.throwError (Trace.GenericError "NftId not found")
     Just nid -> return nid
   void $ Trace.waitNSlots 1
-  callEndpoint @"buy" h2 (buyParams nftId 6)
+  callEndpoint @"buy" h2 (buyParams nftId 6_000_000)
   void $ Trace.waitNSlots 1
-  callEndpoint @"buy" h3 (buyParams nftId 200)
+  callEndpoint @"buy" h3 (buyParams nftId 200_000_000)
   void $ Trace.waitNSlots 1
-  callEndpoint @"set-price" h2 (SetPriceParams nftId (Just 20))
+  callEndpoint @"set-price" h2 (SetPriceParams nftId (Just 20_000_000))
   where
     -- logInfo @Hask.String $ Hask.show oState
 
@@ -267,9 +280,9 @@ severalBuysTrace = do
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
-    buyParams nftId bid = BuyRequestUser nftId bid (Just 200)
+    buyParams nftId bid = BuyRequestUser nftId bid (Just 200_000_000)
 
 setPriceTrace :: EmulatorTrace ()
 setPriceTrace = do
@@ -284,14 +297,14 @@ setPriceTrace = do
   logInfo $ Hask.show nftId
   void $ Trace.waitNSlots 1
   authUseH :: AppTraceHandle <- activateContractWallet wallet1 (endpoints $ error ())
-  callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just 20))
+  callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just 20_000_000))
   void $ Trace.waitNSlots 1
-  callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just (-20)))
+  callEndpoint @"set-price" authUseH (SetPriceParams nftId (Just (-20_000_000)))
   void $ Trace.waitNSlots 1
   userUseH :: AppTraceHandle <- activateContractWallet wallet2 (endpoints $ error ())
   callEndpoint @"set-price" userUseH (SetPriceParams nftId Nothing)
   void $ Trace.waitNSlots 1
-  callEndpoint @"set-price" userUseH (SetPriceParams nftId (Just 30))
+  callEndpoint @"set-price" userUseH (SetPriceParams nftId (Just 30_000_000))
   void $ Trace.waitNSlots 1
 
 -- queryPriceTrace :: EmulatorTrace ()
@@ -368,13 +381,14 @@ testGetContent2 = runEmulatorTraceIO getContentTrace2
 
 auctionTrace1 :: EmulatorTrace ()
 auctionTrace1 = do
-  aSymb <- appInitTrace
+  appInstance <- appInitTrace
+  let uniqueToken = appInstance'UniqueToken appInstance
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
       wallet2 = walletFromNumber 2 :: Emulator.Wallet
       wallet3 = walletFromNumber 3 :: Emulator.Wallet
-  h1 :: AppTraceHandle <- activateContractWallet wallet1 (endpoints aSymb)
-  h2 :: AppTraceHandle <- activateContractWallet wallet2 (endpoints aSymb)
-  h3 :: AppTraceHandle <- activateContractWallet wallet3 (endpoints aSymb)
+  h1 :: AppTraceHandle <- activateContractWallet wallet1 $ endpoints uniqueToken
+  h2 :: AppTraceHandle <- activateContractWallet wallet2 $ endpoints uniqueToken
+  h3 :: AppTraceHandle <- activateContractWallet wallet3 $ endpoints uniqueToken
   callEndpoint @"mint" h1 artwork
 
   void $ Trace.waitNSlots 1
@@ -402,11 +416,8 @@ auctionTrace1 = do
   callEndpoint @"auction-close" h1 (closeParams nftId)
   void $ Trace.waitNSlots 2
 
-  callEndpoint @"set-price" h3 (SetPriceParams nftId (Just 20))
+  callEndpoint @"set-price" h3 (SetPriceParams nftId (Just 20_000_000))
   void $ Trace.waitNSlots 5
-
-  -- callEndpoint @"auction-close" h1 (closeParams nftId)
-  -- void $ Trace.waitNSlots 3
 
   logInfo @Hask.String "auction1 test end"
   where
@@ -415,16 +426,12 @@ auctionTrace1 = do
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5
+        , mp'price = Just 5_000_000
         }
 
     slotTenTime = slotToBeginPOSIXTime def 10
-    slotTwentyTime = slotToBeginPOSIXTime def 20
-
-    buyParams nftId = BuyRequestUser nftId 6 (Just 200)
     openParams nftId = AuctionOpenParams nftId slotTenTime 400
     closeParams nftId = AuctionCloseParams nftId
-
     bidParams = AuctionBidParams
 
 -- | Test for prototyping.
