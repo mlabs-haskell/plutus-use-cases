@@ -24,7 +24,7 @@ import Mlabs.NFT.Contract.CloseAuction (closeAuction)
 import Mlabs.NFT.Contract.Init (initApp)
 import Mlabs.NFT.Contract.Mint (mint)
 import Mlabs.NFT.Contract.OpenAuction (openAuction)
-import Mlabs.NFT.Contract.Query (queryContent, queryCurrentOwner, queryCurrentPrice, queryListNfts)
+import Mlabs.NFT.Contract.Query (queryContent, queryCurrentOwner, queryCurrentPrice, queryListNfts, queryNftAppInstance)
 import Mlabs.NFT.Contract.SetPrice (setPrice)
 import Mlabs.NFT.Types (
   AdminContract,
@@ -56,6 +56,7 @@ type NFTAppSchema =
     .\/ Endpoint "query-current-price" NftId
     .\/ Endpoint "query-list-nfts" ()
     .\/ Endpoint "query-content" Content
+    .\/ Endpoint "query-nft-app-instance" ()
     -- Auction endpoints
     .\/ Endpoint "auction-open" AuctionOpenParams
     .\/ Endpoint "auction-bid" AuctionBidParams
@@ -109,6 +110,7 @@ queryEndpointsList uT =
   , endpoint @"query-current-owner" (void . queryCurrentOwner uT)
   , endpoint @"query-list-nfts" (void . const (queryListNfts uT))
   , endpoint @"query-content" (void . queryContent uT)
+  , endpoint @"query-nft-app-instance" (void . const (queryNftAppInstance uT))
   ]
 
 -- | List of admin endpoints.

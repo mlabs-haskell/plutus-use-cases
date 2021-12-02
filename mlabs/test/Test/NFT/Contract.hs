@@ -1,12 +1,12 @@
 module Test.NFT.Contract (
   test,
 ) where
-
+import Plutus.Contract.Test (walletPubKeyHash)
 import Control.Monad (void)
 import Data.Default (def)
 import Data.List (sortOn)
 import Data.Text qualified as T
-import Ledger.Crypto (pubKeyHash)
+import Ledger.Crypto (pubKeyHash, getPubKeyHash)
 import Ledger.Index (ValidationError (..))
 import Ledger.Scripts (ScriptError (..))
 import Ledger.TimeSlot (slotToBeginPOSIXTime)
@@ -17,11 +17,14 @@ import PlutusTx.Ratio qualified as R
 import Test.Tasty (TestTree, testGroup)
 import Prelude (mconcat)
 import Prelude qualified as Hask
-
-import Mlabs.Emulator.Scene (checkScene)
+import Ledger.Value as Value (TokenName (..), singleton)
+import Ledger (getCardanoTxId, scriptCurrencySymbol)
+import Plutus.V1.Ledger.Value (CurrencySymbol (..), AssetClass (..))
+import Mlabs.Emulator.Scene (checkScene, owns)
 import Mlabs.NFT.Contract.Aux (hashData)
 import Mlabs.NFT.Contract.Mint (mintParamsToInfo)
 import Mlabs.NFT.Contract.Query (queryContentLog, queryCurrentOwnerLog, queryCurrentPriceLog, queryListNftsLog)
+import Mlabs.NFT.Governance.Validation (govMintPolicy, govScript)
 import Mlabs.NFT.Types (
   AuctionBidParams (..),
   AuctionCloseParams (..),
@@ -40,6 +43,7 @@ import Test.NFT.Init (
   artwork2,
   callStartNft,
   callStartNftFail,
+  getNftAppInstance,
   check,
   containsLog,
   noChangesScene,
@@ -68,8 +72,8 @@ test =
     "Contract"
     [ testInitApp
      -- FIXME fix tests (#280)
---       , testBuyOnce
-      -- , testBuyTwice
+       , testBuyOnce
+       , testBuyTwice
       -- , testChangePriceWithoutOwnership
       , testBuyLockedScript
     , -- , testBuyNotEnoughPriceScript
@@ -125,8 +129,15 @@ testBuyOnce = check "Buy once" (checkScene scene) w1 script
     scene =
       mconcat
         [ w1 `ownsAda` (1_000_000 - fee)
+        , w2 `owns` [(mintedFreeGov, fee)]
         , w2 `ownsAda` (-1_000_000)
         ]
+    govSymbol = "48e62d3b05083a9c499486a73924f1a5ae1c487da6d6de46352b640d"
+    mkGov name =
+      AssetClass
+        (govSymbol,
+        (TokenName . ((name <>) . getPubKeyHash) $ walletPubKeyHash w2))
+    mintedFreeGov = mkGov "freeGov"
 
 {- |
 - * User 2 buys from user 1
@@ -137,16 +148,28 @@ testBuyTwice = check "Buy twice" (checkScene scene) w1 script
   where
     script = do
       nft1 <- userMint w1 artwork1
-      userSetPrice w1 $ SetPriceParams nft1 (Just 1_000_000)
-      userBuy w2 $ BuyRequestUser nft1 1_000_000 Nothing
-      userSetPrice w2 $ SetPriceParams nft1 (Just 2_000_000)
-      userBuy w3 $ BuyRequestUser nft1 2_000_000 Nothing
+      userSetPrice w1 $ SetPriceParams nft1 (Just price1)
+      userBuy w2 $ BuyRequestUser nft1 price1 Nothing
+      userSetPrice w2 $ SetPriceParams nft1 (Just price2)
+      userBuy w3 $ BuyRequestUser nft1 price2 Nothing
     scene =
       mconcat
-        [ w1 `ownsAda` 1_200_000
-        , w2 `ownsAda` 800_000
+        [ w1 `ownsAda` (1_200_000 - fee2)
+        , w2 `ownsAda` (800_000 - fee2)
+        , w2 `owns` [(mintedFreeGov, fee1)]
         , w3 `ownsAda` (-2_000_000)
         ]
+    price1 = 1_000_000
+    price2 = 2_000_000
+    feeRate = 5 R.% 1000
+    fee1 = round $ fromInteger price1 * feeRate
+    fee2 = round $ fromInteger price2 * feeRate
+    govSymbol = "48e62d3b05083a9c499486a73924f1a5ae1c487da6d6de46352b640d"
+    mkGov name =
+      AssetClass
+        (govSymbol,
+        (TokenName . ((name <>) . getPubKeyHash) $ walletPubKeyHash w2))
+    mintedFreeGov = mkGov "freeGov"
 
 -- | User 1 tries to set price after user 2 owned the NFT.
 testChangePriceWithoutOwnership :: TestTree

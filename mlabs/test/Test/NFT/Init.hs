@@ -17,6 +17,7 @@ module Test.NFT.Init (
   userQueryContent,
   userSetPrice,
   containsLog,
+  getNftAppInstance,
   w1,
   w2,
   w3,
@@ -95,6 +96,7 @@ import Mlabs.NFT.Types (
   Title (..),
   UniqueToken,
   UserId (..),
+  QueryResponse (..),
  )
 import Mlabs.Utils.Wallet (walletFromNumber)
 
@@ -181,6 +183,23 @@ userMint wal mp = do
     findNftId :: forall a b. Last (Either a b) -> Maybe a
     findNftId x = case getLast x of
       Just (Left x') -> Just x'
+      _ -> Nothing
+
+getNftAppInstance :: Wallet -> ScriptM NftAppInstance
+getNftAppInstance wal = do
+  uT <- ask
+  lift $ do
+    hdl <- activateContractWallet wal (queryEndpoints uT)
+    callEndpoint @"query-nft-app-instance" hdl ()
+    next
+    oState <- observableState hdl
+    case unWrap oState of
+      Nothing -> throwError $ GenericError "Could find appInstance"
+      Just appInstance -> pure appInstance
+  where
+    unWrap :: forall a c. Last (Either a QueryResponse) -> Maybe NftAppInstance
+    unWrap x = case getLast x of
+      Just (Right (QueryNftAppInstance (Just x'))) -> Just x'
       _ -> Nothing
 
 userSetPrice :: Wallet -> SetPriceParams -> Script

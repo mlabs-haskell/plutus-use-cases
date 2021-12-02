@@ -450,7 +450,7 @@ instance Eq NftListNode where
 
 -- | The datum of an Nft is either head or node.
 data DatumNft
-  = -- | Head of a List
+  = -- | Head of the List
     HeadDatum NftListHead
   | -- | A node of the list.
     NodeDatum NftListNode
@@ -560,6 +560,7 @@ data QueryResponse
   | QueryCurrentPrice (Maybe Integer)
   | QueryContent (Maybe InformationNft)
   | QueryListNfts [InformationNft]
+  | QueryNftAppInstance (Maybe NftAppInstance)
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON)
 

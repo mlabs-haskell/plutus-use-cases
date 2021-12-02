@@ -5,12 +5,14 @@ module Mlabs.NFT.Governance.Types (
   GovLList,
   GovDatum (..),
   LList (..),
+  GovAppSymbol (..),
 ) where
 
 import Mlabs.Data.LinkedList (LList (..))
 import Mlabs.NFT.Types (UserId)
 import Prelude qualified as Hask
-
+import Data.OpenApi.Schema qualified as OpenApi
+import Ledger (CurrencySymbol)
 import PlutusTx qualified
 
 import Data.Aeson (FromJSON, ToJSON)
@@ -26,6 +28,17 @@ newtype GovLHead = GovLHead
 
 PlutusTx.unstableMakeIsData ''GovLHead
 PlutusTx.makeLift ''GovLHead
+
+newtype GovAppSymbol = GovAppSymbol {gov'symbol :: CurrencySymbol}
+  deriving stock (Hask.Show, Generic, Hask.Eq, Hask.Ord)
+  deriving anyclass (ToJSON, FromJSON, OpenApi.ToSchema)
+
+PlutusTx.unstableMakeIsData ''GovAppSymbol
+PlutusTx.makeLift ''GovAppSymbol
+
+instance Eq GovAppSymbol where
+  {-# INLINEABLE (==) #-}
+  (GovAppSymbol a) == (GovAppSymbol a') = a == a'
 
 instance Eq GovLHead where
   {-# INLINEABLE (==) #-}
