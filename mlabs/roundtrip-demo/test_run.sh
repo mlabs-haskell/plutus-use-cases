@@ -23,10 +23,16 @@ echo "Callig edpoint"
 curl -H 'Content-Type: application/json'  -X POST \
 --data-raw "{
   \"lovelaceAmount\": 7000000,
-  \"receiverAddress\": \"$RECEIVER_ADDRESS\"
+  \"receiverAddress\": \"$RECEIVER_ADDRESS\",
+  \"collateral\": {
+      \"txOutRefId\": {
+          \"getTxId\": \"513aefa8cce5435985cef0795a96cbbd3937fce77ad1ed715ce6df77a15fe27f\"
+          },
+      \"txOutRefIdx\": 0
+  }
 }" \
 localhost:9080/api/contract/instance/$contract_id/endpoint/call-demo
-sleep 3
+sleep 4
 
 echo "State:"
 curl localhost:9080/api/contract/instance/$contract_id/status | jq

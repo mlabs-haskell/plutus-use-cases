@@ -20,7 +20,7 @@ import Cardano.Api (AsType (AsAddressInEra, AsAlonzoEra))
 import Cardano.Api qualified
 import Plutus.Contract.CardanoAPI (FromCardanoError, fromCardanoAddress, toCardanoAddress)
 
-import Ledger (PubKeyHash, Value, Address, toPubKeyHash)
+import Ledger (TxOutRef, PubKeyHash, Value, Address, toPubKeyHash)
 import Plutus.V1.Ledger.Ada qualified as Ada
 import Ledger.Constraints (adjustUnbalancedTx, mustPayToPubKey)
 import Plutus.Contract (ContractError(..), Endpoint, Contract, Promise, endpoint, 
@@ -41,6 +41,7 @@ data PayToWalletParams =
     PayToWalletParams
         { lovelaceAmount:: Integer
         , receiverAddress :: Text
+        , collateralRef :: TxOutRef
         }
         deriving stock (Hask.Eq, Hask.Show, Generic)
         deriving anyclass (ToJSON, FromJSON, ToSchema)
@@ -54,13 +55,14 @@ runDemo (ContractArgs ownAddress) = endpoint @"call-demo" $ \ps -> do
       Left err -> logWarn @Hask.String (Hask.show @ContractError err)
       Right () -> pure ()
   where  
-    run PayToWalletParams{lovelaceAmount, receiverAddress} = do
+    run PayToWalletParams{lovelaceAmount, receiverAddress, collateralRef} = do
       addr <- parseAddress ownAddress
       receiverPKH <- parseAddress receiverAddress >>= getPKH
       utx <- mkTxConstraints @Void (Hask.mempty) (mustPayToPubKey receiverPKH $ Ada.lovelaceValueOf lovelaceAmount)
-      PrebTx pUtx <- preBalanceTxFrom addr utx
+      PrebTx pUtx <- preBalanceTxFrom addr collateralRef utx
       logInfo @Hask.String $ "Yielding tx"
       yieldUnbalancedTx pUtx
+
 
 getPKH :: Address -> Contract () DemoSchema ContractError PubKeyHash
 getPKH addr = do

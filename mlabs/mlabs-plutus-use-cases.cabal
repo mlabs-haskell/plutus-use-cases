@@ -214,6 +214,7 @@ library
     Mlabs.Roundtrip.PreBalance
     Mlabs.Roundtrip.PAB.Contracts
     Mlabs.Roundtrip.PAB.Run
+    Mlabs.Roundtrip.PAB.Simulator
 
 executable mlabs-plutus-use-cases
   import:  common-imports

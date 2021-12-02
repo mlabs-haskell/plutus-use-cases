@@ -6,6 +6,7 @@ module Mlabs.Roundtrip.PreBalance(
 import PlutusTx.Prelude
 import Prelude qualified as Hask
 
+import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -26,13 +27,16 @@ type FeeValue = Value
 
 preBalanceTxFrom 
   :: Address
+  -> TxOutRef
   -> UnbalancedTx
   -> Contract w s ContractError PrebalancedTx
-preBalanceTxFrom addr utx = do
+preBalanceTxFrom addr collateralRef utx = do
   logInfo @Hask.String $ "Getting UTxOs"
   txFee <- getFee
+  addrUtxos <- utxosAt addr
   let outsValue :: Value = mconcat $ fmap txOutValue (utx ^. tx . outputs)
-  (insValue, insForBalancing) <- getBalanceInputs addr outsValue
+  (insValue, insForBalancing) <- getBalanceInputs addrUtxos collateralRef outsValue
+  collateralSet <- mkCollateralByRef collateralRef addrUtxos
   logInfo @Hask.String $ "Inputs Value:" Hask.++ (Hask.show insValue)
   logInfo @Hask.String $ "Ins:" Hask.++ (Hask.show insForBalancing)
   logInfo @Hask.String $ "Unbalanced:"
@@ -42,7 +46,7 @@ preBalanceTxFrom addr utx = do
       newUtx = 
         set (tx . fee)  txFee
         $ over (tx . inputs) (Set.union insForBalancing)
-        $ set (tx . collateralInputs) (insForBalancing)
+        $ set (tx . collateralInputs) collateralSet
         $ over (tx . outputs) (changeOut : )
         $ utx
   logInfo @Hask.String $ "PRE Unbalanced:"
@@ -52,18 +56,25 @@ preBalanceTxFrom addr utx = do
 getFee :: Contract w s e Value
 getFee = pure $ Ada.adaValueOf 2
 
+mkCollateralByRef :: TxOutRef -> Map TxOutRef ChainIndexTxOut -> Contract w s ContractError (Set TxIn)
+mkCollateralByRef cOref addrUtxos = do
+  case cOref `Map.member` addrUtxos of
+    True -> pure . Set.singleton $ TxIn cOref (Just ConsumePublicKeyAddress)
+    _ -> throwError $ OtherError "Collateral not found in inputs"
+
+
 getBalanceInputs 
-  :: Address 
+  :: Map TxOutRef ChainIndexTxOut
+  -> TxOutRef
   -> OutsValue 
   -> Contract w s ContractError (Value, Set TxIn)
-getBalanceInputs addr outsValue = do
-  utxos <- Map.toList <$> utxosAt addr
-  let (insValue, insRefs) = getEnoughInputs utxos
+getBalanceInputs addrUtxos collRef outsValue = do
+  let (insValue, insRefs) = getEnoughInputs (Map.toList addrUtxos)
   if insValue `Value.geq` outsValue
     then pure $ (insValue, insRefs)
     else do
       logInfo @Hask.String $ "Inputs from address dont have enough value: " 
-      logInfo @Hask.String $ "Total UTXOs at address: " Hask.++ (Hask.show $ length utxos) 
+      logInfo @Hask.String $ "Total UTXOs at address: " Hask.++ (Hask.show $ Map.size addrUtxos) 
       logInfo @Hask.String $ "Outs Value: " Hask.++ (Hask.show outsValue) 
       logInfo @Hask.String $ "Ins Value: " Hask.++ (Hask.show insValue) 
       logInfo @Hask.String $ "Ins refs used: " Hask.++ (Hask.show $ Set.size insRefs) 
@@ -73,9 +84,11 @@ getBalanceInputs addr outsValue = do
     getEnoughInputs :: [(TxOutRef, ChainIndexTxOut)] -> (Value, Set TxIn)
     getEnoughInputs utxoList = 
       fmap (Set.fromList . fmap (`TxIn` (Just ConsumePublicKeyAddress)) ) 
-      $ go (mempty, []) utxoList
+      $ go (mempty, []) filteredIns
       where
-        -- (insValue, insORefs) = go (mempty, []) utxoList
+        -- Nami wallet won;t let use collateral as input,
+        -- need to filter collateral out before picking inputs for balancing
+        filteredIns = filter ((/= collRef) . fst) utxoList
         go (v,l) [] = (v,l) 
         go (v,l) _ | v `Value.geq` outsValue = (v,l)
         go (v,l) ((oref, ci):ocs) = go (v + (ci ^. ciTxOutValue), oref:l) ocs
