@@ -63,8 +63,8 @@ oneProofToken = Value.singleton nftCurrencySymbol testTokenName 1
 oneUniqueToken :: Value.Value
 oneUniqueToken = Value.assetClassValue uniqueAsset 1
 
-uniqueAndProofToken :: Value.Value
-uniqueAndProofToken = oneProofToken <> oneUniqueToken
+uniqueAndProofTokens :: Value.Value
+uniqueAndProofTokens = oneProofToken <> oneUniqueToken
 
 nftPolicy :: Ledger.MintingPolicy
 nftPolicy = NFT.mintPolicy appInstance

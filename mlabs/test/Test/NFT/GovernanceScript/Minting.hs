@@ -4,6 +4,7 @@ module Test.NFT.GovernanceScript.Minting (
 
 import Data.Semigroup ((<>))
 import Ledger qualified
+import Mlabs.NFT.Types (UserId(..))
 import Mlabs.NFT.Governance.Types qualified as NFT
 import Mlabs.NFT.Governance.Validation qualified as NFT
 import PlutusTx qualified
@@ -18,7 +19,7 @@ testMinting =
   localOption (TestCurrencySymbol TestValues.nftCurrencySymbol) $
     withMintingPolicy "Test NFT-Gov minting policy" nftGovMintPolicy $ do
       shouldValidate "Valid init" validInitData validInitCtx
-      -- shouldValidate "Valid mint gov" validMintData validMintCtx
+      shouldValidate "Valid mint gov" validMintData validMintCtx
       -- shouldn'tValidate "Can't mint with Proof redeemer" proofRedeemerData proofRedeemerCtx
 
 testGovHead :: NFT.GovLList
@@ -27,15 +28,21 @@ testGovHead = NFT.HeadLList (NFT.GovLHead (1 % 100)) Nothing
 validInitCtx :: ContextBuilder 'ForMinting
 validInitCtx =
   -- mintsWithSelf TestValues.testTokenName 1
-    paysSelf TestValues.uniqueAndProofToken (NFT.GovDatum testGovHead)
+    paysSelf TestValues.uniqueAndProofTokens (NFT.GovDatum testGovHead)
     <> (input $ Input (PubKeyType TestValues.authorPkh) TestValues.oneUniqueToken)
 
 validInitData :: TestData 'ForMinting
 validInitData = MintingTest NFT.InitialiseGov
 
+testGovNode :: NFT.GovLList
+testGovNode = NFT.NodeLList (UserId TestValues.userOnePkh) NFT.GovLNode Nothing
+
 validMintCtx :: ContextBuilder 'ForMinting
 validMintCtx =
-  paysSelf TestValues.oneUniqueToken (NFT.GovDatum testGovHead)
+  paysSelf TestValues.uniqueAndProofTokens (NFT.GovDatum testGovHead)
+  <> (input $ Input (OwnType (PlutusTx.toBuiltinData (NFT.GovDatum testGovHead))) TestValues.uniqueAndProofTokens)
+  -- inserting the first node
+  <> (output $ Output (OwnType (PlutusTx.toBuiltinData (NFT.GovDatum testGovNode))) TestValues.uniqueAndProofTokens)
 
 validMintData :: TestData 'ForMinting
 validMintData = MintingTest NFT.MintGov
