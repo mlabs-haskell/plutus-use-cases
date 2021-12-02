@@ -1,30 +1,27 @@
 module Test.NFT.Contract (
   test,
 ) where
-import Plutus.Contract.Test (walletPubKeyHash)
+
 import Control.Monad (void)
 import Data.Default (def)
 import Data.List (sortOn)
 import Data.Text qualified as T
-import Ledger.Crypto (pubKeyHash, getPubKeyHash)
+import Ledger.Crypto (pubKeyHash)
 import Ledger.Index (ValidationError (..))
 import Ledger.Scripts (ScriptError (..))
 import Ledger.TimeSlot (slotToBeginPOSIXTime)
 import Plutus.Contract.Test (assertFailedTransaction, assertInstanceLog)
 import Plutus.Contract.Trace (walletPubKeyHash)
+import Plutus.V1.Ledger.Value (AssetClass (..), flattenValue)
 import PlutusTx.Prelude hiding (check, mconcat)
-import PlutusTx.Ratio qualified as R
 import Test.Tasty (TestTree, testGroup)
 import Prelude (mconcat)
 import Prelude qualified as Hask
-import Ledger.Value as Value (TokenName (..), singleton)
-import Ledger (getCardanoTxId, scriptCurrencySymbol)
-import Plutus.V1.Ledger.Value (CurrencySymbol (..), AssetClass (..))
+
 import Mlabs.Emulator.Scene (checkScene, owns)
 import Mlabs.NFT.Contract.Aux (hashData)
 import Mlabs.NFT.Contract.Mint (mintParamsToInfo)
 import Mlabs.NFT.Contract.Query (queryContentLog, queryCurrentOwnerLog, queryCurrentPriceLog, queryListNftsLog)
-import Mlabs.NFT.Governance.Validation (govMintPolicy, govScript)
 import Mlabs.NFT.Types (
   AuctionBidParams (..),
   AuctionCloseParams (..),
@@ -46,10 +43,12 @@ import Test.NFT.Init (
   getNftAppInstance,
   check,
   containsLog,
+  mkFreeGov,
   noChangesScene,
   ownsAda,
   toUserId,
   userBidAuction,
+  userBurnGov,
   userBuy,
   userCloseAuction,
   userMint,
@@ -71,19 +70,18 @@ test =
   testGroup
     "Contract"
     [ testInitApp
-     -- FIXME fix tests (#280)
-       , testBuyOnce
-       , testBuyTwice
-      -- , testChangePriceWithoutOwnership
-      , testBuyLockedScript
-    , -- , testBuyNotEnoughPriceScript
-      testGroup
+    , testBuyOnce
+    , testBuyTwice
+    , testChangePriceWithoutOwnership
+    , testBuyLockedScript
+    , testBuyNotEnoughPriceScript
+    , testGroup
         "Auction"
-        [ -- testAuctionOneBid
-          testAuctionOneBidNoClosing
-        , -- , testAuctionManyBids
-          -- , testBidAfterDeadline
-          testAuctionWithPrice
+        [ testAuctionOneBid
+        , testAuctionOneBidNoClosing
+        , testAuctionManyBids
+        , testBidAfterDeadline
+        , testAuctionWithPrice
         , testSetPriceDuringAuction
         ]
     , testGroup
@@ -93,6 +91,8 @@ test =
         , testQueryListNfts
         , testQueryContent
         ]
+    , testBurnPart
+    , testBurnAll
     ]
 
 -- | Test initialisation of an app instance
@@ -117,78 +117,62 @@ testInitApp = check "Init app" assertState wA script
 
 -- | User 2 buys from user 1
 testBuyOnce :: TestTree
-testBuyOnce = check "Buy once" (checkScene scene) w1 script
+testBuyOnce = check "Buy once" (checkScene scene) wA script
   where
     script = do
       nft1 <- userMint w1 artwork1
       userSetPrice w1 $ SetPriceParams nft1 (Just 1_000_000)
       userBuy w2 $ BuyRequestUser nft1 1_000_000 Nothing
       userSetPrice w2 $ SetPriceParams nft1 (Just 2_000_000)
-    feeRate = 5 R.% 1000
-    fee = round $ fromInteger 1_000_000 * feeRate
     scene =
       mconcat
-        [ w1 `ownsAda` (1_000_000 - fee)
-        , w2 `owns` [(mintedFreeGov, fee)]
+        [ w1 `ownsAda` subtractFee 1_000_000
+        , w2 `ownsGov` calcFee 1_000_000
         , w2 `ownsAda` (-1_000_000)
         ]
-    govSymbol = "48e62d3b05083a9c499486a73924f1a5ae1c487da6d6de46352b640d"
-    mkGov name =
-      AssetClass
-        (govSymbol,
-        (TokenName . ((name <>) . getPubKeyHash) $ walletPubKeyHash w2))
-    mintedFreeGov = mkGov "freeGov"
 
 {- |
 - * User 2 buys from user 1
 - * User 3 buys from user 2
 -}
 testBuyTwice :: TestTree
-testBuyTwice = check "Buy twice" (checkScene scene) w1 script
+testBuyTwice = check "Buy twice" (checkScene scene) wA script
   where
     script = do
       nft1 <- userMint w1 artwork1
-      userSetPrice w1 $ SetPriceParams nft1 (Just price1)
-      userBuy w2 $ BuyRequestUser nft1 price1 Nothing
-      userSetPrice w2 $ SetPriceParams nft1 (Just price2)
-      userBuy w3 $ BuyRequestUser nft1 price2 Nothing
+      userSetPrice w1 $ SetPriceParams nft1 (Just 1_000_000)
+      userBuy w2 $ BuyRequestUser nft1 1_000_000 Nothing
+      userSetPrice w2 $ SetPriceParams nft1 (Just 2_000_000)
+      userBuy w3 $ BuyRequestUser nft1 2_000_000 Nothing
     scene =
       mconcat
-        [ w1 `ownsAda` (1_200_000 - fee2)
-        , w2 `ownsAda` (800_000 - fee2)
-        , w2 `owns` [(mintedFreeGov, fee1)]
+        [ w1 `ownsAda` subtractFee 1_200_000
+        , w2 `ownsGov` calcFee 1_000_000
+        , w2 `ownsAda` (subtractFee 1_800_000 - 1_000_000)
+        , w3 `ownsGov` calcFee 2_000_000
         , w3 `ownsAda` (-2_000_000)
         ]
-    price1 = 1_000_000
-    price2 = 2_000_000
-    feeRate = 5 R.% 1000
-    fee1 = round $ fromInteger price1 * feeRate
-    fee2 = round $ fromInteger price2 * feeRate
-    govSymbol = "48e62d3b05083a9c499486a73924f1a5ae1c487da6d6de46352b640d"
-    mkGov name =
-      AssetClass
-        (govSymbol,
-        (TokenName . ((name <>) . getPubKeyHash) $ walletPubKeyHash w2))
-    mintedFreeGov = mkGov "freeGov"
 
 -- | User 1 tries to set price after user 2 owned the NFT.
 testChangePriceWithoutOwnership :: TestTree
-testChangePriceWithoutOwnership = check "Sets price without ownership" (checkScene scene) w1 script
+testChangePriceWithoutOwnership = check "Sets price without ownership" (checkScene scene) wA script
   where
     script = do
       nft1 <- userMint w1 artwork1
       userSetPrice w1 $ SetPriceParams nft1 (Just 1_000_000)
       userBuy w2 $ BuyRequestUser nft1 1_000_000 Nothing
       userSetPrice w1 $ SetPriceParams nft1 (Just 2_000_000)
+      userBuy w3 $ BuyRequestUser nft1 2_000_000 Nothing
     scene =
       mconcat
-        [ w1 `ownsAda` 1_000_000
+        [ w1 `ownsAda` subtractFee 1_000_000
+        , w2 `ownsGov` calcFee 1_000_000
         , w2 `ownsAda` (-1_000_000)
         ]
 
 -- | User 2 tries to buy NFT which is locked (no price is set)
 testBuyLockedScript :: TestTree
-testBuyLockedScript = check "Buy locked NFT" (checkScene noChangesScene) w1 script
+testBuyLockedScript = check "Buy locked NFT" (checkScene noChangesScene) wA script
   where
     script = do
       nft1 <- userMint w1 artwork1
@@ -196,7 +180,7 @@ testBuyLockedScript = check "Buy locked NFT" (checkScene noChangesScene) w1 scri
 
 -- | User 2 tries to buy open NFT with not enough money
 testBuyNotEnoughPriceScript :: TestTree
-testBuyNotEnoughPriceScript = check "Buy not enough price" (checkScene noChangesScene) w1 script
+testBuyNotEnoughPriceScript = check "Buy not enough price" (checkScene noChangesScene) wA script
   where
     script = do
       nft1 <- userMint w1 artwork1
@@ -204,7 +188,7 @@ testBuyNotEnoughPriceScript = check "Buy not enough price" (checkScene noChanges
       userBuy w2 $ BuyRequestUser nft1 500_000 Nothing
 
 testAuctionOneBid :: TestTree
-testAuctionOneBid = check "Single bid" (checkScene scene) w1 script
+testAuctionOneBid = check "Single bid" (checkScene scene) wA script
   where
     script = do
       nft1 <- userMint w1 artwork1
@@ -213,15 +197,15 @@ testAuctionOneBid = check "Single bid" (checkScene scene) w1 script
       userWait 20
       userCloseAuction w1 $ AuctionCloseParams nft1
       userWait 3
-
     scene =
       mconcat
-        [ w1 `ownsAda` 1_000_000
+        [ w1 `ownsAda` subtractFee 1_000_000
+        , w2 `ownsGov` calcFee 1_000_000
         , w2 `ownsAda` (-1_000_000)
         ]
 
 testAuctionOneBidNoClosing :: TestTree
-testAuctionOneBidNoClosing = check "Single bid without closing" (checkScene scene) w1 script
+testAuctionOneBidNoClosing = check "Single bid without closing" (checkScene scene) wA script
   where
     script = do
       nft1 <- userMint w1 artwork1
@@ -235,27 +219,29 @@ testAuctionOneBidNoClosing = check "Single bid without closing" (checkScene scen
         ]
 
 testAuctionManyBids :: TestTree
-testAuctionManyBids = check "Multiple  bids" (checkScene scene) w1 script
+testAuctionManyBids = check "Multiple bids" (checkScene scene) wA script
   where
     script = do
       nft1 <- userMint w1 artwork1
       userStartAuction w1 $ AuctionOpenParams nft1 (slotToBeginPOSIXTime def 20) 0
-      userBidAuction w3 $ AuctionBidParams nft1 100_000
-      userBidAuction w2 $ AuctionBidParams nft1 1_000_000
       userBidAuction w3 $ AuctionBidParams nft1 200_000
+      userQueryListNfts w1
+      userBidAuction w2 $ AuctionBidParams nft1 1_000_000
+      userQueryListNfts w1
+    -- userBidAuction w3 $ AuctionBidParams nft1 500_000
 
-      userWait 20
-      userCloseAuction w1 $ AuctionCloseParams nft1
-      userWait 3
-
+    -- userWait 20
+    -- userCloseAuction w1 $ AuctionCloseParams nft1
+    -- userWait 3
     scene =
       mconcat
-        [ w1 `ownsAda` 1_000_000
-        , w2 `ownsAda` (-1_000_000)
+        [ -- w1 `ownsAda` subtractFee 1_000_000
+          -- , w2 `ownsGov` calcFee 1_000_000
+          w2 `ownsAda` (-1_000_000)
         ]
 
 testAuctionWithPrice :: TestTree
-testAuctionWithPrice = check "Starting auction overrides price" (containsLog w1 msg) w1 script
+testAuctionWithPrice = check "Starting auction overrides price" (containsLog w1 msg) wA script
   where
     script = do
       nft2 <- userMint w1 artwork2
@@ -268,7 +254,7 @@ testAuctionWithPrice = check "Starting auction overrides price" (containsLog w1 
     msg = queryCurrentPriceLog nftId price
 
 testSetPriceDuringAuction :: TestTree
-testSetPriceDuringAuction = check "Cannot set price during auction" (containsLog w1 msg) w1 script
+testSetPriceDuringAuction = check "Cannot set price during auction" (containsLog w1 msg) wA script
   where
     script = do
       nft2 <- userMint w1 artwork2
@@ -282,12 +268,12 @@ testSetPriceDuringAuction = check "Cannot set price during auction" (containsLog
     msg = queryCurrentPriceLog nftId price
 
 testBidAfterDeadline :: TestTree
-testBidAfterDeadline = check "Cannot bid after deadline" (checkScene scene) w1 script
+testBidAfterDeadline = check "Cannot bid after deadline" (checkScene scene) wA script
   where
     script = do
       nft1 <- userMint w1 artwork1
       userStartAuction w1 $ AuctionOpenParams nft1 (slotToBeginPOSIXTime def 20) 0
-      userBidAuction w3 $ AuctionBidParams nft1 100_000
+      -- userBidAuction w3 $ AuctionBidParams nft1 100_000
       userBidAuction w2 $ AuctionBidParams nft1 1_000_000
       userBidAuction w3 $ AuctionBidParams nft1 200_000
 
@@ -298,13 +284,14 @@ testBidAfterDeadline = check "Cannot bid after deadline" (checkScene scene) w1 s
 
     scene =
       mconcat
-        [ w1 `ownsAda` 1_000_000
+        [ w1 `ownsAda` subtractFee 1_000_000
+        , w2 `ownsGov` calcFee 1_000_000
         , w2 `ownsAda` (-1_000_000)
         ]
 
 -- | User checks the price of the artwork.
 testQueryPrice :: TestTree
-testQueryPrice = check "Query price" (containsLog w1 msg) w1 script
+testQueryPrice = check "Query price" (containsLog w1 msg) wA script
   where
     script = do
       nft2 <- userMint w1 artwork2
@@ -315,7 +302,7 @@ testQueryPrice = check "Query price" (containsLog w1 msg) w1 script
     msg = queryCurrentPriceLog nftId price
 
 testQueryOwner :: TestTree
-testQueryOwner = check "Query owner" (containsLog w1 msg) w1 script
+testQueryOwner = check "Query owner" (containsLog w1 msg) wA script
   where
     script = do
       nft2 <- userMint w1 artwork2
@@ -327,7 +314,7 @@ testQueryOwner = check "Query owner" (containsLog w1 msg) w1 script
 
 -- | User lists all NFTs in app
 testQueryListNfts :: TestTree
-testQueryListNfts = check "Query list NFTs" (containsLog w1 msg) w1 script
+testQueryListNfts = check "Query list NFTs" (containsLog w1 msg) wA script
   where
     script = do
       mapM_ (userMint w1) artworks
@@ -343,7 +330,7 @@ testQueryListNfts = check "Query list NFTs" (containsLog w1 msg) w1 script
     msg = queryListNftsLog nfts
 
 testQueryContent :: TestTree
-testQueryContent = check "Query content" (containsLog w1 msg) w1 script
+testQueryContent = check "Query content" (containsLog w1 msg) wA script
   where
     script = do
       nftId <- userMint w1 artwork2
@@ -353,3 +340,42 @@ testQueryContent = check "Query content" (containsLog w1 msg) w1 script
     msg = queryContentLog content $ QueryContent $ Just infoNft
     userId = toUserId w1
     infoNft = mintParamsToInfo artwork2 userId
+
+testBurnPart :: TestTree
+testBurnPart = check "Burn part of tokens" (checkScene scene) wA script
+  where
+    script = do
+      nft1 <- userMint w1 artwork1
+      userSetPrice w1 $ SetPriceParams nft1 (Just 1_000_000)
+      userBuy w2 $ BuyRequestUser nft1 1_000_000 Nothing
+      userBurnGov w2 2000
+    scene =
+      mconcat
+        [ w1 `ownsAda` subtractFee 1_000_000
+        , w2 `ownsGov` 3000
+        , w2 `ownsAda` (-1_000_000 + 2000)
+        ]
+
+testBurnAll :: TestTree
+testBurnAll = check "Burn all of tokens" (checkScene scene) wA script
+  where
+    script = do
+      nft1 <- userMint w1 artwork1
+      userSetPrice w1 $ SetPriceParams nft1 (Just 1_000_000)
+      userBuy w2 $ BuyRequestUser nft1 1_000_000 Nothing
+      userBurnGov w2 1000
+      userBurnGov w2 1000
+      userBurnGov w2 3000
+    scene =
+      mconcat
+        [ w1 `ownsAda` subtractFee 1_000_000
+        , w2 `ownsAda` (-1_000_000 + 5000)
+        ]
+
+subtractFee price = price - calcFee price
+
+calcFee price = round (fromInteger price * feeRate)
+
+feeRate = 5 % 1000
+
+ownsGov wal am = wal `owns` (fmap (\(cur, tn, amt) -> (AssetClass (cur, tn), amt)) . flattenValue $ mkFreeGov wal am)
