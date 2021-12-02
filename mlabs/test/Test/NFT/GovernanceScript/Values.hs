@@ -78,7 +78,7 @@ oneAda = Ada.lovelaceValueOf 1_000_000
 adaValue :: Integer -> Value.Value
 adaValue = Ada.lovelaceValueOf . (* 1_000_000)
 
-testStateAddr :: Ledger.Address
+-- testStateAddr :: Ledger.Address
 testStateAddr = NFT.txScrAddress
 
 {-
@@ -93,7 +93,7 @@ uniqueAsset :: Value.AssetClass
 uniqueAsset = Value.AssetClass ("00a6b45b792d07aa2a778d84c49c6a0d0c0b2bf80d6c1c16accdbe01", "Unique App Token")
 
 appInstance :: NftAppInstance
-appInstance = NftAppInstance testStateAddr uniqueAsset (Gov.govScrAddress uniqueAsset) [UserId userOnePkh]
+appInstance = NftAppInstance (testStateAddr uniqueAsset) uniqueAsset (Gov.govScrAddress uniqueAsset) [UserId userOnePkh]
 
 appSymbol :: NftAppSymbol
 appSymbol = NftAppSymbol . NFT.curSymbol $ appInstance

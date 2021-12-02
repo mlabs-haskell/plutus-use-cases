@@ -29,7 +29,7 @@ validInitCtx :: ContextBuilder 'ForMinting
 validInitCtx =
   -- mintsWithSelf TestValues.testTokenName 1
     paysSelf TestValues.uniqueAndProofTokens (NFT.GovDatum testGovHead)
-    <> (input $ Input (PubKeyType TestValues.authorPkh) TestValues.oneUniqueToken)
+    <> (input $ Input (OwnType (PlutusTx.toBuiltinData (NFT.GovDatum testGovHead))) TestValues.oneUniqueToken)
 
 validInitData :: TestData 'ForMinting
 validInitData = MintingTest NFT.InitialiseGov
