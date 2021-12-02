@@ -1,6 +1,4 @@
 {
-  description = "mlabs-plutus-use-cases";
-
   inputs = {
     flake-utils = {
       type = "github";
@@ -54,15 +52,9 @@
         let
           pkgs = nixpkgsFor system;
           plutus = import plutusSrc { inherit system; };
-          fakeSrc = pkgs.runCommand "real-src" {} ''
-            cp -rT ${self}/mlabs $out || cp -rT ${self} $out
-            chmod u+w $out/cabal.project
-            cat $out/nix/haskell-nix-cabal.project >> $out/cabal.project
-          '';
-          src = fakeSrc.outPath;
         in
           import ./nix/haskell.nix {
-            inherit src pkgs plutus system;
+            inherit system pkgs plutus;
           };
 
     in
@@ -80,19 +72,29 @@
 
         devShell = perSystem (system: self.flake.${system}.devShell);
 
-        # This will build all of the project's executables and the tests
-        check = perSystem (
-          system:
-            (nixpkgsFor system).runCommand "combined-executables" {
-              nativeBuildInputs = builtins.attrValues self.checks.${system};
-            } "touch $out"
-        );
-
         # NOTE `nix flake check` will not work at the moment due to use of
         # IFD in haskell.nix
-        #
-        # Includes all of the packages in the `checks`, otherwise only the
-        # test suite would be included
-        checks = perSystem (system: self.flake.${system}.packages);
+        checks = perSystem (
+          system:
+            let
+              flakePkgs = self.flake.${system}.packages;
+            in
+              {
+                tests =
+                  flakePkgs."mlabs-plutus-use-cases:test:mlabs-plutus-use-cases-tests";
+                deploy-app =
+                  flakePkgs."mlabs-plutus-use-cases:exe:deploy-app";
+                governance-demo =
+                  flakePkgs."mlabs-plutus-use-cases:exe:governance-demo";
+                lendex-demo =
+                  flakePkgs."mlabs-plutus-use-cases:exe:lendex-demo";
+                mlabs-plutus-use-cases =
+                  flakePkgs."mlabs-plutus-use-cases:exe:mlabs-plutus-use-cases";
+                nft-demo = flakePkgs."mlabs-plutus-use-cases:exe:nft-demo";
+                nft-marketplace =
+                  flakePkgs."mlabs-plutus-use-cases:exe:nft-marketplace";
+              }
+        );
+
       };
 }
