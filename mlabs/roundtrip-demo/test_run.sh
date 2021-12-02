@@ -24,7 +24,7 @@ curl -H 'Content-Type: application/json'  -X POST \
 --data-raw "{
   \"lovelaceAmount\": 7000000,
   \"receiverAddress\": \"$RECEIVER_ADDRESS\",
-  \"collateral\": {
+  \"collateralRef\": {
       \"txOutRefId\": {
           \"getTxId\": \"513aefa8cce5435985cef0795a96cbbd3937fce77ad1ed715ce6df77a15fe27f\"
           },
@@ -64,12 +64,3 @@ echo "CBOR: " $cbor
 # --data-binary "@/$file" \
 # | jq
 
-
-curl -XPOST 'localhost:9080/api/contract/activate' -H 'Content-Type: application/json' -d "{
-                  \"caID\": {
-                      \"contents\": {
-                          \"ownAddress\": \"$OWN_ADDRESS\"
-                      },
-                      \"tag\": \"Roundtrip\"
-                  }
-              }"

@@ -1,0 +1,29 @@
+{
+  "cicCurrentState": {
+    "observableState": [],
+    "logs": [],
+    "hooks": [],
+    "lastLogs": [],
+    "err": null
+  },
+  "cicYieldedExportTxs": [
+    {
+      "transaction": "84a500818258200aae5c2b619ba6ddba8924e3ce2e178e2b788e10ee291781c996f05de4a39f7b000d81825820513aefa8cce5435985cef0795a96cbbd3937fce77ad1ed715ce6df77a15fe27f000182825839005feb72668e5a4effd3b34088aa56e7d558f75afe4798b8364a739673700e4b6993cbc5e612f8770aa531243b3d888a81c0a46de5fa5f6a701a3a3944c382581d60a3d0b159b730b4d28907681823a6ca155ce50f8614e00325daa85bd11a006acfc0021a001e84800e80a0f5f6",
+      "redeemers": [],
+      "inputs": []
+    }
+  ],
+  "cicContract": {
+    "unContractInstanceId": "40f94ec9-3d6e-4ce3-ba71-c4b7c8fd7b78"
+  },
+  "cicStatus": "Done",
+  "cicDefinition": {
+    "contents": {
+      "ownAddress": "addr_test1qp07kunx3edyal7nkdqg32jkul243a66lere3wpkffeevumspe9kny7tchnp97rhp2jnzfpm8kyg4qwq53k7t7jldfcqkngyzu"
+    },
+    "tag": "Roundtrip"
+  },
+  "cicWallet": {
+    "getWalletId": "872cb83b5ee40eb23bfdab1772660c822a48d491"
+  }
+}
