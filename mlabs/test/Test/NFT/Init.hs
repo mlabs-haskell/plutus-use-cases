@@ -24,7 +24,6 @@ module Test.NFT.Init (
   userBidAuction,
   userStartAuction,
   userCloseAuction,
-  userBurnGov,
   userWait,
   waitInit,
   mkFreeGov,
@@ -92,6 +91,7 @@ import Mlabs.NFT.Types (
   AuctionOpenParams,
   BuyRequestUser (..),
   Content (..),
+  InitParams (..),
   MintParams (..),
   NftAppInstance (appInstance'UniqueToken),
   NftAppSymbol (..),
@@ -122,7 +122,12 @@ waitInit = void $ waitNSlots 3
 callStartNft :: Wallet -> EmulatorTrace NftAppInstance
 callStartNft wal = do
   hAdmin <- activateContractWallet wal adminEndpoints
-  callEndpoint @"app-init" hAdmin [UserId . walletPubKeyHash $ wal]
+  let params =
+        InitParams
+          [UserId . walletPubKeyHash $ wal]
+          (5 % 1000)
+          (walletPubKeyHash wal)
+  callEndpoint @"app-init" hAdmin params
   waitInit
   oState <- observableState hAdmin
   appInstance <- case getLast oState of
@@ -134,9 +139,14 @@ callStartNft wal = do
 callStartNftFail :: Wallet -> ScriptM ()
 callStartNftFail wal = do
   let w5 = walletFromNumber 5
+      params =
+        InitParams
+          [UserId . walletPubKeyHash $ w5]
+          (5 % 1000)
+          (walletPubKeyHash wal)
   lift $ do
     hAdmin <- activateContractWallet wal adminEndpoints
-    callEndpoint @"app-init" hAdmin [toUserId w5]
+    callEndpoint @"app-init" hAdmin params
     waitInit
 
 type ScriptM a =
@@ -256,14 +266,6 @@ userCloseAuction wal params = do
     callEndpoint @"auction-close" hdl params
     next
 
-userBurnGov :: Wallet -> Integer -> Script
-userBurnGov wal params = do
-  symbol <- ask
-  lift $ do
-    hdl <- activateContractWallet wal (endpoints symbol)
-    callEndpoint @"burn-gov" hdl params
-    next
-
 userWait :: Natural -> Script
 userWait = lift . void . waitNSlots
 
@@ -323,7 +325,7 @@ mkFreeGov wal = assetClassValue (AssetClass (govCurrency, tn))
   where
     tn = TokenName . ("freeGov" <>) . getPubKeyHash . getUserId . toUserId $ wal
 
-govCurrency = "e25f547dc5e320cd3c9d227d7e3f00b3104df7c204f081753548d2a1"
+govCurrency = "8fe3a8799d69c2852500ccf31abc0a129f668cfd9e905b3d75447a32"
 
 getFreeGov :: Wallet -> Plutus.V1.Ledger.Value.Value -> Integer
 getFreeGov wal val = valueOf val govCurrency tn
