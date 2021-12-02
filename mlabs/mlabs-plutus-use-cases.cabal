@@ -284,6 +284,15 @@ executable roundtrip-demo
   main-is: roundtrip-demo/Main.hs
   build-depends: mlabs-plutus-use-cases
 
+executable roundtrip-demo-sim
+  import:  common-imports
+  import:  common-language
+  import:  common-configs
+  import:  common-ghc-options  
+
+  main-is: roundtrip-demo-sim/Main.hs
+  build-depends: mlabs-plutus-use-cases
+
 executable pab-integration-test
   import:  common-imports
   import:  common-language

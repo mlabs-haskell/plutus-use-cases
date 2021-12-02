@@ -23,14 +23,14 @@ import Mlabs.Roundtrip.PAB.Contracts (DemoContracts)
 runSimulator :: IO ()
 runSimulator = void $
   Simulator.runSimulationWith handlers $ do
-    logString @(Builtin MarketplaceContracts)
+    logString @(Builtin DemoContracts)
       "Starting NFT marketplace simulated PAB webserver. Press enter to exit."
     shutdown <- PAB.Server.startServerDebug
     _ <- liftIO getLine
     shutdown
 
 -- | Simulator handlers for NFT contracts
-handlers :: SimulatorEffectHandlers (Builtin MarketplaceContracts)
+handlers :: SimulatorEffectHandlers (Builtin DemoContracts)
 handlers =
   Simulator.mkSimulatorHandlers def def $
     interpret (contractHandler Builtin.handleBuiltin)

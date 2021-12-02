@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-OWN_ADDRESS=addr_test1qp07kunx3edyal7nkdqg32jkul243a66lere3wpkffeevumspe9kny7tchnp97rhp2jnzfpm8kyg4qwq53k7t7jldfcqkngyzu
-RECEIVER_ADDRESS=addr_test1qz3apv2ekuctf55fqa5psgaxeg24eeg0sc2wqqe9m259h5w6sk0nka6kca9ar7fwgxfg5khh4tkakp7cntexcat5x74q48ns3a
+OWN_ADDRESS=addr_test1qq26x09u745wrmprz326jwgkmpkraggwu6d4rlgfq46esq2s6f75svcp9gdkl98xn2m08wun0xk0gm2gwahxl2xy9dkszzn8cm
+RECEIVER_ADDRESS=addr_test1qq7e0hr837nwr799y7gk7nzs4gq603c6lx2lufvjt5jyqrskgm69l6d3fjd3lkp0knc97t8rsk9r35jrg88kc0m9sj3q52xml6
 
 echo "Activating contract"
 contract_id=$(curl --location --request POST 'localhost:9080/api/contract/activate' \
@@ -23,16 +23,10 @@ echo "Callig edpoint"
 curl -H 'Content-Type: application/json'  -X POST \
 --data-raw "{
   \"lovelaceAmount\": 7000000,
-  \"receiverAddress\": \"$RECEIVER_ADDRESS\",
-  \"collateral\": {
-      \"txOutRefId\": {
-          \"getTxId\": \"513aefa8cce5435985cef0795a96cbbd3937fce77ad1ed715ce6df77a15fe27f\"
-          },
-      \"txOutRefIdx\": 0
-  }
+  \"receiverAddress\": \"$RECEIVER_ADDRESS\"
 }" \
 localhost:9080/api/contract/instance/$contract_id/endpoint/call-demo
-sleep 4
+sleep 3
 
 echo "State:"
 curl localhost:9080/api/contract/instance/$contract_id/status | jq
@@ -63,13 +57,3 @@ echo "CBOR: " $cbor
 # --header 'Content-Type: application/octet-stream' \
 # --data-binary "@/$file" \
 # | jq
-
-
-curl -XPOST 'localhost:9080/api/contract/activate' -H 'Content-Type: application/json' -d "{
-                  \"caID\": {
-                      \"contents\": {
-                          \"ownAddress\": \"$OWN_ADDRESS\"
-                      },
-                      \"tag\": \"Roundtrip\"
-                  }
-              }"
