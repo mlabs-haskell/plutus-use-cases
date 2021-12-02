@@ -15,7 +15,7 @@ import Mlabs.NFT.Types (Content (..), NftAppInstance (..), NftAppSymbol (..), Nf
 
 import Mlabs.NFT.Validation qualified as NFT
 import Plutus.V1.Ledger.Ada qualified as Ada
-import PlutusTx.Prelude hiding ((<>))
+import PlutusTx.Prelude
 import Wallet.Emulator.Wallet qualified as Emu
 
 -- test values
@@ -62,6 +62,9 @@ oneProofToken = Value.singleton nftCurrencySymbol testTokenName 1
 
 oneUniqueToken :: Value.Value
 oneUniqueToken = Value.assetClassValue uniqueAsset 1
+
+uniqueAndProofToken :: Value.Value
+uniqueAndProofToken = oneProofToken <> oneUniqueToken
 
 nftPolicy :: Ledger.MintingPolicy
 nftPolicy = NFT.mintPolicy appInstance

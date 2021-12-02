@@ -18,17 +18,16 @@ testMinting =
   localOption (TestCurrencySymbol TestValues.nftCurrencySymbol) $
     withMintingPolicy "Test NFT-Gov minting policy" nftGovMintPolicy $ do
       shouldValidate "Valid init" validInitData validInitCtx
-      shouldValidate "Valid mint gov" validMintData validMintCtx
-      shouldn'tValidate "Can't mint with Proof redeemer" proofRedeemerData proofRedeemerCtx
+      -- shouldValidate "Valid mint gov" validMintData validMintCtx
+      -- shouldn'tValidate "Can't mint with Proof redeemer" proofRedeemerData proofRedeemerCtx
 
 testGovHead :: NFT.GovLList
 testGovHead = NFT.HeadLList (NFT.GovLHead (1 % 100)) Nothing
 
 validInitCtx :: ContextBuilder 'ForMinting
 validInitCtx =
-  mintsWithSelf TestValues.testTokenName 1
-    <> paysSelf TestValues.oneProofToken ()
-    <> paysSelf TestValues.oneUniqueToken (NFT.GovDatum testGovHead)
+  -- mintsWithSelf TestValues.testTokenName 1
+    paysSelf TestValues.uniqueAndProofToken (NFT.GovDatum testGovHead)
     <> (input $ Input (PubKeyType TestValues.authorPkh) TestValues.oneUniqueToken)
 
 validInitData :: TestData 'ForMinting
