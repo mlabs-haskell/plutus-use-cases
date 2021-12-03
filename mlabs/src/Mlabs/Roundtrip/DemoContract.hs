@@ -9,6 +9,7 @@ module Mlabs.Roundtrip.DemoContract(
 import Prelude qualified as Hask
 import PlutusTx.Prelude
 
+import Control.Lens
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Void (Void)
 import Data.Text (Text)
@@ -20,9 +21,10 @@ import Cardano.Api (AsType (AsAddressInEra, AsAlonzoEra))
 import Cardano.Api qualified
 import Plutus.Contract.CardanoAPI (FromCardanoError, fromCardanoAddress, toCardanoAddress)
 
-import Ledger (TxOutRef, PubKeyHash, Value, Address, toPubKeyHash)
+import Ledger (TxOut(..), TxOutRef, PubKeyHash, Value, Address, toPubKeyHash, outputs)
 import Plutus.V1.Ledger.Ada qualified as Ada
-import Ledger.Constraints (adjustUnbalancedTx, mustPayToPubKey)
+import Ledger.Constraints.OffChain (tx)
+import Ledger.Constraints (UnbalancedTx, adjustUnbalancedTx, mustPayToPubKey)
 import Plutus.Contract (ContractError(..), Endpoint, Contract, Promise, endpoint, 
   mkTxConstraints, yieldUnbalancedTx, logWarn, logInfo, runError, throwError)
 
@@ -56,12 +58,26 @@ runDemo (ContractArgs ownAddress) = endpoint @"call-demo" $ \ps -> do
       Right () -> pure ()
   where  
     run PayToWalletParams{lovelaceAmount, receiverAddress, collateralRef} = do
-      addr <- parseAddress ownAddress
-      receiverPKH <- parseAddress receiverAddress >>= getPKH
-      utx <- mkTxConstraints @Void (Hask.mempty) (mustPayToPubKey receiverPKH $ Ada.lovelaceValueOf lovelaceAmount)
-      PrebTx pUtx <- preBalanceTxFrom addr collateralRef utx
+      let paymentValue = Ada.lovelaceValueOf lovelaceAmount
+      senderAddr <- parseAddress ownAddress
+      receiverAddr <- parseAddress receiverAddress
+      {- this won't work
+         funds will go to payment key which could be not address we want
+      -}
+      -- receiverPKH <- getPKH receiverAddr
+      -- utx <- mkTxConstraints @Void (Hask.mempty) (mustPayToPubKey receiverPKH paymentValue)
+      -- maybe this
+      utx <- withPaymentToReceiver receiverAddr paymentValue 
+                <$> mkTxConstraints @Void (Hask.mempty) (Hask.mempty)
+      PrebTx pUtx <- preBalanceTxFrom senderAddr collateralRef utx
       logInfo @Hask.String $ "Yielding tx"
       yieldUnbalancedTx pUtx
+
+withPaymentToReceiver :: Address -> Value -> UnbalancedTx -> UnbalancedTx
+withPaymentToReceiver addr v utx = 
+  over (tx . outputs) (paymentOut :) utx
+  where 
+    paymentOut = TxOut addr v Nothing
 
 
 getPKH :: Address -> Contract () DemoSchema ContractError PubKeyHash

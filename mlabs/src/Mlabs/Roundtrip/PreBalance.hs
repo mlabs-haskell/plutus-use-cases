@@ -37,6 +37,8 @@ preBalanceTxFrom addr collateralRef utx = do
   let outsValue :: Value = mconcat $ fmap txOutValue (utx ^. tx . outputs)
   (insValue, insForBalancing) <- getBalanceInputs addrUtxos collateralRef outsValue
   collateralSet <- mkCollateralByRef collateralRef addrUtxos
+  logInfo @Hask.String $ "All UTXOs from address:"
+  mapM_ (logInfo @Hask.String . Hask.show) (Map.toList addrUtxos)
   logInfo @Hask.String $ "Inputs Value:" Hask.++ (Hask.show insValue)
   logInfo @Hask.String $ "Ins:" Hask.++ (Hask.show insForBalancing)
   logInfo @Hask.String $ "Unbalanced:"
@@ -86,9 +88,13 @@ getBalanceInputs addrUtxos collRef outsValue = do
       fmap (Set.fromList . fmap (`TxIn` (Just ConsumePublicKeyAddress)) ) 
       $ go (mempty, []) filteredIns
       where
-        -- Nami wallet won;t let use collateral as input,
+        -- Nami wallet won't let use collateral as input,
         -- need to filter collateral out before picking inputs for balancing
-        filteredIns = filter ((/= collRef) . fst) utxoList
+        filteredIns = filter ((/= collRef) . fst) [utxoList !! 1] -- fixme: it's hardcoded to make it work, 
+                                                                  -- coz chain-index returns some utxos
+                                                                  -- that are not actually at that address (?)
+                                                                  -- probably for new run correct index need to be found
+                                                                  -- by examining address with cardano-xli
         go (v,l) [] = (v,l) 
         go (v,l) _ | v `Value.geq` outsValue = (v,l)
         go (v,l) ((oref, ci):ocs) = go (v + (ci ^. ciTxOutValue), oref:l) ocs
