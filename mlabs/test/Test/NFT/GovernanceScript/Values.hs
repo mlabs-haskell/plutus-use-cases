@@ -66,6 +66,9 @@ oneUniqueToken = Value.assetClassValue uniqueAsset 1
 uniqueAndProofTokens :: Value.Value
 uniqueAndProofTokens = oneProofToken <> oneUniqueToken
 
+uniqueAndProofTokensPlus1Ada :: Value.Value
+uniqueAndProofTokensPlus1Ada = uniqueAndProofTokens <> (adaValue 1)
+
 nftPolicy :: Ledger.MintingPolicy
 nftPolicy = NFT.mintPolicy appInstance
 
@@ -78,6 +81,21 @@ oneAda = Ada.lovelaceValueOf 1_000_000
 adaValue :: Integer -> Value.Value
 adaValue = Ada.lovelaceValueOf . (* 1_000_000)
 
+userOneListGov :: Value.AssetClass
+userOneListGov = Value.AssetClass (nftCurrencySymbol, TokenName ("listGov" <> (Ledger.getPubKeyHash userOnePkh)))
+
+userOneFreeGov :: Value.AssetClass
+userOneFreeGov = Value.AssetClass (nftCurrencySymbol, TokenName ("freeGov" <> (Ledger.getPubKeyHash userOnePkh)))
+
+listGovTokens :: Value.Value
+listGovTokens = Value.assetClassValue userOneListGov 1_000_000
+
+freeGovTokens :: Value.Value
+freeGovTokens = Value.assetClassValue userOneFreeGov 1_000_000
+
+listAndFreeGovTokens :: Value.Value
+listAndFreeGovTokens = listGovTokens <> freeGovTokens
+
 -- testStateAddr :: Ledger.Address
 testStateAddr = NFT.txScrAddress
 
@@ -89,11 +107,14 @@ testStateAddr = NFT.txScrAddress
    the initial state UTxOs to something other than the default.
 -}
 
+govScriptAddress :: Ledger.Address
+govScriptAddress = Gov.govScrAddress uniqueAsset
+
 uniqueAsset :: Value.AssetClass
 uniqueAsset = Value.AssetClass ("00a6b45b792d07aa2a778d84c49c6a0d0c0b2bf80d6c1c16accdbe01", "Unique App Token")
 
 appInstance :: NftAppInstance
-appInstance = NftAppInstance (testStateAddr uniqueAsset) uniqueAsset (Gov.govScrAddress uniqueAsset) [UserId userOnePkh]
+appInstance = NftAppInstance (testStateAddr uniqueAsset) uniqueAsset govScriptAddress [UserId userOnePkh]
 
 appSymbol :: NftAppSymbol
 appSymbol = NftAppSymbol . NFT.curSymbol $ appInstance
