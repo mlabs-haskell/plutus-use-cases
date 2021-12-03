@@ -278,6 +278,39 @@ executable pab-integration-test
   main-is: pab-integration-test/Main.hs
   build-depends: mlabs-plutus-use-cases
 
+executable mlabs-local-cluster
+  import:  common-imports
+  import:  common-language
+  import:  common-configs
+  ghc-options:
+    -threaded -rtsopts -with-rtsopts=-N -Wall -Wcompat
+    -Wincomplete-uni-patterns -Wincomplete-record-updates
+    -Wno-missing-import-lists -Wredundant-constraints -O0
+
+  main-is: mlabs-local-cluster/Main.hs
+  build-depends:
+    mlabs-plutus-use-cases
+    , directory
+    , filepath
+    , text-class
+    , beam-sqlite
+    , sqlite-simple
+    , beam-migrate
+    , cardano-wallet
+    , cardano-wallet-cli
+    , cardano-wallet-launcher
+    , cardano-wallet-core
+    , cardano-wallet-core-integration
+    , iohk-monitoring
+    , lobemo-backend-ekg
+    , contra-tracer
+    , async
+    , servant-client
+    , http-client
+    , servant-client-core
+    , cardano-addresses
+    , network-uri
+
 Test-suite mlabs-plutus-use-cases-tests
   import:  common-imports
   import:  common-language
