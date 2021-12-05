@@ -129,6 +129,7 @@ testBuyOnce = check "Buy once" (checkScene scene) wA script
         [ w1 `ownsAda` subtractFee 1_000_000
         , w2 `ownsGov` calcFee 1_000_000
         , w2 `ownsAda` (-1_000_000)
+        , wA `ownsAda` calcFee 1_000_000
         ]
 
 {- |
@@ -151,6 +152,7 @@ testBuyTwice = check "Buy twice" (checkScene scene) wA script
         , w2 `ownsAda` (subtractFee 1_800_000 - 1_000_000)
         , w3 `ownsGov` calcFee 2_000_000
         , w3 `ownsAda` (-2_000_000)
+        , wA `ownsAda` calcFee 3_000_000
         ]
 
 -- | User 1 tries to set price after user 2 owned the NFT.
@@ -168,6 +170,7 @@ testChangePriceWithoutOwnership = check "Sets price without ownership" (checkSce
         [ w1 `ownsAda` subtractFee 1_000_000
         , w2 `ownsGov` calcFee 1_000_000
         , w2 `ownsAda` (-1_000_000)
+        , wA `ownsAda` calcFee 1_000_000
         ]
 
 -- | User 2 tries to buy NFT which is locked (no price is set)
@@ -202,6 +205,7 @@ testAuctionOneBid = check "Single bid" (checkScene scene) wA script
         [ w1 `ownsAda` subtractFee 1_000_000
         , w2 `ownsGov` calcFee 1_000_000
         , w2 `ownsAda` (-1_000_000)
+        , wA `ownsAda` calcFee 1_000_000
         ]
 
 testAuctionOneBidNoClosing :: TestTree
@@ -225,19 +229,10 @@ testAuctionManyBids = check "Multiple bids" (checkScene scene) wA script
       nft1 <- userMint w1 artwork1
       userStartAuction w1 $ AuctionOpenParams nft1 (slotToBeginPOSIXTime def 20) 0
       userBidAuction w3 $ AuctionBidParams nft1 200_000
-      userQueryListNfts w1
       userBidAuction w2 $ AuctionBidParams nft1 1_000_000
-      userQueryListNfts w1
-    -- userBidAuction w3 $ AuctionBidParams nft1 500_000
-
-    -- userWait 20
-    -- userCloseAuction w1 $ AuctionCloseParams nft1
-    -- userWait 3
     scene =
       mconcat
-        [ -- w1 `ownsAda` subtractFee 1_000_000
-          -- , w2 `ownsGov` calcFee 1_000_000
-          w2 `ownsAda` (-1_000_000)
+        [ w2 `ownsAda` (-1_000_000)
         ]
 
 testAuctionWithPrice :: TestTree
@@ -287,6 +282,7 @@ testBidAfterDeadline = check "Cannot bid after deadline" (checkScene scene) wA s
         [ w1 `ownsAda` subtractFee 1_000_000
         , w2 `ownsGov` calcFee 1_000_000
         , w2 `ownsAda` (-1_000_000)
+        , wA `ownsAda` calcFee 1_000_000
         ]
 
 -- | User checks the price of the artwork.

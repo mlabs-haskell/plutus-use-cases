@@ -93,6 +93,7 @@ import Mlabs.NFT.Types (
   AuctionOpenParams,
   BuyRequestUser (..),
   Content (..),
+  InitParams (..),
   MintParams (..),
   NftAppInstance (appInstance'UniqueToken),
   NftAppSymbol (..),
@@ -124,7 +125,12 @@ waitInit = void $ waitNSlots 4
 callStartNft :: Wallet -> EmulatorTrace NftAppInstance
 callStartNft wal = do
   hAdmin <- activateContractWallet wal adminEndpoints
-  callEndpoint @"app-init" hAdmin [UserId . walletPubKeyHash $ wal]
+  let params =
+        InitParams
+          [UserId . walletPubKeyHash $ wal]
+          (5 % 1000)
+          (walletPubKeyHash wal)
+  callEndpoint @"app-init" hAdmin params
   waitInit
   oState <- observableState hAdmin
   appInstance <- case getLast oState of
@@ -136,9 +142,14 @@ callStartNft wal = do
 callStartNftFail :: Wallet -> ScriptM ()
 callStartNftFail wal = do
   let w5 = walletFromNumber 5
+      params =
+        InitParams
+          [UserId . walletPubKeyHash $ w5]
+          (5 % 1000)
+          (walletPubKeyHash wal)
   lift $ do
     hAdmin <- activateContractWallet wal adminEndpoints
-    callEndpoint @"app-init" hAdmin [toUserId w5]
+    callEndpoint @"app-init" hAdmin params
     waitInit
 
 type ScriptM a =

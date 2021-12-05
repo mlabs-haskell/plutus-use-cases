@@ -34,13 +34,13 @@ import Mlabs.NFT.Types (
   AuctionOpenParams (..),
   BuyRequestUser (..),
   Content,
+  InitParams (..),
   MintParams (..),
   NftAppInstance (..),
   NftId (..),
   SetPriceParams (..),
   UniqueToken,
   UserContract,
-  UserId,
   UserWriter,
  )
 import Mlabs.Plutus.Contract (selectForever)
@@ -65,7 +65,7 @@ type NFTAppSchema =
     -- Gov endpoints
     .\/ Endpoint "burn-gov" Integer
     -- Admin Endpoint
-    .\/ Endpoint "app-init" [UserId]
+    .\/ Endpoint "app-init" InitParams
 
 mkSchemaDefinitions ''NFTAppSchema
 

@@ -13,7 +13,7 @@ import Data.String (IsString (..))
 import Data.Text (Text)
 import Ledger (getPubKeyHash)
 import Ledger.TimeSlot (slotToBeginPOSIXTime)
-import Plutus.Contract.Test (Wallet (..))
+import Plutus.Contract.Test (Wallet (..), walletPubKeyHash)
 import Plutus.Contract.Test.ContractModel (
   Action,
   Actions,
@@ -60,6 +60,7 @@ import Mlabs.NFT.Types (
   AuctionOpenParams (..),
   BuyRequestUser (..),
   Content (..),
+  InitParams (..),
   MintParams (..),
   NftAppInstance,
   NftAppSymbol (..),
@@ -121,33 +122,36 @@ instance ContractModel NftModel where
         }
     | ActionSetPrice
         { aPerformer :: Wallet
-        , aNftId :: NftId
+        , aNftId :: ~NftId
         , aNewPrice :: Maybe Integer
         }
     | ActionBuy
         { aPerformer :: Wallet
-        , aNftId :: NftId
+        , aNftId :: ~NftId
         , aPrice :: Integer
         , aNewPrice :: Maybe Integer
         }
     | ActionAuctionOpen
         { aPerformer :: Wallet
-        , aNftId :: NftId
+        , aNftId :: ~NftId
         , aDeadline :: Slot
         , aMinBid :: Integer
         }
     | ActionAuctionBid
         { aPerformer :: Wallet
-        , aNftId :: NftId
+        , aNftId :: ~NftId
         , aBid :: Integer
         }
     | ActionAuctionClose
         { aPerformer :: Wallet
-        , aNftId :: NftId
+        , aNftId :: ~NftId
         }
     | ActionBurn
         { aPerformer :: Wallet
         , aBurnAmount :: Integer
+        }
+    | ActionWait -- This action should not be generated (do NOT add it to arbitraryAction)
+        { aWaitSlots :: Integer
         }
     | ActionWait -- This action should not be generated (do NOT add it to arbitraryAction)
         { aWaitSlots :: Integer
@@ -244,6 +248,7 @@ instance ContractModel NftModel where
   precondition s ActionBurn {..} =
     getFreeGov aPerformer (s ^. balanceChange aPerformer) >= aBurnAmount
   precondition s ActionWait {} = True
+  precondition s ActionWait {} = True
 
   nextState ActionInit {} = do
     mStarted $= True
@@ -291,7 +296,7 @@ instance ContractModel NftModel where
             mMarket $~ Map.insert aNftId newNft
             transfer aPerformer (nft ^. nftOwner) ownerShare
             transfer aPerformer (nft ^. nftAuthor) authorShare
-            withdraw aPerformer (lovelaceValueOf feeValue)
+            transfer aPerformer wAdmin (lovelaceValueOf feeValue)
             deposit aPerformer (mkFreeGov aPerformer feeValue)
     wait 5
   nextState ActionAuctionOpen {..} = do
@@ -361,6 +366,7 @@ instance ContractModel NftModel where
                 mMarket $~ Map.insert aNftId newNft
                 deposit (nft ^. nftOwner) ownerShare
                 deposit (nft ^. nftAuthor) authorShare
+                deposit wAdmin (lovelaceValueOf feeValue)
                 deposit newOwner (mkFreeGov newOwner feeValue)
     wait 5
   nextState ActionBurn {..} = do
@@ -373,7 +379,12 @@ instance ContractModel NftModel where
   perform h _ = \case
     ActionInit -> do
       let hAdmin = h $ InitKey wAdmin
-      callEndpoint @"app-init" hAdmin [toUserId wAdmin]
+          params =
+            InitParams
+              [toUserId wAdmin]
+              (5 % 1000)
+              (walletPubKeyHash wAdmin)
+      callEndpoint @"app-init" hAdmin params
       void $ Trace.waitNSlots 5
     ActionMint {..} -> do
       let h1 = h $ UserKey aPerformer
@@ -481,12 +492,6 @@ noLockedFunds = do
       Just _ -> do
         action $ ActionAuctionClose w1 (nft ^. nftId)
       Nothing -> Hask.pure ()
-
-  -- Burn all gov tokens
-  forM_ wallets $ \w -> do
-    gov <- getFreeGov w <$> viewModelState (balanceChange w)
-    when (gov > 0) $
-      action $ ActionBurn w gov
 
   assertModel "Locked funds should be zero" $ (== 0) . (\v -> valueOf v "" "") . lockedValue
 

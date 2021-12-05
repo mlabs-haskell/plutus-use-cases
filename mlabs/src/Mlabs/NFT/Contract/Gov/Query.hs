@@ -1,6 +1,7 @@
 module Mlabs.NFT.Contract.Gov.Query (
   querryCurrentStake,
   queryCurrFeeRate,
+  queryFeePkh,
 ) where
 
 import Prelude qualified as Hask
@@ -13,6 +14,7 @@ import Plutus.Contract qualified as Contract
 import PlutusTx.Prelude hiding (mconcat, mempty, (<>), (==))
 
 import Ledger (
+  PubKeyHash,
   getPubKeyHash,
   scriptCurrencySymbol,
  )
@@ -36,7 +38,7 @@ querryCurrentStake uT _ = do
   nftHead' <- getNftHead uT
   nftHead <- case nftHead' of
     Just (PointInfo (HeadDatum x) _ _ _) -> Hask.pure x
-    _ -> Contract.throwError "burnGov: NFT HEAD not found"
+    _ -> Contract.throwError "queryCurrentStake: NFT HEAD not found"
   let ownPkh = getUserId user
       listGovTokenName = TokenName . ("listGov" <>) . getPubKeyHash $ ownPkh
       newGovDatum = GovDatum $ NodeLList user GovLNode Nothing
@@ -59,9 +61,8 @@ querryCurrentStake uT _ = do
               else findPoint xs
           _ -> Contract.throwError "GOV node not found"
 
--- | Get fee rate from GOV HEAD
-queryCurrFeeRate :: forall w s. UniqueToken -> Contract w s Text Rational
-queryCurrFeeRate uT = do
+queryGovHeadDatum :: forall w s. UniqueToken -> Contract w s Text GovLHead
+queryGovHeadDatum uT = do
   nftHead' <- getNftHead uT
   nftHead <- case pi'data <$> nftHead' of
     Just (HeadDatum x) -> Hask.pure x
@@ -69,7 +70,18 @@ queryCurrFeeRate uT = do
 
   let govAddr = appInstance'Governance . head'appInstance $ nftHead
   govHead' <- getGovHead govAddr
-  govHead <- case gov'list . pi'data <$> govHead' of
+  case gov'list . pi'data <$> govHead' of
     Just (HeadLList x _) -> Hask.pure x
     _ -> Contract.throwError "queryCurrFeeRate: GOV HEAD not found"
+
+-- | Get fee rate from GOV HEAD
+queryCurrFeeRate :: forall w s. UniqueToken -> Contract w s Text Rational
+queryCurrFeeRate uT = do
+  govHead <- queryGovHeadDatum uT
   Hask.pure $ govLHead'feeRate govHead
+
+-- | Get fee pkh from GOV HEAD
+queryFeePkh :: forall w s. UniqueToken -> Contract w s Text PubKeyHash
+queryFeePkh uT = do
+  govHead <- queryGovHeadDatum uT
+  Hask.pure $ govLHead'pkh govHead

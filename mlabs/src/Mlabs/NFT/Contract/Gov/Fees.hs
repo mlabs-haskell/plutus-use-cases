@@ -55,6 +55,7 @@ getFeesConstraints uT nftId price user = do
       govScriptHash = validatorHash govValidator
 
   feeRate <- queryCurrFeeRate uT
+  feePkh <- queryFeePkh uT
   govHead' <- getGovHead govAddr
   govHead <- case govHead' of
     Just x -> Hask.pure x
@@ -66,7 +67,7 @@ getFeesConstraints uT nftId price user = do
       mkGov name =
         Value.singleton
           (scriptCurrencySymbol govPolicy)
-          (TokenName . ((name <>) . getPubKeyHash) $ ownPkh)
+          (TokenName . (name <>) . getPubKeyHash $ ownPkh)
           feeValue
       mintedFreeGov = mkGov "freeGov"
       mintedListGov = mkGov "listGov"
@@ -74,17 +75,18 @@ getFeesConstraints uT nftId price user = do
       govPolicy = govMintPolicy appInstance
       govRedeemer = asRedeemer MintGov
       headPrevValue = piValue govAddr govHead
-      payFeeToHead =
+      spendHead =
         Hask.mconcat
           [ Constraints.mustSpendScriptOutput (pi'TOR govHead) govRedeemer
           , Constraints.mustPayToOtherScript
               govScriptHash
               (toDatum $ pi'data govHead)
-              (Ada.lovelaceValueOf feeValue <> headPrevValue)
+              headPrevValue
           ]
       sharedGovTx =
         [ Constraints.mustMintValueWithRedeemer govRedeemer (mintedFreeGov <> mintedListGov)
         , Constraints.mustPayToPubKey ownPkh mintedFreeGov
+        , Constraints.mustPayToPubKey feePkh (Ada.lovelaceValueOf feeValue)
         ]
       sharedGovLookup =
         [ Constraints.mintingPolicy govPolicy
@@ -104,7 +106,7 @@ getFeesConstraints uT nftId price user = do
                   govScriptHash
                   (toDatum . pi'data $ govPi)
                   (mintedListGov <> prevValue)
-              , payFeeToHead
+              , spendHead
               ]
         -- Inserting new Node
         Right govIp ->
@@ -114,27 +116,14 @@ getFeesConstraints uT nftId price user = do
                 txOutValue
                   . fst
                   $ (txOutRefMapForAddr govAddr (pi'CITx . prev $ govIp) Map.! (pi'TOR . prev $ govIp))
-           in [ case gov'list updatedPrevNode of
-                  -- When inserting new node after Head, we add fee value to Head
-                  HeadLList {} ->
-                    Hask.mconcat
-                      [ Constraints.mustSpendScriptOutput (pi'TOR . prev $ govIp) govRedeemer
-                      , Constraints.mustPayToOtherScript
-                          govScriptHash
-                          (toDatum updatedPrevNode)
-                          (prevValue <> Ada.lovelaceValueOf feeValue)
-                      ]
-                  -- When inserting new node after another Node (not Head), we
-                  -- need to send fee to Head separately
-                  NodeLList {} ->
-                    Hask.mconcat
-                      [ Constraints.mustSpendScriptOutput (pi'TOR . prev $ govIp) govRedeemer
-                      , Constraints.mustPayToOtherScript
-                          govScriptHash
-                          (toDatum updatedPrevNode)
-                          prevValue
-                      , payFeeToHead
-                      ]
+           in [ Constraints.mustSpendScriptOutput (pi'TOR . prev $ govIp) govRedeemer
+              , Constraints.mustPayToOtherScript
+                  govScriptHash
+                  (toDatum updatedPrevNode)
+                  prevValue
+              , case gov'list updatedPrevNode of
+                  HeadLList {} -> Hask.mempty
+                  NodeLList {} -> spendHead
               , -- Create new Node
                 Constraints.mustPayToOtherScript
                   govScriptHash
