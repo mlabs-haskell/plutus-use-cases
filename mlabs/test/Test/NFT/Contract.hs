@@ -363,9 +363,9 @@ testBurnAll = check "Burn all of tokens" (checkScene scene) wA script
       nft1 <- userMint w1 artwork1
       userSetPrice w1 $ SetPriceParams nft1 (Just 1_000_000)
       userBuy w2 $ BuyRequestUser nft1 1_000_000 Nothing
-      userBurnGov w2 1000
-      userBurnGov w2 1000
-      userBurnGov w2 3000
+      userBurnGov w2 5000
+--      userBurnGov w2 1000
+--      userBurnGov w2 3000
     scene =
       mconcat
         [ w1 `ownsAda` subtractFee 1_000_000

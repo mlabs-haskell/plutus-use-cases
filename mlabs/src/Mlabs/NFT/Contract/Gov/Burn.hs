@@ -13,7 +13,7 @@ import Plutus.Contract.Constraints qualified as Constraints
 import Plutus.V1.Ledger.Ada qualified as Ada (
   lovelaceValueOf,
  )
-import PlutusTx.Prelude hiding (mconcat, mempty, (<>))
+import PlutusTx.Prelude hiding (mconcat, mempty, (<>), (==))
 
 import Ledger (
   Address,
@@ -97,7 +97,7 @@ burnGov uT amountToBurn = do
           , Constraints.mustMintValueWithRedeemer govRedeemer (burntFreeGov <> burntListGov)
           ]
       (lookups, tx) =
-        if currStake == amountToBurn
+        if currStake Hask.== amountToBurn
           then
             let updatedPrevDatum = pointNodeToMaybe' (pi'data prevGov) (pi'data <$> nextGov)
                 prevNodeValue = piValue govAddr prevGov
@@ -146,12 +146,12 @@ findGovBurnInsertPoint addr node = do
     findPoint = \case
       (x1 : x2 : x3 : xs) ->
         -- x1 -> x2 -> x3 -> ...
-        if pi'data x2 == node
+        if pi'data x2 Hask.== node
           then pure (x1, InsertPoint x2 (Just x3))
           else findPoint (x2 : x3 : xs)
       (x1 : x2 : _) ->
         -- x1 -> x2 -> Nothing
-        if pi'data x2 == node
+        if pi'data x2 Hask.== node
           then pure (x1, InsertPoint x2 Nothing)
           else Contract.throwError "GOV node not found"
       _ -> Contract.throwError "GOV node not found"

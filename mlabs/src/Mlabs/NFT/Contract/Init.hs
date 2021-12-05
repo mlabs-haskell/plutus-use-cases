@@ -94,7 +94,6 @@ createListHead admins = do
       ledgerTx1 <- Contract.submitTxConstraintsWith @GovManage lookups1 tx1
       void $ Contract.awaitTxConfirmed $ getCardanoTxId ledgerTx1
       headPoint' <- getGovHead $ appInstance'Governance appInstance
-      Contract.logInfo @Hask.String "What happened?"
       headPoint <- case headPoint' of
         Nothing -> Contract.throwError @Text "Couldn't find head" -- This should never happen
         Just h -> return h
