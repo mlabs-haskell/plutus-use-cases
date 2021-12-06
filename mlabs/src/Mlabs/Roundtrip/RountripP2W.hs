@@ -1,5 +1,7 @@
 {-# LANGUAGE  NamedFieldPuns #-}
-module Mlabs.Roundtrip.DemoContract(
+
+-- | Simple pay to wallet contract. No scripts used.
+module Mlabs.Roundtrip.RountripP2W(
     runDemo
     , PayToWalletParams(..)
     , DemoSchema

@@ -15,7 +15,7 @@ import Ledger (PubKeyHash(..))
 import Language.PureScript.Bridge (argonaut, equal, genericShow, mkSumType, order)
 
 import Mlabs.Roundtrip.PKH qualified as Mlabs.Contracts
-import Mlabs.Roundtrip.DemoContract qualified as Mlabs.Contracts
+import Mlabs.Roundtrip.RountripP2W qualified as Mlabs.Contracts
 
 
 data DemoContracts 

@@ -209,7 +209,7 @@ library
     Mlabs.IntegrationTest.PabWbe.Contracts.Payment
     Mlabs.IntegrationTest.PabWbe.Contracts.Mint
     Mlabs.IntegrationTest.PabWbe.Contracts.IntegrationTest
-    Mlabs.Roundtrip.DemoContract
+    Mlabs.Roundtrip.RountripP2W
     Mlabs.Roundtrip.PKH
     Mlabs.Roundtrip.PreBalance
     Mlabs.Roundtrip.PAB.Contracts
