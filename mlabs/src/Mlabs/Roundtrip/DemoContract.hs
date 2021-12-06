@@ -10,6 +10,7 @@ import Prelude qualified as Hask
 import PlutusTx.Prelude
 
 import Control.Lens
+import Control.Monad (forever)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Void (Void)
 import Data.Text (Text)
@@ -30,6 +31,7 @@ import Plutus.Contract (ContractError(..), Endpoint, Contract, Promise, endpoint
 
 
 import Mlabs.Roundtrip.PreBalance (PrebalancedTx(..), preBalanceTxFrom)
+import Mlabs.Plutus.Contract (selectForever)
 
 -- |Contract activation args
 data ContractArgs = ContractArgs
@@ -51,8 +53,11 @@ data PayToWalletParams =
 type DemoSchema = Endpoint "call-demo" PayToWalletParams
 
 -- | Off-chain
-runDemo :: ContractArgs -> Promise () DemoSchema ContractError ()
-runDemo (ContractArgs ownAddress) = endpoint @"call-demo" $ \ps -> do
+runDemo :: ContractArgs -> Contract () DemoSchema ContractError ()
+runDemo cArgs = selectForever [endpoint @"call-demo" (runDemo_ cArgs)]
+
+runDemo_ :: ContractArgs -> PayToWalletParams -> Contract () DemoSchema ContractError ()
+runDemo_ (ContractArgs ownAddress) ps = do
     runError (run ps) >>= \case
       Left err -> logWarn @Hask.String (Hask.show @ContractError err)
       Right () -> pure ()

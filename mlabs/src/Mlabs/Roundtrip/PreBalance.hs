@@ -90,7 +90,8 @@ getBalanceInputs addrUtxos collRef outsValue = do
       where
         -- Nami wallet won't let use collateral as input,
         -- need to filter collateral out before picking inputs for balancing
-        filteredIns = filter ((/= collRef) . fst) [utxoList !! 1] -- fixme: it's hardcoded to make it work, 
+        filteredIns = filter ((/= collRef) . fst) utxoList
+        -- filteredIns = filter ((/= collRef) . fst) [utxoList !! 1] -- fixme: it's hardcoded to make it work, 
                                                                   -- coz chain-index returns some utxos
                                                                   -- that are not actually at that address (?)
                                                                   -- probably for new run correct index need to be found
