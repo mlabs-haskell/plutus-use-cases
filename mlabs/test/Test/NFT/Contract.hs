@@ -48,7 +48,6 @@ import Test.NFT.Init (
   ownsAda,
   toUserId,
   userBidAuction,
-  userBurnGov,
   userBuy,
   userCloseAuction,
   userMint,
@@ -91,8 +90,6 @@ test =
         , testQueryListNfts
         , testQueryContent
         ]
---    , testBurnPart
---    , testBurnAll
     ]
 
 -- | Test initialisation of an app instance
@@ -337,36 +334,6 @@ testQueryContent = check "Query content" (containsLog w1 msg) wA script
     userId = toUserId w1
     infoNft = mintParamsToInfo artwork2 userId
 
-testBurnPart :: TestTree
-testBurnPart = check "Burn part of tokens" (checkScene scene) wA script
-  where
-    script = do
-      nft1 <- userMint w1 artwork1
-      userSetPrice w1 $ SetPriceParams nft1 (Just 1_000_000)
-      userBuy w2 $ BuyRequestUser nft1 1_000_000 Nothing
-      userBurnGov w2 2000
-    scene =
-      mconcat
-        [ w1 `ownsAda` subtractFee 1_000_000
-        , w2 `ownsGov` 3000
-        , w2 `ownsAda` (-1_000_000 + 2000)
-        ]
-
-testBurnAll :: TestTree
-testBurnAll = check "Burn all of tokens" (checkScene scene) wA script
-  where
-    script = do
-      nft1 <- userMint w1 artwork1
-      userSetPrice w1 $ SetPriceParams nft1 (Just 1_000_000)
-      userBuy w2 $ BuyRequestUser nft1 1_000_000 Nothing
-      userBurnGov w2 5000
---      userBurnGov w2 1000
---      userBurnGov w2 3000
-    scene =
-      mconcat
-        [ w1 `ownsAda` subtractFee 1_000_000
-        , w2 `ownsAda` (-1_000_000 + 5000)
-        ]
 
 subtractFee price = price - calcFee price
 

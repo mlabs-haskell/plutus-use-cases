@@ -21,7 +21,6 @@ import Prelude as Hask
 import Mlabs.NFT.Contract.BidAuction (bidAuction)
 import Mlabs.NFT.Contract.Buy (buy)
 import Mlabs.NFT.Contract.CloseAuction (closeAuction)
-import Mlabs.NFT.Contract.Gov.Burn (burnGov)
 import Mlabs.NFT.Contract.Init (initApp)
 import Mlabs.NFT.Contract.Mint (mint)
 import Mlabs.NFT.Contract.OpenAuction (openAuction)
@@ -62,8 +61,6 @@ type NFTAppSchema =
     .\/ Endpoint "auction-open" AuctionOpenParams
     .\/ Endpoint "auction-bid" AuctionBidParams
     .\/ Endpoint "auction-close" AuctionCloseParams
-    -- Gov endpoints
-    .\/ Endpoint "burn-gov" Integer
     -- Admin Endpoint
     .\/ Endpoint "app-init" InitParams
 
@@ -104,7 +101,6 @@ userEndpointsList uT =
   , endpoint @"auction-open" (openAuction uT)
   , endpoint @"auction-close" (closeAuction uT)
   , endpoint @"auction-bid" (bidAuction uT)
-  , endpoint @"burn-gov" (burnGov uT)
   ]
 
 -- | List of Query endpoints.

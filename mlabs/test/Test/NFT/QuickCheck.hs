@@ -7,8 +7,8 @@ module Test.NFT.QuickCheck where
 import Control.Lens (at, makeLenses, set, view, (^.))
 import Control.Monad (forM_, void, when)
 import Data.Default (def)
-import Data.Map (Map)
-import Data.Map qualified as Map
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as Map
 import Data.Monoid (Last (..))
 import Data.String (IsString (..))
 import Data.Text (Text)
@@ -147,10 +147,6 @@ instance ContractModel NftModel where
         { aPerformer :: Wallet
         , aNftId :: ~NftId
         }
---    | ActionBurn
---        { aPerformer :: Wallet
---        , aBurnAmount :: Integer
---        }
     | ActionWait -- This action should not be generated (do NOT add it to arbitraryAction)
         { aWaitSlots :: Integer
         }
@@ -204,9 +200,6 @@ instance ContractModel NftModel where
           , ActionAuctionClose
               <$> genWallet
               <*> genNftId
---          , ActionBurn
---              <$> genWallet
---              <*> genNonNeg
           ]
 
   initialState = NftModel Map.empty 0 False
@@ -243,9 +236,6 @@ instance ContractModel NftModel where
       && (s ^. contractState . mMintedCount > 0)
       && isJust ((s ^. contractState . mMarket . at aNftId) >>= _nftAuctionState)
       && (Just (s ^. currentSlot) > (view auctionDeadline <$> ((s ^. contractState . mMarket . at aNftId) >>= _nftAuctionState)))
---  precondition s ActionBurn {..} =
---    getFreeGov aPerformer (s ^. balanceChange aPerformer) >= aBurnAmount
-  precondition s ActionWait {} = True
   precondition s ActionWait {} = True
 
   nextState ActionInit {} = do
@@ -367,10 +357,6 @@ instance ContractModel NftModel where
                 deposit wAdmin (lovelaceValueOf feeValue)
                 deposit newOwner (mkFreeGov newOwner feeValue)
     wait 5
---  nextState ActionBurn {..} = do
---    deposit aPerformer (lovelaceValueOf aBurnAmount)
---    withdraw aPerformer (mkFreeGov aPerformer aBurnAmount)
---    wait 5
   nextState ActionWait {..} = do
     wait aWaitSlots
 
@@ -437,10 +423,6 @@ instance ContractModel NftModel where
           { cp'nftId = aNftId
           }
       void $ Trace.waitNSlots 5
---    ActionBurn {..} -> do
---      let h1 = h $ UserKey aPerformer
---      callEndpoint @"burn-gov" h1 aBurnAmount
---      void $ Trace.waitNSlots 5
     ActionWait {..} -> do
       void . Trace.waitNSlots . Hask.fromInteger $ aWaitSlots
 
@@ -464,8 +446,11 @@ instanceSpec =
 
 propContract :: Actions NftModel -> QC.Property
 propContract =
-  QC.withMaxSuccess 50
-    . propRunActionsWithOptions -- Keeping 50 tests limits time to ~1m, 100 tests took ~8m
+  -- HACK
+  -- 10 test runs execute relatively quickly, which we can then
+  -- run multiple times in 'test/Main.hs'
+  QC.withMaxSuccess 10
+    . propRunActionsWithOptions
       checkOptions
       instanceSpec
       (const $ Hask.pure True)
