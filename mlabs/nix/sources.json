@@ -207,10 +207,10 @@
         "homepage": "",
         "owner": "input-output-hk",
         "repo": "plutus",
-        "rev": "3f089ccf0ca746b399c99afe51e063b0640af547",
-        "sha256": "1nx8xmdgwmnsla4qg4k67f5md8vm3p1p9i25ndalrqdg40z90486",
+        "rev": "2721c59fd2302b75c4138456c29fd5b509e8340a",
+        "sha256": "02g8pzldyfl4pm8sy22yd3l2fr3zpyhwkvv9x3h9lsf6lfx5wi7k",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/plutus/archive/3f089ccf0ca746b399c99afe51e063b0640af547.tar.gz",
+        "url": "https://github.com/input-output-hk/plutus/archive/2721c59fd2302b75c4138456c29fd5b509e8340a.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "version": "926a49d16439b693648b68b7e6eb7877a5e622e4"
     },
@@ -220,10 +220,10 @@
         "homepage": null,
         "owner": "input-output-hk",
         "repo": "plutus-apps",
-        "rev": "21d96e5908558a4c3b3234f6a2b63b4b6f7fdee6",
-        "sha256": "0lgycr7d1wqlbcvb27l3gb120lllax6n8par29sc12xfy94rifck",
+        "rev": "fe8f0872ccb3e52e9e7b723d43798af7865f1f4e",
+        "sha256": "0sn56qg2pdk4h96s6gv8ibdypkj0n74njj2yn454xjxq94ix82ql",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/plutus-apps/archive/21d96e5908558a4c3b3234f6a2b63b4b6f7fdee6.tar.gz",
+        "url": "https://github.com/input-output-hk/plutus-apps/archive/fe8f0872ccb3e52e9e7b723d43798af7865f1f4e.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "plutus-extra": {
@@ -232,10 +232,10 @@
         "homepage": "",
         "owner": "ngua",
         "repo": "plutus-extra",
-        "rev": "0fccce0904b7d7f95f1b0781b42a158f8b40c241",
-        "sha256": "0b22cb2hk7ady0ihlylz3xicsxb3600jj0fgf1zfadvw1vlb3a19",
+        "rev": "0293dba463cd5e50115704ae8704bf2a52bf3b46",
+        "sha256": "15pr2jn4iwdnm0v24kqdj92h6k52rfrfjgllzgxd3lim3nvfikam",
         "type": "tarball",
-        "url": "https://github.com/ngua/plutus-extra/archive/0fccce0904b7d7f95f1b0781b42a158f8b40c241.tar.gz",
+        "url": "https://github.com/ngua/plutus-extra/archive/0293dba463cd5e50115704ae8704bf2a52bf3b46.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "purescript-bridge": {

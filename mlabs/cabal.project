@@ -8,7 +8,7 @@ packages: ./.
 source-repository-package
   type: git
   location: https://github.com/ngua/plutus-extra.git
-  tag: 0fccce0904b7d7f95f1b0781b42a158f8b40c241
+  tag: 0293dba463cd5e50115704ae8704bf2a52bf3b46
   subdir: plutus-extra
           tasty-plutus
           plutus-pretty
@@ -18,15 +18,15 @@ source-repository-package
   type: git
   location: https://github.com/input-output-hk/plutus.git
   subdir:
-    plutus-core
     plutus-ledger-api
-    plutus-tx
-    plutus-tx-plugin
     word-array
     prettyprinter-configurable
     stubs/plutus-ghc-stub
+    plutus-core
+    plutus-tx
+    plutus-tx-plugin
   -- Update plutus revision here! Make sure this matches `cat ./nix/sources.json | jq '.plutus.rev'`
-  tag: 3f089ccf0ca746b399c99afe51e063b0640af547
+  tag: 2721c59fd2302b75c4138456c29fd5b509e8340a
 
 source-repository-package
   type: git
@@ -39,12 +39,13 @@ source-repository-package
     plutus-chain-index-core
     plutus-contract
     plutus-ledger
+    plutus-ledger-constraints
     plutus-pab
     plutus-playground-server
     plutus-use-cases
     quickcheck-dynamic
     web-ghc
-  tag: 21d96e5908558a4c3b3234f6a2b63b4b6f7fdee6
+  tag: fe8f0872ccb3e52e9e7b723d43798af7865f1f4e
 
 -- The following sections are copied from the combined 'plutus' and 'plutus-apps' repositories'
 -- 'cabal.project's at the revisions given above.
