@@ -9,8 +9,10 @@ module Mlabs.NFT.Contract.Aux (
   getDatumsTxsOrderedFromAddr,
   getGovHead,
   getNftAppSymbol,
+  getNftGovSymbol,
   getNftDatum,
   getNftHead,
+  getHead,
   getScriptAddrUtxos,
   getsNftDatum,
   getUId,
@@ -54,6 +56,7 @@ import Ledger.Value as Value (unAssetClass, valueOf)
 import Mlabs.Plutus.Contract (readDatum')
 
 import Mlabs.NFT.Governance.Types
+import Mlabs.NFT.Governance.Validation
 import Mlabs.NFT.Types
 import Mlabs.NFT.Validation
 
@@ -107,7 +110,7 @@ getHead uT = do
   where
     containUniqueToken = (/= 0) . flip assetClassValueOf uT . (^. ciTxOutValue) . fst
 
--- | Get the  Symbol
+-- | Get the Nft Symbol
 getNftAppSymbol :: UniqueToken -> GenericContract NftAppSymbol
 getNftAppSymbol uT = do
   lHead <- getHead uT
@@ -118,6 +121,22 @@ getNftAppSymbol uT = do
       let val = filter (\x -> x /= uTCS && x /= "") . symbols $ pi'CITxO headInfo ^. ciTxOutValue
       case val of
         [x] -> pure $ NftAppSymbol x
+        [] -> Contract.throwError "Could not establish App Symbol. Does it exist in the HEAD?"
+        _ -> Contract.throwError "Could not establish App Symbol. Too many symbols to distinguish from."
+  where
+    err = Contract.throwError "Could not establish App Symbol."
+
+-- | Get the Governance Symbol
+getNftGovSymbol :: UniqueToken -> GenericContract GovAppSymbol
+getNftGovSymbol uT = do
+  lHead <- getGovHead . govScrAddress $ uT
+  case lHead of
+    Nothing -> err
+    Just headInfo -> do
+      let uTCS = fst . unAssetClass $ uT
+      let val = filter (\x -> x /= uTCS && x /= "") . symbols $ pi'CITxO headInfo ^. ciTxOutValue
+      case val of
+        [x] -> pure $ GovAppSymbol x
         [] -> Contract.throwError "Could not establish App Symbol. Does it exist in the HEAD?"
         _ -> Contract.throwError "Could not establish App Symbol. Too many symbols to distinguish from."
   where

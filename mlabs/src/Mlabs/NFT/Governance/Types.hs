@@ -5,21 +5,25 @@ module Mlabs.NFT.Governance.Types (
   GovLList,
   GovDatum (..),
   LList (..),
+  GovAppSymbol (..),
 ) where
 
+import Data.OpenApi.Schema qualified as OpenApi
+import Ledger (CurrencySymbol)
 import Mlabs.Data.LinkedList (LList (..))
 import Mlabs.NFT.Types (UserId)
-import Prelude qualified as Hask
-
 import PlutusTx qualified
+import Prelude qualified as Hask
 
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
+import Plutus.V1.Ledger.Crypto (PubKeyHash)
 import PlutusTx.Prelude
 
 -- | Datum for utxo containing GovLList Head token.
-newtype GovLHead = GovLHead
+data GovLHead = GovLHead
   { govLHead'feeRate :: Rational
+  , govLHead'pkh :: PubKeyHash
   }
   deriving stock (Hask.Show, Generic, Hask.Eq, Hask.Ord)
   deriving anyclass (ToJSON, FromJSON)
@@ -27,9 +31,20 @@ newtype GovLHead = GovLHead
 PlutusTx.unstableMakeIsData ''GovLHead
 PlutusTx.makeLift ''GovLHead
 
+newtype GovAppSymbol = GovAppSymbol {gov'symbol :: CurrencySymbol}
+  deriving stock (Hask.Show, Generic, Hask.Eq, Hask.Ord)
+  deriving anyclass (ToJSON, FromJSON, OpenApi.ToSchema)
+
+PlutusTx.unstableMakeIsData ''GovAppSymbol
+PlutusTx.makeLift ''GovAppSymbol
+
+instance Eq GovAppSymbol where
+  {-# INLINEABLE (==) #-}
+  (GovAppSymbol a) == (GovAppSymbol a') = a == a'
+
 instance Eq GovLHead where
   {-# INLINEABLE (==) #-}
-  (GovLHead a) == (GovLHead a') = a == a'
+  (GovLHead a b) == (GovLHead a' b') = a == a' && b == b'
 
 -- | Datum for utxo containing GovLList Head token.
 data GovLNode = GovLNode

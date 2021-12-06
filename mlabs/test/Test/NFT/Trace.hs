@@ -46,8 +46,9 @@ type AppInitHandle = Trace.ContractHandle (Last NftAppInstance) NFTAppSchema Tex
 appInitTrace :: EmulatorTrace NftAppInstance
 appInitTrace = do
   let admin = walletFromNumber 4 :: Emulator.Wallet
+  let params = InitParams [UserId . Emulator.walletPubKeyHash $ admin] (5 % 1000) (Emulator.walletPubKeyHash admin)
   hAdmin :: AppInitHandle <- activateContractWallet admin adminEndpoints
-  callEndpoint @"app-init" hAdmin [UserId . Emulator.walletPubKeyHash $ admin]
+  callEndpoint @"app-init" hAdmin params
   void $ Trace.waitNSlots 4
   oState <- Trace.observableState hAdmin
   appInstace <- case getLast oState of
@@ -245,13 +246,13 @@ eTrace1 = do
         , mp'share = 1 % 10
         , mp'price = Just 5_000_000
         }
-    buyParams nftId = BuyRequestUser nftId 6_000_000 (Just 200_000_000)
+    buyParams nftId = BuyRequestUser nftId 6_000_000 (Just 20_000_000)
 
 severalBuysTrace :: EmulatorTrace ()
 severalBuysTrace = do
   let wallet1 = walletFromNumber 1 :: Emulator.Wallet
       wallet2 = walletFromNumber 2 :: Emulator.Wallet
-      wallet3 = walletFromNumber 4 :: Emulator.Wallet
+      wallet3 = walletFromNumber 3 :: Emulator.Wallet
 
   appInstance <- appInitTrace
   let uniqueToken = appInstance'UniqueToken appInstance
@@ -269,9 +270,9 @@ severalBuysTrace = do
   void $ Trace.waitNSlots 1
   callEndpoint @"buy" h2 (buyParams nftId 6_000_000)
   void $ Trace.waitNSlots 1
-  callEndpoint @"buy" h3 (buyParams nftId 200_000_000)
+  callEndpoint @"buy" h3 (buyParams nftId 20_000_000)
   void $ Trace.waitNSlots 1
-  callEndpoint @"set-price" h2 (SetPriceParams nftId (Just 20_000_000))
+  callEndpoint @"set-price" h3 (SetPriceParams nftId (Just 20_000_000))
   where
     -- logInfo @Hask.String $ Hask.show oState
 
@@ -282,7 +283,7 @@ severalBuysTrace = do
         , mp'share = 1 % 10
         , mp'price = Just 5_000_000
         }
-    buyParams nftId bid = BuyRequestUser nftId bid (Just 200_000_000)
+    buyParams nftId bid = BuyRequestUser nftId bid (Just 20_000_000)
 
 setPriceTrace :: EmulatorTrace ()
 setPriceTrace = do
@@ -416,7 +417,7 @@ auctionTrace1 = do
   callEndpoint @"auction-close" h1 (closeParams nftId)
   void $ Trace.waitNSlots 2
 
-  callEndpoint @"set-price" h3 (SetPriceParams nftId (Just 20_000_000))
+  callEndpoint @"set-price" h3 (SetPriceParams nftId (Just 20))
   void $ Trace.waitNSlots 5
 
   logInfo @Hask.String "auction1 test end"
@@ -426,7 +427,7 @@ auctionTrace1 = do
         { mp'content = Content "A painting."
         , mp'title = Title "Fiona Lisa"
         , mp'share = 1 % 10
-        , mp'price = Just 5_000_000
+        , mp'price = Just 5
         }
 
     slotTenTime = slotToBeginPOSIXTime def 10

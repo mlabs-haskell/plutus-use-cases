@@ -32,13 +32,12 @@ import Mlabs.Plutus.Contracts.Currency qualified as MC
 
 import Plutus.V1.Ledger.Value (TokenName (..), assetClass, assetClassValue)
 import PlutusTx.Prelude hiding (mconcat, (<>))
-import PlutusTx.Ratio qualified as R
 
 import Mlabs.Data.LinkedList (LList (..))
 import Mlabs.NFT.Contract.Aux (getGovHead, toDatum)
 import Mlabs.NFT.Governance.Types (GovAct (..), GovDatum (..), GovLHead (..))
 import Mlabs.NFT.Governance.Validation (GovManage, govMintPolicy, govScrAddress, govScript)
-import Mlabs.NFT.Types (GenericContract, MintAct (..), NftAppInstance (..), NftAppSymbol (..), NftListHead (..), PointInfo (..), UserId (..))
+import Mlabs.NFT.Types (GenericContract, InitParams (..), MintAct (..), NftAppInstance (..), NftAppSymbol (..), NftListHead (..), PointInfo (..))
 import Mlabs.NFT.Validation (DatumNft (..), NftTrade, asRedeemer, curSymbol, mintPolicy, txPolicy, txScrAddress)
 
 {- | The App Symbol is written to the Writter instance of the Contract to be
@@ -49,21 +48,21 @@ type InitContract a = forall s. Contract (Last NftAppInstance) s Text a
 {- |
   Initialise NFT marketplace, create HEAD of the list and unique token
 -}
-initApp :: [UserId] -> InitContract ()
-initApp admins = do
-  appInstance <- createListHead admins
+initApp :: InitParams -> InitContract ()
+initApp params = do
+  appInstance <- createListHead params
   Contract.tell . Last . Just $ appInstance
   Contract.logInfo @Hask.String $ printf "Finished Initialisation: App Instance: %s" (Hask.show appInstance)
 
 {- | Initialise the application at the address of the script by creating the
  HEAD of the list, and coupling the one time token with the Head of the list.
 -}
-createListHead :: [UserId] -> GenericContract NftAppInstance
-createListHead admins = do
+createListHead :: InitParams -> GenericContract NftAppInstance
+createListHead InitParams {..} = do
   uniqueToken <- generateUniqueToken
   let govAddr = govScrAddress uniqueToken
       scrAddr = txScrAddress uniqueToken
-  mintListHead $ NftAppInstance scrAddr uniqueToken govAddr admins
+  mintListHead $ NftAppInstance scrAddr uniqueToken govAddr ip'admins
   where
     -- Mint the Linked List Head and its associated token.
     mintListHead :: NftAppInstance -> GenericContract NftAppInstance
@@ -94,7 +93,6 @@ createListHead admins = do
       ledgerTx1 <- Contract.submitTxConstraintsWith @GovManage lookups1 tx1
       void $ Contract.awaitTxConfirmed $ getCardanoTxId ledgerTx1
       headPoint' <- getGovHead $ appInstance'Governance appInstance
-      Contract.logInfo @Hask.String "What happened?"
       headPoint <- case headPoint' of
         Nothing -> Contract.throwError @Text "Couldn't find head" -- This should never happen
         Just h -> return h
@@ -145,7 +143,7 @@ createListHead admins = do
     govHeadInit =
       GovDatum $
         HeadLList
-          { _head'info = GovLHead (5 R.% 1000)
+          { _head'info = GovLHead ip'feeRate ip'feePkh
           , _head'next = Nothing
           }
 

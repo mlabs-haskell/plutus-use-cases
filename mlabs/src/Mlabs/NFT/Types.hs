@@ -35,6 +35,7 @@ module Mlabs.NFT.Types (
   UserContract,
   UserId (..),
   UserWriter,
+  InitParams (..),
 ) where
 
 import PlutusTx.Prelude (
@@ -173,6 +174,25 @@ data MintAct
 
 --------------------------------------------------------------------------------
 -- ENDPOINTS PARAMETERS --
+
+-- | Parameters for initialising NFT marketplace
+data InitParams = InitParams
+  { -- | List of app admins
+    ip'admins :: [UserId]
+  , -- | Fee rate of transaction
+    ip'feeRate :: Rational
+  , -- | PKH where fee is sent
+    ip'feePkh :: PubKeyHash
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
+
+PlutusTx.makeLift ''InitParams
+PlutusTx.unstableMakeIsData ''InitParams
+
+instance Eq InitParams where
+  (InitParams admins1 feeRate1 feePkh1) == (InitParams admins2 feeRate2 feePkh2) =
+    admins1 == admins2 && feeRate1 == feeRate2 && feePkh1 == feePkh2
 
 -- | Parameters that need to be submitted when minting a new NFT.
 data MintParams = MintParams
@@ -450,7 +470,7 @@ instance Eq NftListNode where
 
 -- | The datum of an Nft is either head or node.
 data DatumNft
-  = -- | Head of a List
+  = -- | Head of the List
     HeadDatum NftListHead
   | -- | A node of the list.
     NodeDatum NftListNode
@@ -560,6 +580,7 @@ data QueryResponse
   | QueryCurrentPrice (Maybe Integer)
   | QueryContent (Maybe InformationNft)
   | QueryListNfts [InformationNft]
+  | QueryNftAppInstance (Maybe NftAppInstance)
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON)
 
