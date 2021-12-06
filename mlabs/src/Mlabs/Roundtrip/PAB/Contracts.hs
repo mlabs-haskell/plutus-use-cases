@@ -16,10 +16,12 @@ import Language.PureScript.Bridge (argonaut, equal, genericShow, mkSumType, orde
 
 import Mlabs.Roundtrip.PKH qualified as Mlabs.Contracts
 import Mlabs.Roundtrip.RountripP2W qualified as Mlabs.Contracts
+import Mlabs.Roundtrip.RoundtripSpending qualified as Mlabs.Contracts
 
 
 data DemoContracts 
   = Roundtrip Mlabs.Contracts.ContractArgs
+  | LockSpend Mlabs.Contracts.SContractArgs
   | LogPKH
     deriving (Eq, Ord, Show, Generic)
     deriving anyclass (FromJSON, ToJSON, OpenApi.ToSchema)
@@ -40,7 +42,9 @@ instance HasDefinitions DemoContracts where
     getSchema = \case
       LogPKH -> Builtin.endpointsToSchemas @Builtin.Empty
       Roundtrip _ -> Builtin.endpointsToSchemas @Mlabs.Contracts.DemoSchema
+      LockSpend _ -> Builtin.endpointsToSchemas @Mlabs.Contracts.LockSpendSchema
 
     getContract = \case
       LogPKH -> SomeBuiltin Mlabs.Contracts.getPKH
       Roundtrip args -> SomeBuiltin (Mlabs.Contracts.runDemo args)
+      LockSpend args -> SomeBuiltin (Mlabs.Contracts.lockSpendEndpoints args)

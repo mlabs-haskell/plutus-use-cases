@@ -3,7 +3,9 @@
 -- | Simple pay to wallet contract. No scripts used.
 module Mlabs.Roundtrip.RoundtripSpending(
     lock
-    -- , SContractArgs(..)
+    , lockSpendEndpoints
+    , SContractArgs(..)
+    , LockSpendSchema
     ) where
 
 import Prelude qualified as Hask
@@ -26,6 +28,8 @@ import Ledger.Typed.Scripts (TypedValidator)
 import Ledger.Typed.Scripts qualified as Scripts
 import PlutusTx qualified
 import Plutus.V1.Ledger.Ada qualified as Ada
+
+import Plutus.V1.Ledger.Scripts (unitDatum)
 
 import Ledger.Constraints qualified as Constraints
 import Plutus.Contract as Contract
@@ -75,20 +79,6 @@ typedValidator = Scripts.mkTypedValidatorParam @AddressContract
     where
         wrap = Scripts.wrapValidator
 
---     ScriptOutputMissing PubKeyHash
---     | MultipleScriptOutputs PubKeyHash
---     | PKContractError ContractError
---     deriving stock (Eq, Show, Generic)
---     deriving anyclass (ToJSON, FromJSON)
-
--- makeClassyPrisms ''PubKeyError
-
--- instance AsContractError PubKeyError where
---     _ContractError = _PKContractError
-
--- | Lock some funds in a 'PayToPubKey' contract, returning the output's address
---   and a 'TxIn' transaction input that can spend it.
-
 -- |Contract activation args
 data SContractArgs = SContractArgs
   { ownAddress :: Text
@@ -105,30 +95,39 @@ data LockParams =
         deriving stock (Hask.Eq, Hask.Show, Generic)
         deriving anyclass (ToJSON, FromJSON, ToSchema)
 
-type SpendingSchema = Endpoint "lock" LockParams
+type LockSpendSchema = Endpoint "lock" LockParams
 
-lock
-    :: SContractArgs
+lockSpendEndpoints :: SContractArgs -> Contract () LockSpendSchema ContractError ()
+lockSpendEndpoints cArgs = selectForever [endpoint @"lock" (lock cArgs)]
+
+
+lock:: SContractArgs
     -> LockParams
-    -> Contract () SpendingSchema ContractError ()
+    -> Contract () LockSpendSchema ContractError ()
 lock (SContractArgs namiAddr) lp = do
     runError (run lp) >>= \case
       Left err -> logWarn @Hask.String (Hask.show @ContractError err)
       Right () -> pure ()
     where 
       run LockParams{lovelaceAmount, collateralRef} = do
+        logInfo @Hask.String $ "UDH"
+        logInfo @Hask.String $ Hask.show (datumHash unitDatum)
+
+        
         let inst = typedValidator . UserAddress . stringToBuiltinByteString . T.unpack $ namiAddr
             scrAddress = Scripts.validatorAddress inst
             datum = AddressDatum "Test 1"
             value = Ada.lovelaceValueOf lovelaceAmount
             tx = Constraints.mustPayToTheScript datum value
+            ls = Constraints.typedValidatorLookups inst
 
-        utx <- mkTxConstraints @AddressContract (Hask.mempty) tx
+        utx <- mkTxConstraints @AddressContract ls tx
 
         addr <- parseAddress namiAddr
 
         PrebTx pUtx <- preBalanceTxFrom addr collateralRef utx
         logInfo @Hask.String $ "Yielding tx"
+        -- logInfo @Hask.String $ "Lock Datum hash: " Hask.++ (Hask.show $ datumHash datum)
         yieldUnbalancedTx pUtx
       
       -- logInfo @Hask.String $ "Submitting lock tx"
@@ -140,7 +139,7 @@ lock (SContractArgs namiAddr) lp = do
 
 
 
-parseAddress :: Text -> Contract () SpendingSchema ContractError Address
+parseAddress :: Text -> Contract () LockSpendSchema ContractError Address
 parseAddress addr = 
   case fmap fromCardanoAddress $ Cardano.Api.deserialiseAddress (AsAddressInEra AsAlonzoEra) addr of
     Just (Right a) -> pure a
