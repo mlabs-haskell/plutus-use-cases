@@ -1,5 +1,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE StrictData #-}
 
 module Test.NFT.QuickCheck where
 
@@ -146,13 +147,10 @@ instance ContractModel NftModel where
         { aPerformer :: Wallet
         , aNftId :: ~NftId
         }
-    | ActionBurn
-        { aPerformer :: Wallet
-        , aBurnAmount :: Integer
-        }
-    | ActionWait -- This action should not be generated (do NOT add it to arbitraryAction)
-        { aWaitSlots :: Integer
-        }
+--    | ActionBurn
+--        { aPerformer :: Wallet
+--        , aBurnAmount :: Integer
+--        }
     | ActionWait -- This action should not be generated (do NOT add it to arbitraryAction)
         { aWaitSlots :: Integer
         }
@@ -206,9 +204,9 @@ instance ContractModel NftModel where
           , ActionAuctionClose
               <$> genWallet
               <*> genNftId
-          , ActionBurn
-              <$> genWallet
-              <*> genNonNeg
+--          , ActionBurn
+--              <$> genWallet
+--              <*> genNonNeg
           ]
 
   initialState = NftModel Map.empty 0 False
@@ -245,8 +243,8 @@ instance ContractModel NftModel where
       && (s ^. contractState . mMintedCount > 0)
       && isJust ((s ^. contractState . mMarket . at aNftId) >>= _nftAuctionState)
       && (Just (s ^. currentSlot) > (view auctionDeadline <$> ((s ^. contractState . mMarket . at aNftId) >>= _nftAuctionState)))
-  precondition s ActionBurn {..} =
-    getFreeGov aPerformer (s ^. balanceChange aPerformer) >= aBurnAmount
+--  precondition s ActionBurn {..} =
+--    getFreeGov aPerformer (s ^. balanceChange aPerformer) >= aBurnAmount
   precondition s ActionWait {} = True
   precondition s ActionWait {} = True
 
@@ -369,10 +367,10 @@ instance ContractModel NftModel where
                 deposit wAdmin (lovelaceValueOf feeValue)
                 deposit newOwner (mkFreeGov newOwner feeValue)
     wait 5
-  nextState ActionBurn {..} = do
-    deposit aPerformer (lovelaceValueOf aBurnAmount)
-    withdraw aPerformer (mkFreeGov aPerformer aBurnAmount)
-    wait 5
+--  nextState ActionBurn {..} = do
+--    deposit aPerformer (lovelaceValueOf aBurnAmount)
+--    withdraw aPerformer (mkFreeGov aPerformer aBurnAmount)
+--    wait 5
   nextState ActionWait {..} = do
     wait aWaitSlots
 
@@ -439,10 +437,10 @@ instance ContractModel NftModel where
           { cp'nftId = aNftId
           }
       void $ Trace.waitNSlots 5
-    ActionBurn {..} -> do
-      let h1 = h $ UserKey aPerformer
-      callEndpoint @"burn-gov" h1 aBurnAmount
-      void $ Trace.waitNSlots 5
+--    ActionBurn {..} -> do
+--      let h1 = h $ UserKey aPerformer
+--      callEndpoint @"burn-gov" h1 aBurnAmount
+--      void $ Trace.waitNSlots 5
     ActionWait {..} -> do
       void . Trace.waitNSlots . Hask.fromInteger $ aWaitSlots
 

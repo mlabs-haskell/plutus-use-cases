@@ -37,7 +37,7 @@ import Mlabs.Data.LinkedList (LList (..))
 import Mlabs.NFT.Contract.Aux (getGovHead, toDatum)
 import Mlabs.NFT.Governance.Types (GovAct (..), GovDatum (..), GovLHead (..))
 import Mlabs.NFT.Governance.Validation (GovManage, govMintPolicy, govScrAddress, govScript)
-import Mlabs.NFT.Types (GenericContract, MintAct (..), NftAppInstance (..), NftAppSymbol (..), NftListHead (..), PointInfo (..), UserId (..))
+import Mlabs.NFT.Types (InitParams (..), GenericContract, MintAct (..), NftAppInstance (..), NftAppSymbol (..), NftListHead (..), PointInfo (..))
 import Mlabs.NFT.Validation (DatumNft (..), NftTrade, asRedeemer, curSymbol, mintPolicy, txPolicy, txScrAddress)
 
 {- | The App Symbol is written to the Writter instance of the Contract to be

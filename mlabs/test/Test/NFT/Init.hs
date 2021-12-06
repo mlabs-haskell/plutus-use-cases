@@ -353,7 +353,7 @@ mkFreeGov wal = assetClassValue (AssetClass (govCurrency, tn))
   where
     tn = TokenName . ("freeGov" <>) . getPubKeyHash . getUserId . toUserId $ wal
 
-govCurrency = "84e181646af66a0ecc346708f95ad213ac7269895db6d8fc81fe1d19"
+govCurrency = "c13f8bd961ed60a84cfc5e2106a0f42bbd006237c807198d331befb1"
 
 getFreeGov :: Wallet -> Plutus.V1.Ledger.Value.Value -> Integer
 getFreeGov wal val = valueOf val govCurrency tn

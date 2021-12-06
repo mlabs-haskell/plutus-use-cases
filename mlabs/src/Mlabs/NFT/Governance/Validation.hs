@@ -7,6 +7,7 @@ module Mlabs.NFT.Governance.Validation (
 
 import Ledger (
   Address,
+  PubKeyHash,
   CurrencySymbol,
   MintingPolicy,
   ScriptContext,
@@ -55,6 +56,7 @@ import Mlabs.NFT.Types (
  )
 
 import Plutus.V1.Ledger.Ada (adaSymbol, adaToken, lovelaceValueOf)
+import Plutus.V1.Ledger.Address (pubKeyHashAddress)
 import Plutus.V1.Ledger.Value (
   AssetClass (..),
   TokenName (..),
@@ -85,7 +87,8 @@ mkGovMintPolicy appInstance act ctx =
         && traceIfFalse "NFT-Gov-Mint: uniquetoken and proofToken are not sent to the head" checkProofTokenToHead
         && traceIfFalse "NFT-Gov-Mint: List head with the unique token is not present" checkListHeadInit
     MintGov ->
-      traceIfFalse "NFT-Gov-Mint: Fee must be paid to the list head." checkFeeToTheListHead -- It automatically checks that the list head is present.
+      traceIfFalse "NFT-Gov-Mint: Fee wasn't paid to the head pubkey hash." checkFeeToHeadPkh
+--      traceIfFalse "NFT-Gov-Mint: Fee must be paid to the list head." checkFeeToTheListHead -- It automatically checks that the list head is present.
         && traceIfFalse
           "NFT-Gov-Mint: List node incorrectly minted or updated"
           (nodeCanBeUpdated && nodeUpdatedWithCorrectValues)
@@ -165,16 +168,16 @@ mkGovMintPolicy appInstance act ctx =
         uTokenPresent txO = assetClassValueOf (txOutValue txO) uniqueToken == 1
 
     -- Checks whether fees are paid to head correctly or not
-    checkFeeToTheListHead =
-      wrapMaybe $ do
-        (h, txOut) <- getMaybeOne outputsWithHeadDatum
-        (_, txIn) <- getMaybeOne inputsWithHeadDatum
-        feeRate <- getFeeRate h
-        let valOut = txOutValue txOut
-            valIn = txOutValue txIn
-        return $
-          -- Fees are added to the head
-          valOut `geq` (valIn <> lovelaceValueOf (getFee feeRate))
+--    checkFeeToTheListHead =
+--      wrapMaybe $ do
+--        (h, txOut) <- getMaybeOne outputsWithHeadDatum
+--        (_, txIn) <- getMaybeOne inputsWithHeadDatum
+--        feeRate <- getFeeRate h
+--        let valOut = txOutValue txOut
+--            valIn = txOutValue txIn
+--        return $
+--          -- Fees are added to the head
+--          valOut `geq` (valIn <> lovelaceValueOf (getFee feeRate))
 
     -- For ProofAndBurn, checks whether staked lovelace are removed from the head correctly or not.
     checkStakeWithdrawnCorrectly =
@@ -279,6 +282,16 @@ mkGovMintPolicy appInstance act ctx =
         (h, _) <- getMaybeOne outputsWithHeadDatum
         feeRate <- getFeeRate h
         return $ freeGovMinted == getFee feeRate
+
+    checkFeeToHeadPkh =
+      wrapMaybe $ do
+        (h, _) <- getMaybeOne inputsWithHeadDatum
+        addr <- pubKeyHashAddress <$> getHeadPkh h
+        feeRate <- getFeeRate h
+        let outputs = txInfoOutputs . scriptContextTxInfo $ ctx
+            fee = getFee feeRate
+        return $
+          any (\tx -> (txOutAddress tx == addr) && (txOutValue tx `geq` lovelaceValueOf fee)) outputs
 
     checkListGovPositive = listGovMinted > 0
 
@@ -405,16 +418,31 @@ mkGovMintPolicy appInstance act ctx =
       where
         sillyCalculateFee =
           do
-            (_, headIn) <- getMaybeOne inputsWithHeadDatum
-            (_, headOut) <- getMaybeOne outputsWithHeadDatum
-            let diff = txOutValue headOut <> (negate . txOutValue $ headIn)
+            (head, _) <- getMaybeOne inputsWithHeadDatum
+            pkhAddr <- pubKeyHashAddress <$> getHeadPkh head
+            let outputsToPkh = filter (\txO -> txOutAddress txO == pkhAddr) $ txInfoOutputs . scriptContextTxInfo $ ctx
+                inputsFromPkh = filter (\txO -> txOutAddress (txInInfoResolved txO) == pkhAddr) $ txInfoInputs . scriptContextTxInfo $ ctx
+                valueIn = foldMap (txOutValue . txInInfoResolved) inputsFromPkh
+                valueOut = foldMap txOutValue outputsToPkh
+                diff =  valueOut <> negate valueIn
             return $
               assetClassValueOf diff $ assetClass adaSymbol adaToken
+--            (_, headIn) <- getMaybeOne inputsWithHeadDatum
+--            (_, headOut) <- getMaybeOne outputsWithHeadDatum
+--            let diff = txOutValue headOut <> (negate . txOutValue $ headIn)
+--            return $
+--              assetClassValueOf diff $ assetClass adaSymbol adaToken
 
     getFeeRate :: GovDatum -> Maybe Rational
     getFeeRate (GovDatum datum) =
       case datum of
-        HeadLList (GovLHead feeRate) _ -> Just feeRate
+        HeadLList (GovLHead feeRate _) _ -> Just feeRate
+        _ -> Nothing
+
+    getHeadPkh :: GovDatum -> Maybe PubKeyHash
+    getHeadPkh (GovDatum datum) =
+      case datum of
+        HeadLList (GovLHead _ pkh) _ -> Just pkh
         _ -> Nothing
 
     getKey :: GovDatum -> Maybe UserId
@@ -459,8 +487,8 @@ mkGovScript ut _ act ctx =
           || (nodeCanBeInserted && nodeInsertedWithCorrectPointers)
     Proof ->
       traceIfFalse "NFT-Gov-Script-Validator: Free Gov tokens are required to unlock." checkFreeGovPresent
-        && traceIfFalse "NFT-Gov-Script-Validator: ListGov must be sent bach unchanged." listGovSentBackUnchanged
-        && traceIfFalse "NFT-Gov-Script-Validator: FreeGov must be sent bach unchanged." freeGovSentBackUnchanged
+        && traceIfFalse "NFT-Gov-Script-Validator: ListGov must be sent back unchanged." listGovSentBackUnchanged
+        && traceIfFalse "NFT-Gov-Script-Validator: FreeGov must be sent back unchanged." freeGovSentBackUnchanged
     ProofAndBurn ->
       traceIfFalse "NFT-Gov-Script-Validator: Free Gov tokens must be burnt." checkGovBurnt -- We need to ensure that our minting policy verifications are called.
         && traceIfFalse "NFT-Gov-Script-Validator: Free Gov tokens are required to unlock." checkFreeGovPresent
@@ -588,6 +616,8 @@ mkGovScript ut _ act ctx =
           newNodeNext <- getNext newNode
           oldFeeRate <- getFeeRate oldHead
           newFeeRate <- getFeeRate newHead
+          oldHeadPkh <- getHeadPkh oldHead
+          newHeadPkh <- getHeadPkh newHead
           return $
             -- New node's position in the list must be correct
             (newNodeKey < oldHeadNext)
@@ -597,6 +627,7 @@ mkGovScript ut _ act ctx =
               && (newNodeNext == oldHeadNext)
               -- Head's data other than next (feeRate) must remain unchanged
               && oldFeeRate == newFeeRate
+              && oldHeadPkh == newHeadPkh
       -- Inserting a new node in other places
       | (length inputsWithNodeDatum == 1) && (length outputsWithNodeDatum == 2) =
         wrapMaybe $ do
@@ -788,7 +819,13 @@ mkGovScript ut _ act ctx =
     getFeeRate :: GovDatum -> Maybe Rational
     getFeeRate (GovDatum d) =
       case d of
-        HeadLList (GovLHead feeRate) _ -> Just feeRate
+        HeadLList (GovLHead feeRate _) _ -> Just feeRate
+        _ -> Nothing
+
+    getHeadPkh :: GovDatum -> Maybe PubKeyHash
+    getHeadPkh (GovDatum datum) =
+      case datum of
+        HeadLList (GovLHead _ pkh) _ -> Just pkh
         _ -> Nothing
 
     getKey :: GovDatum -> Maybe UserId

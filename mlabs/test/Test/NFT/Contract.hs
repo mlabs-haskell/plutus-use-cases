@@ -91,8 +91,8 @@ test =
         , testQueryListNfts
         , testQueryContent
         ]
-    , testBurnPart
-    , testBurnAll
+--    , testBurnPart
+--    , testBurnAll
     ]
 
 -- | Test initialisation of an app instance
