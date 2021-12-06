@@ -95,10 +95,15 @@ data LockParams =
         deriving stock (Hask.Eq, Hask.Show, Generic)
         deriving anyclass (ToJSON, FromJSON, ToSchema)
 
-type LockSpendSchema = Endpoint "lock" LockParams
+type LockSpendSchema = 
+  Endpoint "lock" LockParams
+  .\/ Endpoint "spend" ()
 
 lockSpendEndpoints :: SContractArgs -> Contract () LockSpendSchema ContractError ()
-lockSpendEndpoints cArgs = selectForever [endpoint @"lock" (lock cArgs)]
+lockSpendEndpoints cArgs = 
+  selectForever [ endpoint @"lock" (lock cArgs)
+                , endpoint @"spend" (\_ -> spendAny cArgs)
+                ]
 
 
 lock:: SContractArgs
@@ -112,7 +117,6 @@ lock (SContractArgs namiAddr) lp = do
       run LockParams{lovelaceAmount, collateralRef} = do
         logInfo @Hask.String $ "UDH"
         logInfo @Hask.String $ Hask.show (datumHash unitDatum)
-
         
         let inst = typedValidator . UserAddress . stringToBuiltinByteString . T.unpack $ namiAddr
             scrAddress = Scripts.validatorAddress inst
@@ -120,6 +124,10 @@ lock (SContractArgs namiAddr) lp = do
             value = Ada.lovelaceValueOf lovelaceAmount
             tx = Constraints.mustPayToTheScript datum value
             ls = Constraints.typedValidatorLookups inst
+
+        scrAddrUtxos <- utxosAt scrAddress
+        logInfo @Hask.String $ "All UTXOs from address:"
+        mapM_ (logInfo @Hask.String . Hask.show) (Map.toList scrAddrUtxos)
 
         utx <- mkTxConstraints @AddressContract ls tx
 
@@ -129,12 +137,25 @@ lock (SContractArgs namiAddr) lp = do
         logInfo @Hask.String $ "Yielding tx"
         -- logInfo @Hask.String $ "Lock Datum hash: " Hask.++ (Hask.show $ datumHash datum)
         yieldUnbalancedTx pUtx
-      
-      -- logInfo @Hask.String $ "Submitting lock tx"
-      -- ledgerTx <- mkTxConstraints (Constraints.typedValidatorLookups inst) tx
-      --   >>= submitUnbalancedTx . Constraints.adjustUnbalancedTx
-      -- _ <- awaitTxConfirmed (getCardanoTxId ledgerTx)
-      -- addrUtxos <- utxosAt addr
+
+
+spendAny 
+  :: SContractArgs
+  -> Contract () LockSpendSchema ContractError ()
+spendAny (SContractArgs namiAddr) = 
+    runError run >>= \case
+      Left err -> logWarn @Hask.String (Hask.show @ContractError err)
+      Right () -> pure ()
+    where 
+      run = do
+        let inst = typedValidator . UserAddress . stringToBuiltinByteString . T.unpack $ namiAddr
+            scrAddress = Scripts.validatorAddress inst
+        scrAddrUtxos <- utxosAt scrAddress
+        logInfo @Hask.String $ "All UTXOs from address:"
+        mapM_ (logInfo @Hask.String . Hask.show) (Map.toList scrAddrUtxos)
+        -- TBD
+
+
 
 
 
