@@ -16,7 +16,7 @@ import Control.Monad ()
 import Data.Monoid (Last (..), mconcat)
 import Data.Text (Text)
 import GHC.Base (join)
-import Mlabs.NFT.Contract.Aux (getDatumsTxsOrdered, getNftDatum, getsNftDatum, hashData, getHead)
+import Mlabs.NFT.Contract.Aux (getDatumsTxsOrdered, getHead, getNftDatum, getsNftDatum, hashData)
 import Mlabs.NFT.Types (
   Content,
   DatumNft (..),
@@ -118,9 +118,9 @@ queryNftAppInstance uT = do
   head' <- getHead uT
   res <- case head' of
     Nothing -> return Nothing
-    Just (PointInfo listHead _ _ _ ) ->
+    Just (PointInfo listHead _ _ _) ->
       do
-        let status = head'appInstance $ listHead
+        let status = head'appInstance listHead
         tell' $ QueryNftAppInstance . Just $ status
         log $ QueryNftAppInstance . Just $ status
         return $ Just status

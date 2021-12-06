@@ -25,7 +25,6 @@ module Test.NFT.Init (
   userBidAuction,
   userStartAuction,
   userCloseAuction,
-  userBurnGov,
   userWait,
   waitInit,
   mkFreeGov,
@@ -98,11 +97,11 @@ import Mlabs.NFT.Types (
   NftAppInstance (appInstance'UniqueToken),
   NftAppSymbol (..),
   NftId (..),
+  QueryResponse (..),
   SetPriceParams (..),
   Title (..),
   UniqueToken,
   UserId (..),
-  QueryResponse (..),
  )
 import Mlabs.Utils.Wallet (walletFromNumber)
 
@@ -284,14 +283,6 @@ userCloseAuction wal params = do
   lift $ do
     hdl <- activateContractWallet wal (endpoints symbol)
     callEndpoint @"auction-close" hdl params
-    next
-
-userBurnGov :: Wallet -> Integer -> Script
-userBurnGov wal params = do
-  symbol <- ask
-  lift $ do
-    hdl <- activateContractWallet wal (endpoints symbol)
-    callEndpoint @"burn-gov" hdl params
     next
 
 userWait :: Natural -> Script

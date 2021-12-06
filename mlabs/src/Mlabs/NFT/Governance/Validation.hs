@@ -7,9 +7,9 @@ module Mlabs.NFT.Governance.Validation (
 
 import Ledger (
   Address,
-  PubKeyHash,
   CurrencySymbol,
   MintingPolicy,
+  PubKeyHash,
   ScriptContext,
   TxOut,
   findDatum,
@@ -88,7 +88,7 @@ mkGovMintPolicy appInstance act ctx =
         && traceIfFalse "NFT-Gov-Mint: List head with the unique token is not present" checkListHeadInit
     MintGov ->
       traceIfFalse "NFT-Gov-Mint: Fee wasn't paid to the head pubkey hash." checkFeeToHeadPkh
---      traceIfFalse "NFT-Gov-Mint: Fee must be paid to the list head." checkFeeToTheListHead -- It automatically checks that the list head is present.
+        --      traceIfFalse "NFT-Gov-Mint: Fee must be paid to the list head." checkFeeToTheListHead -- It automatically checks that the list head is present.
         && traceIfFalse
           "NFT-Gov-Mint: List node incorrectly minted or updated"
           (nodeCanBeUpdated && nodeUpdatedWithCorrectValues)
@@ -113,36 +113,22 @@ mkGovMintPolicy appInstance act ctx =
 
     allTokensCanBeBurnt
       | (length inputsWithNodeDatum == 2) && (length outputsWithNodeDatum == 1) = True
---        wrapMaybe $ do
---          (_, txNode) <- snd . sort2 <$> getMaybeTwo inputsWithNodeDatum
---          return $ checkAllBurnt txNode
-      | (length inputsWithNodeDatum == 1 && null outputsWithNodeDatum) = True
---        wrapMaybe $ do
---          (_, txNode) <- getMaybeOne inputsWithNodeDatum
---          return $ checkAllBurnt txNode
+      | length inputsWithNodeDatum == 1 && null outputsWithNodeDatum = True
       | otherwise = False
---      where
---        listGovBurnt = (-1) * listGovMinted
---        checkAllBurnt tx = assetClassValueOf (txOutValue tx) listGov == listGovMinted * (-1)
 
     allTokensBurntCorrectly
-      | (length inputsWithNodeDatum == 2 && length outputsWithNodeDatum == 1) =
+      | length inputsWithNodeDatum == 2 && length outputsWithNodeDatum == 1 =
         wrapMaybe $ do
           ((_, txNode1), (_, txNode2)) <- sort2 <$> getMaybeTwo inputsWithNodeDatum
           (_, txNode1New) <- getMaybeOne outputsWithNodeDatum
-          return $ (checkAllBurnt txNode2) && (txOutValue txNode1 == txOutValue txNode1New)
-      | (length inputsWithNodeDatum == 1 && null outputsWithNodeDatum) =
+          return $ checkAllBurnt txNode2 && (txOutValue txNode1 == txOutValue txNode1New)
+      | length inputsWithNodeDatum == 1 && null outputsWithNodeDatum =
         wrapMaybe $ do
           (_, txNode) <- getMaybeOne inputsWithNodeDatum
           return $ checkAllBurnt txNode -- Head value is handled in checkStakeWithdrawnCorrectly
       | otherwise = False
       where
         checkAllBurnt tx = assetClassValueOf (txOutValue tx) listGov == listGovMinted * (-1)
-
---    someTokensCanBeBurnt =
---      wrapMaybe $ do
---        (_, tx) <- getMaybeOne inputsWithNodeDatum
---        return $ assetClassValueOf (txOutValue tx) listGov >=
 
     -- ProofAndBurn is used as the redeemer. There must be exactly one input and one output list node.
     someTokensBurntCorrectly =
@@ -156,7 +142,7 @@ mkGovMintPolicy appInstance act ctx =
         return $
           -- Every listGov that burnt must be from the node
           (nodeRemovedValue == assetClassValue listGov listGovBurnt)
-            && (assetClassValueOf nodeInValue listGov) > listGovBurnt
+            && assetClassValueOf nodeInValue listGov > listGovBurnt
 
     checkListHeadInit =
       any
@@ -168,16 +154,16 @@ mkGovMintPolicy appInstance act ctx =
         uTokenPresent txO = assetClassValueOf (txOutValue txO) uniqueToken == 1
 
     -- Checks whether fees are paid to head correctly or not
---    checkFeeToTheListHead =
---      wrapMaybe $ do
---        (h, txOut) <- getMaybeOne outputsWithHeadDatum
---        (_, txIn) <- getMaybeOne inputsWithHeadDatum
---        feeRate <- getFeeRate h
---        let valOut = txOutValue txOut
---            valIn = txOutValue txIn
---        return $
---          -- Fees are added to the head
---          valOut `geq` (valIn <> lovelaceValueOf (getFee feeRate))
+    --    checkFeeToTheListHead =
+    --      wrapMaybe $ do
+    --        (h, txOut) <- getMaybeOne outputsWithHeadDatum
+    --        (_, txIn) <- getMaybeOne inputsWithHeadDatum
+    --        feeRate <- getFeeRate h
+    --        let valOut = txOutValue txOut
+    --            valIn = txOutValue txIn
+    --        return $
+    --          -- Fees are added to the head
+    --          valOut `geq` (valIn <> lovelaceValueOf (getFee feeRate))
 
     -- For ProofAndBurn, checks whether staked lovelace are removed from the head correctly or not.
     checkStakeWithdrawnCorrectly =
@@ -350,11 +336,11 @@ mkGovMintPolicy appInstance act ctx =
               (datum, _) <- snd . sort2 <$> getMaybeTwo outputsWithNodeDatum
               getId datum
         ProofAndBurn
-          | (length inputsWithNodeDatum == 2) && (length outputsWithNodeDatum == 1)->
+          | (length inputsWithNodeDatum == 2) && (length outputsWithNodeDatum == 1) ->
             do
               (datum, _) <- snd . sort2 <$> getMaybeTwo inputsWithNodeDatum
               getId datum
-          | (length inputsWithNodeDatum == 1) && (null outputsWithNodeDatum) ->
+          | (length inputsWithNodeDatum == 1) && null outputsWithNodeDatum ->
             do
               (datum, _) <- getMaybeOne inputsWithNodeDatum
               getId datum
@@ -362,12 +348,12 @@ mkGovMintPolicy appInstance act ctx =
             do
               (datum, _) <- getMaybeOne inputsWithNodeDatum
               getId datum
-        _  -> Nothing
-        where
-          getId datum =
-            do
-              key <- getKey datum
-              return . getPubKeyHash . getUserId $ key
+        _ -> Nothing
+      where
+        getId datum =
+          do
+            key <- getKey datum
+            return . getPubKeyHash . getUserId $ key
 
     userId :: BuiltinByteString
     userId = case maybeUserId of
@@ -424,14 +410,14 @@ mkGovMintPolicy appInstance act ctx =
                 inputsFromPkh = filter (\txO -> txOutAddress (txInInfoResolved txO) == pkhAddr) $ txInfoInputs . scriptContextTxInfo $ ctx
                 valueIn = foldMap (txOutValue . txInInfoResolved) inputsFromPkh
                 valueOut = foldMap txOutValue outputsToPkh
-                diff =  valueOut <> negate valueIn
+                diff = valueOut <> negate valueIn
             return $
               assetClassValueOf diff $ assetClass adaSymbol adaToken
---            (_, headIn) <- getMaybeOne inputsWithHeadDatum
---            (_, headOut) <- getMaybeOne outputsWithHeadDatum
---            let diff = txOutValue headOut <> (negate . txOutValue $ headIn)
---            return $
---              assetClassValueOf diff $ assetClass adaSymbol adaToken
+    --            (_, headIn) <- getMaybeOne inputsWithHeadDatum
+    --            (_, headOut) <- getMaybeOne outputsWithHeadDatum
+    --            let diff = txOutValue headOut <> (negate . txOutValue $ headIn)
+    --            return $
+    --              assetClassValueOf diff $ assetClass adaSymbol adaToken
 
     getFeeRate :: GovDatum -> Maybe Rational
     getFeeRate (GovDatum datum) =
@@ -496,15 +482,13 @@ mkGovScript ut _ act ctx =
           "NFT-Gov-Script-Validator: Pointers for burning are updated incorrectly."
           (allTokensCanBeBurnt && allTokensBurntCorrectly)
           || (someTokensCanBeBurnt && someTokensBurntCorrectly)
---        && traceIfFalse "NFT-Gov-Script-Validator: New head's datum must be the same as old head's datum." checkHeadDatumUnchanged
---        && traceIfFalse "NFT-Gov-Script-Validator: New node's datum must be the same as old node's datum." checkBurntNodeDatumUnchanged
   where
     ------------------------------------------------------------------------------
     -- Checks
 
     allTokensCanBeBurnt =
       (length inputsWithNodeDatum == 2 && length outputsWithNodeDatum == 1)
-      || (length inputsWithNodeDatum == 1 && null outputsWithNodeDatum)
+        || (length inputsWithNodeDatum == 1 && null outputsWithNodeDatum)
 
     someTokensCanBeBurnt = (length inputsWithNodeDatum == length outputsWithNodeDatum) && (length inputsWithNodeDatum == 1)
 
@@ -527,33 +511,25 @@ mkGovScript ut _ act ctx =
 
     allTokensBurntCorrectly
       | length outputsWithNodeDatum == 1 =
-          wrapMaybe $ do
-            ((node1, _), (node2, _)) <- sort2 <$> getMaybeTwo inputsWithNodeDatum
-            node1Next <- getNext node1
-            node1Key <- getKey node1
-            node2Key <- getKey node2
-            (node1New, _) <- getMaybeOne outputsWithNodeDatum
-            node1NewKey <- getKey node1New
-            return $ if isNothing . getNext $ node2
+        wrapMaybe $ do
+          ((node1, _), (node2, _)) <- sort2 <$> getMaybeTwo inputsWithNodeDatum
+          node1Next <- getNext node1
+          node1Key <- getKey node1
+          node2Key <- getKey node2
+          (node1New, _) <- getMaybeOne outputsWithNodeDatum
+          node1NewKey <- getKey node1New
+          return $
+            if isNothing . getNext $ node2
               then (isNothing . getNext $ node1New) && (node1NewKey == node1Key) && (node1Next == node2Key)
-              else
-                wrapMaybe $ do
-                  node2Next <- getNext node2
-                  node1NewNext <- getNext node1New
-                  return $
-                    (node1NewKey == node1Key)
-                      && (node1NewNext == node2Next)
-                      && (node1Next == node2Key)
-      | (length inputsWithNodeDatum == 1 && null outputsWithNodeDatum) = True
+              else wrapMaybe $ do
+                node2Next <- getNext node2
+                node1NewNext <- getNext node1New
+                return $
+                  (node1NewKey == node1Key)
+                    && (node1NewNext == node2Next)
+                    && (node1Next == node2Key)
+      | length inputsWithNodeDatum == 1 && null outputsWithNodeDatum = True
       | otherwise = False
---          wrapMaybe $ do
---            (node, txNode) <- getMaybeOne inputsWithNodeDatum
---            (head, txHead) <- getMaybeOne inputsWithHeadDatum
---            headNext <- getNext head
---            nodeKey <- getKey node
---            return (nodeKey == headNext)
---      where
---        checkAllBurnt tx = assetClassValueOf (txOutValue txNode) listGov == listGovMinted
 
     -- MingGov is used as the redeemer and finding a single and identical list node in inputs and outputs
     -- means that we want to update it, .e.g add listGov tokens to it
@@ -762,7 +738,7 @@ mkGovScript ut _ act ctx =
             do
               (datum, _) <- snd .sort2 <$> getMaybeTwo inputsWithNodeDatum
               getId datum
-          | (length inputsWithNodeDatum == 1) && (null outputsWithNodeDatum) ->
+          | (length inputsWithNodeDatum == 1) && null outputsWithNodeDatum ->
             do
               (datum, _) <- getMaybeOne inputsWithNodeDatum
               getId datum
@@ -770,12 +746,12 @@ mkGovScript ut _ act ctx =
             do
               (datum, _) <- getMaybeOne inputsWithNodeDatum
               getId datum
-        _  -> Nothing
-        where
-          getId datum =
-            do
-              key <- getKey datum
-              return . getPubKeyHash . getUserId $ key
+        _ -> Nothing
+      where
+        getId datum =
+          do
+            key <- getKey datum
+            return . getPubKeyHash . getUserId $ key
 
     userId :: BuiltinByteString
     userId = case maybeUserId of

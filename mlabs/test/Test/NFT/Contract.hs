@@ -40,9 +40,9 @@ import Test.NFT.Init (
   artwork2,
   callStartNft,
   callStartNftFail,
-  getNftAppInstance,
   check,
   containsLog,
+  getNftAppInstance,
   mkFreeGov,
   noChangesScene,
   ownsAda,
@@ -333,7 +333,6 @@ testQueryContent = check "Query content" (containsLog w1 msg) wA script
     msg = queryContentLog content $ QueryContent $ Just infoNft
     userId = toUserId w1
     infoNft = mintParamsToInfo artwork2 userId
-
 
 subtractFee price = price - calcFee price
 

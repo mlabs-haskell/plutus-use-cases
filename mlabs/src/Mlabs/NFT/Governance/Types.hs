@@ -8,12 +8,12 @@ module Mlabs.NFT.Governance.Types (
   GovAppSymbol (..),
 ) where
 
-import Mlabs.Data.LinkedList (LList (..))
-import Mlabs.NFT.Types (UserId)
-import Prelude qualified as Hask
 import Data.OpenApi.Schema qualified as OpenApi
 import Ledger (CurrencySymbol)
+import Mlabs.Data.LinkedList (LList (..))
+import Mlabs.NFT.Types (UserId)
 import PlutusTx qualified
+import Prelude qualified as Hask
 
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
