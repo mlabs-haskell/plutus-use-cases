@@ -48,6 +48,7 @@ data PayToWalletParams =
         { lovelaceAmount:: Integer
         , receiverAddress :: Text
         , collateralRef :: TxOutRef
+        , spendableUtxos :: [TxOutRef]
         }
         deriving stock (Hask.Eq, Hask.Show, Generic)
         deriving anyclass (ToJSON, FromJSON, ToSchema)
@@ -64,7 +65,7 @@ runDemo_ (ContractArgs ownAddress) ps = do
       Left err -> logWarn @Hask.String (Hask.show @ContractError err)
       Right () -> pure ()
   where  
-    run PayToWalletParams{lovelaceAmount, receiverAddress, collateralRef} = do
+    run PayToWalletParams{lovelaceAmount, receiverAddress, collateralRef, spendableUtxos} = do
       let paymentValue = Ada.lovelaceValueOf lovelaceAmount
       senderAddr <- parseAddress ownAddress
       receiverAddr <- parseAddress receiverAddress
@@ -76,7 +77,7 @@ runDemo_ (ContractArgs ownAddress) ps = do
       -- maybe this
       utx <- withPaymentToReceiver receiverAddr paymentValue 
                 <$> mkTxConstraints @Void (Hask.mempty) (Hask.mempty)
-      PrebTx pUtx <- preBalanceTxFrom senderAddr collateralRef utx
+      PrebTx pUtx <- preBalanceTxFrom senderAddr spendableUtxos collateralRef utx
       logInfo @Hask.String $ "Yielding tx"
       yieldUnbalancedTx pUtx
 

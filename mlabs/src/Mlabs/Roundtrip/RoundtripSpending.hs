@@ -91,6 +91,7 @@ data LockParams =
     LockParams
         { lovelaceAmount:: Integer
         , collateralRef :: TxOutRef
+        , spendableUtxos :: [TxOutRef]
         }
         deriving stock (Hask.Eq, Hask.Show, Generic)
         deriving anyclass (ToJSON, FromJSON, ToSchema)
@@ -114,7 +115,7 @@ lock (SContractArgs namiAddr) lp = do
       Left err -> logWarn @Hask.String (Hask.show @ContractError err)
       Right () -> pure ()
     where 
-      run LockParams{lovelaceAmount, collateralRef} = do
+      run LockParams{lovelaceAmount, collateralRef, spendableUtxos} = do
         logInfo @Hask.String $ "UDH"
         logInfo @Hask.String $ Hask.show (datumHash unitDatum)
         
@@ -133,7 +134,7 @@ lock (SContractArgs namiAddr) lp = do
 
         addr <- parseAddress namiAddr
 
-        PrebTx pUtx <- preBalanceTxFrom addr collateralRef utx
+        PrebTx pUtx <- preBalanceTxFrom addr spendableUtxos collateralRef utx
         logInfo @Hask.String $ "Yielding tx"
         -- logInfo @Hask.String $ "Lock Datum hash: " Hask.++ (Hask.show $ datumHash datum)
         yieldUnbalancedTx pUtx

@@ -27,10 +27,11 @@ type FeeValue = Value
 
 preBalanceTxFrom 
   :: Address
+  -> [TxOutRef]
   -> TxOutRef
   -> UnbalancedTx
   -> Contract w s ContractError PrebalancedTx
-preBalanceTxFrom addr collateralRef utx = do
+preBalanceTxFrom addr spendableUtxos collateralRef utx = do
   logInfo @Hask.String $ "Getting UTxOs"
   txFee <- getFee
   addrUtxos <- utxosAt addr
@@ -39,7 +40,8 @@ preBalanceTxFrom addr collateralRef utx = do
   
   let outsValue :: Value = mconcat $ fmap txOutValue (utx ^. tx . outputs)
   
-  (insValue, insForBalancing) <- getBalanceInputs addrUtxos collateralRef outsValue
+  (insValue, insForBalancing) <- 
+            getBalanceInputs addrUtxos spendableUtxos collateralRef outsValue
   collateralSet <- mkCollateralByRef collateralRef addrUtxos
   logInfo @Hask.String $ "Inputs Value:" Hask.++ (Hask.show insValue)
   logInfo @Hask.String $ "Ins:" Hask.++ (Hask.show insForBalancing)
@@ -69,10 +71,11 @@ mkCollateralByRef cOref addrUtxos = do
 
 getBalanceInputs 
   :: Map TxOutRef ChainIndexTxOut
+  -> [TxOutRef]
   -> TxOutRef
   -> OutsValue 
   -> Contract w s ContractError (Value, Set TxIn)
-getBalanceInputs addrUtxos collRef outsValue = do
+getBalanceInputs addrUtxos spendableUtxos collRef outsValue = do
   let (insValue, insRefs) = getEnoughInputs (Map.toList addrUtxos)
   if insValue `Value.geq` outsValue
     then pure $ (insValue, insRefs)
@@ -92,7 +95,7 @@ getBalanceInputs addrUtxos collRef outsValue = do
       where
         -- Nami wallet won't let use collateral as input,
         -- need to filter collateral out before picking inputs for balancing
-        filteredIns = filter ((/= collRef) . fst) [utxoList !! 2]
+        filteredIns = filter ((`elem` spendableUtxos) . fst) utxoList
         -- filteredIns = filter ((/= collRef) . fst) [utxoList !! 1] -- fixme: it's hardcoded to make it work, 
                                                                   -- coz chain-index returns some utxos
                                                                   -- that are not actually at that address (?)
