@@ -43,6 +43,8 @@ import Schema (ToSchema)
 import Prelude (Semigroup (..))
 import Prelude qualified as Haskell
 
+import Mlabs.Utils qualified as Utils
+
 {- HLINT ignore "Use uncurry" -}
 
 -- | A currency that can be created exactly once
@@ -157,7 +159,8 @@ mintContract pkh amounts = mapError (review _CurrencyError) $ do
       mintTx =
         Constraints.mustSpendScriptOutput txOutRef unitRedeemer
           <> Constraints.mustMintValue (mintedValue theCurrency)
-  tx <- submitTxConstraintsWith @Scripts.Any lookups mintTx
+          <> Constraints.mustBeSignedBy pkh
+  tx <- Utils.submitTxConstraintsWithUnbalanced @Scripts.Any lookups mintTx
   _ <- awaitTxConfirmed (getCardanoTxId tx)
   pure theCurrency
 

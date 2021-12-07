@@ -32,6 +32,7 @@ import Mlabs.NFT.Contract.Aux
 import Mlabs.NFT.Contract.Fees
 import Mlabs.NFT.Types
 import Mlabs.NFT.Validation
+import Mlabs.Utils qualified as Utils
 
 {- |
   Attempts to close NFT auction, checks if owner is closing an auction and deadline passed,
@@ -85,7 +86,7 @@ closeAuction symbol (AuctionCloseParams nftId) = do
           ]
             <> bidDependentTxConstraints
 
-  void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
+  void $ Utils.submitTxConstraintsWithUnbalanced @NftTrade lookups tx
   Contract.tell . Last . Just . Left $ nftId
   void $ Contract.logInfo @Hask.String $ printf "Closing auction for %s" $ Hask.show nftVal
   where

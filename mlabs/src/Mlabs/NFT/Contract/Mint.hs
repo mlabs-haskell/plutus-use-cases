@@ -28,6 +28,7 @@ import Ledger.Value as Value (TokenName (..), assetClass, assetClassValue, singl
 import Mlabs.NFT.Contract.Aux
 import Mlabs.NFT.Types
 import Mlabs.NFT.Validation
+import Mlabs.Utils qualified as Utils
 
 --------------------------------------------------------------------------------
 -- MINT --
@@ -48,7 +49,7 @@ mint symbol params = do
       (nLk, nCx) <- mintNode symbol nftPolicy newNode rNode
       let lookups = mconcat [lLk, nLk]
           tx = mconcat [lCx, nCx]
-      void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
+      void $ Utils.submitTxConstraintsWithUnbalanced @NftTrade lookups tx
       Contract.tell . Last . Just . Left . info'id . node'information $ newNode
       Contract.logInfo @Hask.String $ printf "mint successful!"
   where
@@ -116,7 +117,7 @@ mint symbol params = do
       pure (lookups, tx)
       where
         token = Value.singleton (app'symbol appSymbol) (TokenName . getDatumValue . pi'data $ insertPoint) 1
-        newToken = assetClass (app'symbol appSymbol) (TokenName .getDatumValue . NodeDatum $ newNode)
+        newToken = assetClass (app'symbol appSymbol) (TokenName . getDatumValue . NodeDatum $ newNode)
         newDatum = updatePointer (Pointer newToken)
         oref = pi'TOR insertPoint
         redeemer = asRedeemer $ MintAct (NftId . getDatumValue . NodeDatum $ newNode) symbol

@@ -32,6 +32,7 @@ import Plutus.V1.Ledger.Ada qualified as Ada
 import Mlabs.NFT.Contract.Aux
 import Mlabs.NFT.Types
 import Mlabs.NFT.Validation
+import Mlabs.Utils qualified as Utils
 
 {- |
   Attempts to bid on NFT auction, locks new bid in the script, returns previous bid to previous bidder,
@@ -98,7 +99,7 @@ bidAuction symbol (AuctionBidParams nftId bidAmount) = do
             ]
               ++ bidDependentTxConstraints
           )
-  void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
+  void $ Utils.submitTxConstraintsWithUnbalanced @NftTrade lookups tx
   Contract.tell . Last . Just . Left $ nftId
   void $ Contract.logInfo @Hask.String $ printf "Bidding %s in auction for %s" (Hask.show bidAmount) (Hask.show nftVal)
   where

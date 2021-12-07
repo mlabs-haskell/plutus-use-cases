@@ -42,6 +42,7 @@ import Mlabs.Governance.Contract.Api qualified as Api
 import Mlabs.Governance.Contract.Validation (AssetClassGov (..), GovernanceDatum (..), GovernanceRedeemer (..))
 import Mlabs.Governance.Contract.Validation qualified as Validation
 import Mlabs.Plutus.Contract (getEndpoint, selectForever)
+import Mlabs.Utils qualified as Utils
 
 --import GHC.Base (Applicative(pure))
 
@@ -91,7 +92,7 @@ deposit gov (Api.Deposit amnt) = do
 
       xGovValue = Validation.xgovSingleton gov ownPkh amnt
 
-  ledgerTx <- Contract.submitTxConstraintsWith @Validation.Governance lookups tx
+  ledgerTx <- Utils.submitTxConstraintsWithUnbalanced @Validation.Governance lookups tx
   void $ Contract.awaitTxConfirmed $ getCardanoTxId ledgerTx
   Contract.logInfo @String $ printf "deposited %s GOV tokens" (show amnt)
 
@@ -123,7 +124,7 @@ withdraw gov (Api.Withdraw assets) = do
                   ]
               )
 
-  ledgerTx <- Contract.submitTxConstraintsWith @Validation.Governance lookups tx
+  ledgerTx <- Utils.submitTxConstraintsWithUnbalanced @Validation.Governance lookups tx
   void $ Contract.awaitTxConfirmed $ getCardanoTxId ledgerTx
   Contract.logInfo @String $ printf "withdrew %s GOV tokens" (show . sum $ map snd assets)
 
@@ -138,7 +139,7 @@ provideRewards gov (Api.ProvideRewards val) = do
         map
           ( \(pkh, prop) ->
               case pkh of
-                Just pkh' -> Just (pkh', Value $ fmap (round.(prop *).(% 1)) <$> getValue val)
+                Just pkh' -> Just (pkh', Value $ fmap (round . (prop *) . (% 1)) <$> getValue val)
                 Nothing -> Nothing
           )
           props
@@ -153,7 +154,7 @@ provideRewards gov (Api.ProvideRewards val) = do
           [ Constraints.otherScript $ Validation.govValidator gov
           ]
 
-  ledgerTx <- Contract.submitTxConstraintsWith @Validation.Governance lookups tx
+  ledgerTx <- Utils.submitTxConstraintsWithUnbalanced @Validation.Governance lookups tx
   void $ Contract.awaitTxConfirmed $ getCardanoTxId ledgerTx
   Contract.logInfo @String $ printf "Provided rewards to all xGOV holders"
   where

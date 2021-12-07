@@ -46,6 +46,7 @@ import Ledger.Typed.Scripts qualified as Scripts
 import Ledger.Value (CurrencySymbol, TokenName)
 import Ledger.Value qualified as Value
 import Mlabs.Demo.Contract.Burn (burnScrAddress, burnValHash)
+import Mlabs.Utils qualified as Utils
 import Plutus.Contract as Contract
 import PlutusTx qualified
 import Schema (ToSchema)
@@ -127,7 +128,7 @@ mintContract (MintParams tn amt) = do
           (Datum $ PlutusTx.toBuiltinData ())
           payVal
           <> Constraints.mustMintValue forgeVal
-  ledgerTx <- submitTxConstraintsWith @Void lookups tx
+  ledgerTx <- Utils.submitTxConstraintsWithUnbalanced @Void lookups tx
   void $ awaitTxConfirmed $ Ledger.getCardanoTxId ledgerTx
 
 mintEndpoints :: Contract () MintSchema Text ()
