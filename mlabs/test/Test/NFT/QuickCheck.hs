@@ -19,6 +19,7 @@ import Plutus.Contract.Test.ContractModel (
   ContractModel (..),
   contractState,
   currentSlot,
+  defaultCoverageOptions,
   deposit,
   getModelState,
   propRunActionsWithOptions,
@@ -372,6 +373,7 @@ propContract =
   QC.withMaxSuccess 50
     . propRunActionsWithOptions -- Keeping 50 tests limits time to ~1m, 100 tests took ~8m
       checkOptions
+      defaultCoverageOptions
       instanceSpec
       (const $ Hask.pure True)
 

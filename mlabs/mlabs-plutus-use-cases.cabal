@@ -191,6 +191,7 @@ library
     Mlabs.System.Console.PrettyLogger
     Mlabs.System.Console.Utils
     Mlabs.Utils.Wallet
+    Mlabs.Utils
     Mlabs.Plutus.Contracts.Currency
     Mlabs.IntegrationTest.TxBuilder
     Mlabs.IntegrationTest.Types

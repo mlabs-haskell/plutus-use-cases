@@ -34,6 +34,7 @@ import Ledger.Typed.Scripts (validatorScript)
 import Mlabs.NFT.Contract.Aux
 import Mlabs.NFT.Types
 import Mlabs.NFT.Validation
+import Mlabs.Utils qualified as Utils
 
 {- |
   Attempts to set price of NFT, checks if price is being set by the owner
@@ -72,7 +73,7 @@ setPrice symbol SetPriceParams {..} = do
               (Redeemer . PlutusTx.toBuiltinData $ action)
           ]
 
-  void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
+  void $  Utils.submitTxConstraintsWithUnbalanced @NftTrade lookups tx
   Contract.tell . Last . Just . Left $ sp'nftId
   Contract.logInfo @Hask.String "set-price successful!"
   where

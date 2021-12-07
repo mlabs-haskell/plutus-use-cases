@@ -25,6 +25,7 @@ till it will be fixed, see `Mlabs.Plutus.Contracts.Currency.mintContract`
 for details -}
 import Mlabs.Plutus.Contracts.Currency (CurrencyError, mintContract)
 import Mlabs.Plutus.Contracts.Currency qualified as MC
+import Mlabs.Utils qualified as Utils
 
 import Plutus.V1.Ledger.Value (TokenName (..), assetClass, assetClassValue)
 import PlutusTx.Prelude hiding (mconcat, (<>))
@@ -94,7 +95,7 @@ createListHead admins = do
                 , Constraints.mustMintValueWithRedeemer govInitRedeemer govProofTokenValue
                 ]
             )
-      void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
+      void $ Utils.submitTxConstraintsWithUnbalanced @NftTrade lookups tx
       Contract.logInfo @Hask.String $ printf "Forged Script Head & Governance Head for %s" (Hask.show appInstance)
       return appInstance
 
