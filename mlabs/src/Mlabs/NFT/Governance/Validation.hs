@@ -405,13 +405,13 @@ mkGovMintPolicy appInstance act ctx =
       where
         sillyCalculateFee =
           do
-            (head, _) <- getMaybeOne inputsWithHeadDatum
-            pkhAddr <- pubKeyHashAddress <$> getHeadPkh head
+            (head', _) <- getMaybeOne inputsWithHeadDatum
+            pkhAddr <- pubKeyHashAddress <$> getHeadPkh head'
             let outputsToPkh = filter (\txO -> txOutAddress txO == pkhAddr) $ txInfoOutputs . scriptContextTxInfo $ ctx
                 inputsFromPkh = filter (\txO -> txOutAddress (txInInfoResolved txO) == pkhAddr) $ txInfoInputs . scriptContextTxInfo $ ctx
-                valueIn = foldMap (txOutValue . txInInfoResolved) inputsFromPkh
-                valueOut = foldMap txOutValue outputsToPkh
-                diff = valueOut <> negate valueIn
+                valueIn' = foldMap (txOutValue . txInInfoResolved) inputsFromPkh
+                valueOut' = foldMap txOutValue outputsToPkh
+                diff = valueOut' <> negate valueIn'
             return $
               assetClassValueOf diff $ assetClass adaSymbol adaToken
     --            (_, headIn) <- getMaybeOne inputsWithHeadDatum
