@@ -92,8 +92,9 @@ mkGovMintPolicy appInstance act ctx =
         --      traceIfFalse "NFT-Gov-Mint: Fee must be paid to the list head." checkFeeToTheListHead -- It automatically checks that the list head is present.
         && traceIfFalse
           "NFT-Gov-Mint: List node incorrectly minted or updated"
-          ((nodeCanBeUpdated && nodeUpdatedWithCorrectValues)
-          || (nodeCanBeInserted && nodeInsertedWithCorrectValues))
+          ( (nodeCanBeUpdated && nodeUpdatedWithCorrectValues)
+              || (nodeCanBeInserted && nodeInsertedWithCorrectValues)
+          )
         && traceIfFalse "NFT-Gov-Mint: Equal amounts of listGov and freeGov tokens must be minted/burned." checkListGovFreeGovEquality
         && traceIfFalse "NFT-Gov-Mint: Only allowd to mint/burn listGov and freeGov" checkOnlyListGovFreeGovMinted
         && traceIfFalse "NFT-Gov-Mint: The minted amount of listGov must be positive." checkListGovPositive

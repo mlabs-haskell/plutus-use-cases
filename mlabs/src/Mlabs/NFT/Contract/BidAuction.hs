@@ -71,7 +71,7 @@ bidAuction uT (AuctionBidParams nftId bidAmount) = do
       scriptAddr = appInstance'Address . node'appInstance $ node
       prevVal = Ada.lovelaceValueOf $ case as'highestBid auctionState of
         Nothing -> 0
-        Just (AuctionBid bid _) -> -bid
+        Just (AuctionBid bid _) -> - bid
       nftVal =
         (prevVal <>)
           . txOutValue
