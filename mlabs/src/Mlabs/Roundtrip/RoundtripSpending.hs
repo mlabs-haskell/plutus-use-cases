@@ -126,6 +126,7 @@ lock (SContractArgs namiAddr) lp = do
             tx = Constraints.mustPayToTheScript datum value
             ls = Constraints.typedValidatorLookups inst
 
+        logInfo @Hask.String $ "datum hash: " Hask.++ Hask.show (datumHash unitDatum)
         scrAddrUtxos <- utxosAt scrAddress
         logInfo @Hask.String $ "All UTXOs from address:"
         mapM_ (logInfo @Hask.String . Hask.show) (Map.toList scrAddrUtxos)
