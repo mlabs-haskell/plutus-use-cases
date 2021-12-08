@@ -2,7 +2,6 @@
 set -euo pipefail
 
 OWN_ADDRESS=addr_test1qp07kunx3edyal7nkdqg32jkul243a66lere3wpkffeevumspe9kny7tchnp97rhp2jnzfpm8kyg4qwq53k7t7jldfcqkngyzu
-RECEIVER_ADDRESS=addr_test1qz3apv2ekuctf55fqa5psgaxeg24eeg0sc2wqqe9m259h5w6sk0nka6kca9ar7fwgxfg5khh4tkakp7cntexcat5x74q48ns3a
 
 echo "Activating contract"
 contract_id=$(curl --location --request POST 'localhost:9080/api/contract/activate' \
@@ -28,7 +27,15 @@ curl -H 'Content-Type: application/json'  -X POST \
           \"getTxId\": \"513aefa8cce5435985cef0795a96cbbd3937fce77ad1ed715ce6df77a15fe27f\"
           },
       \"txOutRefIdx\": 0
-  }
+  },
+  \"spendableUtxos\":[
+    { 
+      \"txOutRefId\": {
+          \"getTxId\": \"8f0246fe6fab0f821c9a8a20311e2a78372aba5d7c84f6aaadbd93913b151f15\"
+          },
+      \"txOutRefIdx\": 0
+    }
+  ]
 }" \
 localhost:9080/api/contract/instance/$contract_id/endpoint/lock
 sleep 4

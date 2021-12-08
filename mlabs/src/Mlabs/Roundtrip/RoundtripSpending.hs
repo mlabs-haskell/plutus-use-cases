@@ -31,6 +31,8 @@ import Plutus.V1.Ledger.Ada qualified as Ada
 
 import Plutus.V1.Ledger.Scripts (unitDatum)
 
+import Ledger.Constraints.OffChain (tx)
+import Ledger.Constraints (UnbalancedTx, adjustUnbalancedTx, mustPayToPubKey)
 import Ledger.Constraints qualified as Constraints
 import Plutus.Contract as Contract
 
@@ -96,14 +98,22 @@ data LockParams =
         deriving stock (Hask.Eq, Hask.Show, Generic)
         deriving anyclass (ToJSON, FromJSON, ToSchema)
 
+data SpendParams =
+    SpendParams
+        { spCollateralRef :: TxOutRef
+        , spSpendableUtxos :: [TxOutRef]
+        }
+        deriving stock (Hask.Eq, Hask.Show, Generic)
+        deriving anyclass (ToJSON, FromJSON, ToSchema)
+
 type LockSpendSchema = 
   Endpoint "lock" LockParams
-  .\/ Endpoint "spend" ()
+  .\/ Endpoint "spend" SpendParams
 
 lockSpendEndpoints :: SContractArgs -> Contract () LockSpendSchema ContractError ()
 lockSpendEndpoints cArgs = 
   selectForever [ endpoint @"lock" (lock cArgs)
-                , endpoint @"spend" (\_ -> spendAny cArgs)
+                , endpoint @"spend" (spendAny cArgs)
                 ]
 
 
@@ -143,24 +153,49 @@ lock (SContractArgs namiAddr) lp = do
 
 spendAny 
   :: SContractArgs
+  -> SpendParams
   -> Contract () LockSpendSchema ContractError ()
-spendAny (SContractArgs namiAddr) = 
-    runError run >>= \case
+spendAny (SContractArgs namiAddr) sp = 
+    runError (run sp) >>= \case
       Left err -> logWarn @Hask.String (Hask.show @ContractError err)
       Right () -> pure ()
     where 
-      run = do
+      run SpendParams {spCollateralRef, spSpendableUtxos}= do
         let inst = typedValidator . UserAddress . stringToBuiltinByteString . T.unpack $ namiAddr
             scrAddress = Scripts.validatorAddress inst
         scrAddrUtxos <- utxosAt scrAddress
-        logInfo @Hask.String $ "All UTXOs from address:"
+        logInfo @Hask.String $ "All UTXOs from SCRIPT address:"
         mapM_ (logInfo @Hask.String . Hask.show) (Map.toList scrAddrUtxos)
-        -- TBD
+        (oref, ciOut) <- case Map.toList scrAddrUtxos of
+                      [] -> throwOtherError "No utxos at script address"
+                      (u:us) -> pure u
+
+        receiverAddr <- parseAddress namiAddr
 
 
+        let someRedeemer = Redeemer . PlutusTx.toBuiltinData $ AddressRedeemer "some"
+            tx = Constraints.mustSpendScriptOutput oref someRedeemer
+            ls = Hask.mconcat [
+                  Constraints.unspentOutputs $ Map.singleton oref ciOut
+                  , Constraints.typedValidatorLookups inst
+                  , Constraints.otherScript (Scripts.validatorScript inst)
+                  ]
 
+        utx <- withPaymentToWallet receiverAddr (ciOut ^. ciTxOutValue) 
+                <$> mkTxConstraints @AddressContract ls tx
 
+        PrebTx pUtx <- preBalanceTxFrom receiverAddr spSpendableUtxos spCollateralRef utx
+        logInfo @Hask.String $ "Yielding tx"
+        yieldUnbalancedTx pUtx
 
+throwOtherError :: Text -> Contract w s ContractError a
+throwOtherError = throwError . OtherError
+
+withPaymentToWallet :: Address -> Value -> UnbalancedTx -> UnbalancedTx
+withPaymentToWallet addr v utx = 
+  over (tx . outputs) (paymentOut :) utx
+  where 
+    paymentOut = TxOut addr v Nothing
 
 parseAddress :: Text -> Contract () LockSpendSchema ContractError Address
 parseAddress addr = 
