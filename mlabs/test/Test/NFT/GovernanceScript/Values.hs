@@ -110,6 +110,9 @@ testStateAddr = NFT.txScrAddress
 govScriptAddress :: Ledger.Address
 govScriptAddress = Gov.govScrAddress uniqueAsset
 
+govMintValidatorHash :: Ledger.ValidatorHash
+govMintValidatorHash = fromJust $ Ledger.toValidatorHash govScriptAddress
+
 uniqueAsset :: Value.AssetClass
 uniqueAsset = Value.AssetClass ("00a6b45b792d07aa2a778d84c49c6a0d0c0b2bf80d6c1c16accdbe01", "Unique App Token")
 
