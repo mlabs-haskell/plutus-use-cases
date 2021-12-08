@@ -126,17 +126,20 @@ lock (SContractArgs namiAddr) lp = do
       Right () -> pure ()
     where 
       run LockParams{lovelaceAmount, collateralRef, spendableUtxos} = do
-        logInfo @Hask.String $ "UDH"
+        logInfo @Hask.String $ "DBG UDH"
         logInfo @Hask.String $ Hask.show (datumHash unitDatum)
         
         let inst = typedValidator . UserAddress . stringToBuiltinByteString . T.unpack $ namiAddr
             scrAddress = Scripts.validatorAddress inst
             datum = AddressDatum "Test 1"
             value = Ada.lovelaceValueOf lovelaceAmount
-            tx = Constraints.mustPayToTheScript datum value
+            tx = Hask.mconcat [
+                Constraints.mustPayToTheScript datum value
+              , Constraints.mustIncludeDatum (Datum . PlutusTx.toBuiltinData $ datum)
+              ]
             ls = Constraints.typedValidatorLookups inst
 
-        logInfo @Hask.String $ "datum hash: " Hask.++ Hask.show (datumHash unitDatum)
+        logInfo @Hask.String $ "Datum hash: " Hask.++ Hask.show (datumHash . Datum . PlutusTx.toBuiltinData $ datum)
         scrAddrUtxos <- utxosAt scrAddress
         logInfo @Hask.String $ "All UTXOs from address:"
         mapM_ (logInfo @Hask.String . Hask.show) (Map.toList scrAddrUtxos)
