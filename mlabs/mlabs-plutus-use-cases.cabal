@@ -312,6 +312,9 @@ Test-suite mlabs-plutus-use-cases-tests
     Test.NFT.Script.Minting
     Test.NFT.Script.Values
     Test.NFT.Size
+    Test.NFT.GovernanceScript.Main
+    Test.NFT.GovernanceScript.Minting
+    Test.NFT.GovernanceScript.Validator
 
   default-extensions:
     RecordWildCards
