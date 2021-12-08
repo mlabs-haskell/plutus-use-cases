@@ -15,20 +15,17 @@ import Test.Tasty (TestTree, localOption)
 import Test.Tasty.Plutus.Context
 import Test.Tasty.Plutus.Script.Unit
 
-govMintValidatorHash :: Ledger.ValidatorHash
-govMintValidatorHash = fromJust $ Ledger.toValidatorHash TestValues.govScriptAddress
-
 testMinting :: TestTree
 testMinting =
   localOption (TestCurrencySymbol TestValues.nftCurrencySymbol) $
-    localOption (TestValidatorHash govMintValidatorHash) $
-      withMintingPolicy "Test NFT-Gov minting policy" nftGovMintPolicy $ do
-        shouldValidate "Valid init" validInitData validInitCtx
-        shouldn'tValidate "Init: missing list head" validInitData initMissingHeadCtx
-        shouldn'tValidate "Init: not minting proof token" validInitData initNoProofTokenCtx
-        -- (nodeCanBeInserted && nodeInsertedWithCorrectValues))
-        shouldValidate "Valid mint gov (first new node case)" validMintData validMintCtx
-        shouldn'tValidate "Can't mint with Proof redeemer" proofRedeemerData proofRedeemerCtx
+    -- localOption (TestValidatorHash govMintValidatorHash) $
+    withMintingPolicy "Test NFT-Gov minting policy" nftGovMintPolicy $ do
+      shouldValidate "Valid init" validInitData validInitCtx
+      shouldn'tValidate "Init: missing list head" validInitData initMissingHeadCtx
+      shouldn'tValidate "Init: not minting proof token" validInitData initNoProofTokenCtx
+      -- (nodeCanBeInserted && nodeInsertedWithCorrectValues))
+      shouldValidate "Valid mint gov (first new node case)" validMintData validMintCtx
+      shouldn'tValidate "Can't mint with Proof redeemer" proofRedeemerData proofRedeemerCtx
 
 testGovHead :: NFT.GovLList
 testGovHead = NFT.HeadLList (NFT.GovLHead (1 % 100) "") Nothing
