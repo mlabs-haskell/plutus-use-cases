@@ -87,11 +87,29 @@ userOneListGov = Value.AssetClass (nftCurrencySymbol, TokenName ("listGov" <> (L
 userOneFreeGov :: Value.AssetClass
 userOneFreeGov = Value.AssetClass (nftCurrencySymbol, TokenName ("freeGov" <> (Ledger.getPubKeyHash userOnePkh)))
 
+userTwoListGov :: Value.AssetClass
+userTwoListGov = Value.AssetClass (nftCurrencySymbol, TokenName ("listGov" <> (Ledger.getPubKeyHash userTwoPkh)))
+
+userTwoFreeGov :: Value.AssetClass
+userTwoFreeGov = Value.AssetClass (nftCurrencySymbol, TokenName ("freeGov" <> (Ledger.getPubKeyHash userTwoPkh)))
+
 listGovTokens :: Value.Value
 listGovTokens = Value.assetClassValue userOneListGov 1_000_000
 
+listGovTokensUser1 :: Value.Value
+listGovTokensUser1 = Value.assetClassValue userOneListGov 1_000_000
+
+listGovTokensUser2 :: Value.Value
+listGovTokensUser2 = Value.assetClassValue userTwoListGov 1_000_000
+
 freeGovTokens :: Value.Value
 freeGovTokens = Value.assetClassValue userOneFreeGov 1_000_000
+
+freeGovTokensUser1 :: Value.Value
+freeGovTokensUser1 = Value.assetClassValue userOneFreeGov 1_000_000
+
+freeGovTokensUser2 :: Value.Value
+freeGovTokensUser2 = Value.assetClassValue userTwoFreeGov 1_000_000
 
 listAndFreeGovTokens :: Value.Value
 listAndFreeGovTokens = listGovTokens <> freeGovTokens
