@@ -36,6 +36,4 @@ import Mlabs.NFT.Types
  Attempts to buy a new NFT by changing the owner, pays the current owner and
  the author, and sets a new price for the NFT.
 -}
--- Not sure about BuyRequestUser - it has `NftId` - will calling side have access to it?
--- buy :: forall s. NftContent -> BuyRequestUser -> Contract UserWriter s Text ()
 buy = Hask.undefined

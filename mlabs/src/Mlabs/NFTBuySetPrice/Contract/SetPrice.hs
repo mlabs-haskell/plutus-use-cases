@@ -39,6 +39,4 @@ import Mlabs.NFT.Validation
   Attempts to set price of NFT, checks if price is being set by the owner
   and that NFT is not on an auction.
 -}
--- Not sure about SetPriceParams - it has `NftId` - will calling side have access to it?
--- setPrice :: NftContent -> SetPriceParams -> Contract UserWriter s Text ()
 setPrice = Hask.undefined
