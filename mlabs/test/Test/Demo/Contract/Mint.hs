@@ -22,11 +22,15 @@ import Ledger.Value (AssetClass (..), TokenName, Value, assetClassValue)
 import Plutus.Contract.Test qualified as Test
 import Plutus.Trace.Emulator as Emulator
 import Test.Tasty (TestTree)
+import Wallet.Emulator (Wallet)
 
 import Mlabs.Demo.Contract.Mint (MintParams (..), curSymbol, mintEndpoints)
 import Mlabs.Utils.Wallet (walletFromNumber)
 
+wallet1 :: Wallet
 wallet1 = walletFromNumber 1
+
+wallet2 :: Wallet
 wallet2 = walletFromNumber 2
 
 test :: TestTree

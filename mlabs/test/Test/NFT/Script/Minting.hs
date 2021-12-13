@@ -3,6 +3,7 @@ module Test.NFT.Script.Minting (
 ) where
 
 import Data.Semigroup ((<>))
+import Ledger (PaymentPubKeyHash (unPaymentPubKeyHash))
 import Ledger qualified
 import Ledger.Value (AssetClass (..))
 import Mlabs.NFT.Types qualified as NFT
@@ -28,7 +29,7 @@ testMinting = localOption (TestCurrencySymbol TestValues.nftCurrencySymbol) $
 baseCtx :: ContextBuilder 'ForMinting
 baseCtx =
   -- FIXME: hacky way to pass "UTXO not consumed"
-  input $ Input (PubKeyType TestValues.authorPkh) TestValues.oneAda
+  input $ Input (PubKeyType $ unPaymentPubKeyHash TestValues.authorPkh) TestValues.oneAda
 
 mintingCtx :: ContextBuilder 'ForMinting
 mintingCtx = mintsWithSelf TestValues.testTokenName 1
@@ -83,7 +84,7 @@ validData = MintingTest (NFT.Mint TestValues.testNftId)
 nonMintingCtx :: ContextBuilder 'ForMinting
 nonMintingCtx =
   paysOther (NFT.txValHash uniqueAsset) TestValues.oneNft TestValues.testNftId
-    <> input (Input (PubKeyType TestValues.authorPkh) TestValues.oneAda)
+    <> input (Input (PubKeyType $ unPaymentPubKeyHash TestValues.authorPkh) TestValues.oneAda)
 
 wrongAmountCtx :: ContextBuilder 'ForMinting
 wrongAmountCtx =

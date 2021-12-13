@@ -16,6 +16,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
 import Data.Semigroup (Last (..), sconcat)
 import Data.Text (Text)
+import Ledger (PaymentPubKeyHash (..))
 import Ledger.Constraints qualified as Constraints
 import Ledger.Crypto (PubKeyHash (..))
 import Ledger.Tx (
@@ -60,7 +61,7 @@ governanceEndpoints gov =
 
 deposit :: AssetClassGov -> Api.Deposit -> GovernanceContract ()
 deposit gov (Api.Deposit amnt) = do
-  ownPkh <- Contract.ownPubKeyHash
+  PaymentPubKeyHash ownPkh <- Contract.ownPaymentPubKeyHash
   g <- findGovernance ownPkh gov
   let (tx, lookups) = case g of
         Just (datum, utxo, oref) ->
@@ -97,7 +98,7 @@ deposit gov (Api.Deposit amnt) = do
 
 withdraw :: AssetClassGov -> Api.Withdraw -> GovernanceContract ()
 withdraw gov (Api.Withdraw assets) = do
-  ownPkh <- Contract.ownPubKeyHash
+  ownPkh <- Contract.ownPaymentPubKeyHash
   let trav f ~(x NE.:| xs) = (NE.:|) <$> f x <*> traverse f xs
   -- for some reason NonEmpty doesn't have a Traversible instance in scope
   (tx, lookups) <- fmap sconcat . flip trav (NE.fromList assets) $ \ac -> do
@@ -138,7 +139,7 @@ provideRewards gov (Api.ProvideRewards val) = do
         map
           ( \(pkh, prop) ->
               case pkh of
-                Just pkh' -> Just (pkh', Value $ fmap (round.(prop *).(% 1)) <$> getValue val)
+                Just pkh' -> Just (pkh', Value $ fmap (round . (prop *) . (% 1)) <$> getValue val)
                 Nothing -> Nothing
           )
           props
@@ -160,7 +161,7 @@ provideRewards gov (Api.ProvideRewards val) = do
     err = Contract.throwError "Could not find PublicKeyHash."
 
     govOf v = valueOf v (acGovCurrencySymbol gov) (acGovTokenName gov)
-    getPkh (_, o) = (,) ((txOutPubKey . toTxOut) o) (govOf . txOutValue . toTxOut $ o)
+    getPkh (_, o) = (,) ((fmap PaymentPubKeyHash . txOutPubKey . toTxOut) o) (govOf . txOutValue . toTxOut $ o)
     depositMapC = do
       utxos <- fmap Map.toList . Contract.utxosAt $ Validation.govAddress gov
       pure $ getPkh <$> utxos

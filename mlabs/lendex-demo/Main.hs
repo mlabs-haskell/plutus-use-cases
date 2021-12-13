@@ -17,6 +17,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Functor (void)
 import Data.Monoid (Last (..))
 
+import Ledger (PaymentPubKeyHash(unPaymentPubKeyHash))
 import Ledger.CardanoWallet (WalletNumber (..))
 import Ledger.Constraints (mustPayToPubKey)
 import Ledger.Crypto (PubKeyHash (..))
@@ -116,7 +117,7 @@ main = Handler.runSimulator lendexId initContract $ do
 
 initContract :: Handler.InitContract
 initContract = do
-  ownPK <- ownPubKeyHash
+  ownPK <- ownPaymentPubKeyHash
   logInfo @String "Start forge"
   cur <-
     mapError
@@ -136,7 +137,7 @@ initContract = do
     toVal cs tn = Value.singleton cs tn amount
 
     giveTo ownPK w v = do
-      let pkh = Wallet.walletPubKeyHash w
+      let pkh = Wallet.mockWalletPaymentPubKeyHash w
       when (pkh /= ownPK) $ do
         tx <- submitTx $ mustPayToPubKey pkh v
         awaitTxConfirmed $ getCardanoTxId tx
@@ -217,4 +218,4 @@ toCoin cur tn = Value.AssetClass (cur, tn)
 -- utils
 
 toPubKeyHash :: Wallet -> PubKeyHash
-toPubKeyHash = Wallet.walletPubKeyHash
+toPubKeyHash = unPaymentPubKeyHash . Wallet.mockWalletPaymentPubKeyHash

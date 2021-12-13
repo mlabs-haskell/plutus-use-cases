@@ -14,6 +14,7 @@ import Plutus.Contract qualified as Contract
 import PlutusTx.Prelude hiding (mconcat, mempty, (<>))
 
 import Ledger (
+  PaymentPubKeyHash (..),
   PubKeyHash,
   getPubKeyHash,
   scriptCurrencySymbol,
@@ -40,7 +41,11 @@ querryCurrentStake uT _ = do
     Just (PointInfo (HeadDatum x) _ _ _) -> Hask.pure x
     _ -> Contract.throwError "queryCurrentStake: NFT HEAD not found"
   let ownPkh = getUserId user
-      listGovTokenName = TokenName . ("listGov" <>) . getPubKeyHash $ ownPkh
+      listGovTokenName =
+        TokenName . ("listGov" <>)
+          . getPubKeyHash
+          . unPaymentPubKeyHash
+          $ ownPkh
       newGovDatum = GovDatum $ NodeLList user GovLNode Nothing
       appInstance = head'appInstance nftHead
       govAddr = appInstance'Governance appInstance

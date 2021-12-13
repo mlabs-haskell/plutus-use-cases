@@ -15,7 +15,7 @@
       type = "github";
       owner = "input-output-hk";
       repo = "plutus";
-      rev = "3f089ccf0ca746b399c99afe51e063b0640af547";
+      rev = "2721c59fd2302b75c4138456c29fd5b509e8340a";
       flake = false;
     };
 

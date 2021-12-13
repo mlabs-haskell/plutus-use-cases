@@ -14,11 +14,11 @@ import Text.Printf (printf)
 import Prelude (mconcat, (<>))
 import Prelude qualified as Hask
 
-import Ledger (AssetClass, scriptCurrencySymbol)
+import Ledger (AssetClass, PaymentPubKeyHash (..), scriptCurrencySymbol)
 import Ledger.Constraints qualified as Constraints
 import Ledger.Typed.Scripts (validatorHash)
 import Ledger.Value as Value (singleton)
-import Plutus.Contract (Contract, mapError, ownPubKeyHash)
+import Plutus.Contract (Contract, mapError, ownPaymentPubKeyHash)
 import Plutus.Contract qualified as Contract
 
 {- Drop-in replacement for
@@ -103,7 +103,7 @@ createListHead InitParams {..} = do
     -- Contract that mints a unique token to be used in the minting of the head
     generateUniqueToken :: GenericContract AssetClass
     generateUniqueToken = do
-      self <- ownPubKeyHash
+      self <- ownPaymentPubKeyHash
       let nftTokenName = TokenName uniqueTokenName --PlutusTx.Prelude.emptyByteString
       x <-
         mapError
@@ -122,7 +122,7 @@ createListHead InitParams {..} = do
     govHeadInit =
       GovDatum $
         HeadLList
-          { _head'info = GovLHead ip'feeRate ip'feePkh
+          { _head'info = GovLHead ip'feeRate $ unPaymentPubKeyHash ip'feePkh
           , _head'next = Nothing
           }
 

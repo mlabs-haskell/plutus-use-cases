@@ -19,6 +19,7 @@ import PlutusTx.Prelude hiding (mconcat, mempty, (<>))
 
 import Ledger (
   Address,
+  PaymentPubKeyHash (..),
   getPubKeyHash,
   scriptCurrencySymbol,
   txOutValue,
@@ -67,7 +68,7 @@ getFeesConstraints uT nftId price user = do
       mkGov name =
         Value.singleton
           (scriptCurrencySymbol govPolicy)
-          (TokenName . (name <>) . getPubKeyHash $ ownPkh)
+          (TokenName . (name <>) . getPubKeyHash . unPaymentPubKeyHash $ ownPkh)
           feeValue
       mintedFreeGov = mkGov "freeGov"
       mintedListGov = mkGov "listGov"
@@ -86,7 +87,7 @@ getFeesConstraints uT nftId price user = do
       sharedGovTx =
         [ Constraints.mustMintValueWithRedeemer govRedeemer (mintedFreeGov <> mintedListGov)
         , Constraints.mustPayToPubKey ownPkh mintedFreeGov
-        , Constraints.mustPayToPubKey feePkh (Ada.lovelaceValueOf feeValue)
+        , Constraints.mustPayToPubKey (PaymentPubKeyHash feePkh) (Ada.lovelaceValueOf feeValue)
         ]
       sharedGovLookup =
         [ Constraints.mintingPolicy govPolicy

@@ -35,6 +35,12 @@ pkgs.haskell-nix.cabalProject {
       tasty-plutus
       plutus-pretty
       plutus-numeric
+      plutus-golden
+      plutus-laws
+      plutus-size-check
+      quickcheck-plutus-instances
+      plutus-deriving
+
       base-deriving-via
       cardano-addresses
       cardano-addresses-cli
@@ -57,10 +63,12 @@ pkgs.haskell-nix.cabalProject {
       measures
       orphans-deriving-via
       playground-common
+      plutus-chain-index-core
       plutus-contract
       plutus-core
       plutus-ledger
       plutus-ledger-api
+      plutus-ledger-constraints
       plutus-pab
       plutus-playground-server
       plutus-tx
@@ -89,7 +97,6 @@ pkgs.haskell-nix.cabalProject {
         # nixpkgs are too new and require builds
         plutusPkgs.haskellPackages.fourmolu
         plutusPkgs.niv
-        plutusPkgs.stack
 
         plutus.plutus.haskell-language-server
         plutus.plutus.hlint
@@ -152,7 +159,7 @@ pkgs.haskell-nix.cabalProject {
       sources.plutus.sha256;
     "https://github.com/input-output-hk/plutus-apps.git"."${sources.plutus-apps.rev}" =
       sources.plutus-apps.sha256;
-    "https://github.com/Liqwid-Labs/plutus-extra.git"."${sources.plutus-extra.rev}" =
+    "https://github.com/ngua/plutus-extra.git"."${sources.plutus-extra.rev}" =
       sources.plutus-extra.sha256;
 
     # `cardano-*`

@@ -6,6 +6,7 @@ module Test.NftStateMachine.Logic (
 import PlutusTx.Prelude
 
 import Data.Map.Strict qualified as M
+import Ledger (PaymentPubKeyHash (..))
 import Plutus.V1.Ledger.Crypto (PubKeyHash (..))
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase)
@@ -121,6 +122,6 @@ failToBuyNotEnoughPrice = do
 
 -- users
 user1, user2, user3 :: UserId
-user1 = UserId $ PubKeyHash "1"
-user2 = UserId $ PubKeyHash "2"
-user3 = UserId $ PubKeyHash "3"
+user1 = UserId . PaymentPubKeyHash $ PubKeyHash "1"
+user2 = UserId . PaymentPubKeyHash $ PubKeyHash "2"
+user3 = UserId . PaymentPubKeyHash $ PubKeyHash "3"

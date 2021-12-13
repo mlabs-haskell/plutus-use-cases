@@ -2,7 +2,7 @@ module Test.NftStateMachine.Contract (
   test,
 ) where
 
-import PlutusTx.Prelude hiding (foldMap, mconcat, (<>))
+import PlutusTx.Prelude hiding (check, foldMap, mconcat, (<>))
 import Prelude (foldMap, mconcat, (<>))
 
 import Plutus.Contract.Test (Wallet (..), checkPredicateOptions)

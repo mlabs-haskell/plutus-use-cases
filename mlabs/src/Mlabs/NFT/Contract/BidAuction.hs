@@ -41,7 +41,7 @@ import Mlabs.NFT.Validation
 bidAuction :: UniqueToken -> AuctionBidParams -> Contract UserWriter s Text ()
 bidAuction uT (AuctionBidParams nftId bidAmount) = do
   ownOrefTxOut <- getUserAddr >>= fstUtxoAt
-  ownPkh <- Contract.ownPubKeyHash
+  ownPkh <- Contract.ownPaymentPubKeyHash
   PointInfo {..} <- findNft nftId uT
   node <- case pi'data of
     NodeDatum n -> Hask.pure n

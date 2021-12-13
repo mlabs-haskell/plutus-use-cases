@@ -40,7 +40,7 @@ import Data.Aeson (Value (String))
 import Data.Map qualified as M
 import Data.Monoid (Last (..))
 import Data.Text qualified as T
-import Ledger (getPubKeyHash)
+import Ledger (PaymentPubKeyHash (unPaymentPubKeyHash), getPubKeyHash)
 import Numeric.Natural (Natural)
 import Plutus.Contract.Test (
   CheckOptions,
@@ -50,7 +50,7 @@ import Plutus.Contract.Test (
   checkPredicateOptions,
   defaultCheckOptions,
   emulatorConfig,
-  walletPubKeyHash,
+  mockWalletPaymentPubKeyHash,
  )
 import Plutus.Trace.Effects.Assert (Assert)
 import Plutus.Trace.Effects.EmulatedWalletAPI (EmulatedWalletAPI)
@@ -124,9 +124,9 @@ callStartNft wal = do
   hAdmin <- activateContractWallet wal adminEndpoints
   let params =
         InitParams
-          [UserId . walletPubKeyHash $ wal]
+          [UserId . mockWalletPaymentPubKeyHash $ wal]
           (5 % 1000)
-          (walletPubKeyHash wal)
+          (mockWalletPaymentPubKeyHash wal)
   callEndpoint @"app-init" hAdmin params
   waitInit
   oState <- observableState hAdmin
@@ -141,9 +141,9 @@ callStartNftFail wal = do
   let w5 = walletFromNumber 5
       params =
         InitParams
-          [UserId . walletPubKeyHash $ w5]
+          [UserId . mockWalletPaymentPubKeyHash $ w5]
           (5 % 1000)
-          (walletPubKeyHash wal)
+          (mockWalletPaymentPubKeyHash wal)
   lift $ do
     hAdmin <- activateContractWallet wal adminEndpoints
     callEndpoint @"app-init" hAdmin params
@@ -170,7 +170,7 @@ checkOptions :: CheckOptions
 checkOptions = defaultCheckOptions & emulatorConfig . initialChainState .~ Left initialDistribution
 
 toUserId :: Wallet -> UserId
-toUserId = UserId . walletPubKeyHash
+toUserId = UserId . mockWalletPaymentPubKeyHash
 
 {- | Script runner. It inits NFT by user 1 and provides nft id to all sequent
  endpoint calls.
@@ -323,14 +323,22 @@ artwork2 =
 mkFreeGov :: Wallet -> Integer -> Plutus.V1.Ledger.Value.Value
 mkFreeGov wal = assetClassValue (AssetClass (govCurrency, tn))
   where
-    tn = TokenName . ("freeGov" <>) . getPubKeyHash . getUserId . toUserId $ wal
+    tn =
+      TokenName . ("freeGov" <>) . getPubKeyHash . unPaymentPubKeyHash
+        . getUserId
+        . toUserId
+        $ wal
 
 govCurrency = "e852789cb2157c43833281ca69cc7b1dc995f901cb47ce8cb939b5b8"
 
 getFreeGov :: Wallet -> Plutus.V1.Ledger.Value.Value -> Integer
 getFreeGov wal val = valueOf val govCurrency tn
   where
-    tn = TokenName . ("freeGov" <>) . getPubKeyHash . getUserId . toUserId $ wal
+    tn =
+      TokenName . ("freeGov" <>) . getPubKeyHash . unPaymentPubKeyHash
+        . getUserId
+        . toUserId
+        $ wal
 
 appSymbol :: UniqueToken
 appSymbol = AssetClass ("038ecf2f85dcb99b41d7ebfcbc0d988f4ac2971636c3e358aa8d6121", "Unique App Token")

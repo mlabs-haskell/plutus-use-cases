@@ -12,9 +12,8 @@ import Data.Map.Strict qualified as Map
 import Data.Monoid (Last (..))
 import Data.String (IsString (..))
 import Data.Text (Text)
-import Ledger (getPubKeyHash)
 import Ledger.TimeSlot (slotToBeginPOSIXTime)
-import Plutus.Contract.Test (Wallet (..), walletPubKeyHash)
+import Plutus.Contract.Test (Wallet (..), mockWalletPaymentPubKeyHash)
 import Plutus.Contract.Test.ContractModel (
   Action,
   Actions,
@@ -24,18 +23,16 @@ import Plutus.Contract.Test.ContractModel (
   action,
   anyActions_,
   assertModel,
-  balanceChange,
   contractState,
   currentSlot,
+  defaultCoverageOptions,
   deposit,
   forAllDL,
-  getContractState,
   getModelState,
   lockedValue,
   propRunActionsWithOptions,
   transfer,
   viewContractState,
-  viewModelState,
   wait,
   withdraw,
   ($=),
@@ -45,7 +42,7 @@ import Plutus.Trace.Emulator (callEndpoint)
 import Plutus.Trace.Emulator qualified as Trace
 import Plutus.V1.Ledger.Ada (lovelaceValueOf)
 import Plutus.V1.Ledger.Slot (Slot (..))
-import Plutus.V1.Ledger.Value (AssetClass (..), TokenName (..), Value, assetClassValue, valueOf)
+import Plutus.V1.Ledger.Value (valueOf)
 import PlutusTx.Prelude hiding ((<$>), (<*>), (==))
 import Test.QuickCheck qualified as QC
 import Test.Tasty (TestTree, testGroup)
@@ -64,16 +61,13 @@ import Mlabs.NFT.Types (
   InitParams (..),
   MintParams (..),
   NftAppInstance,
-  NftAppSymbol (..),
   NftId (..),
   QueryResponse,
   SetPriceParams (..),
   Title (..),
-  UniqueToken,
-  UserId (..),
  )
 import Mlabs.NFT.Validation (calculateShares)
-import Test.NFT.Init (appSymbol, checkOptions, getFreeGov, mkFreeGov, toUserId, w1, w2, w3, wA)
+import Test.NFT.Init (appSymbol, checkOptions, mkFreeGov, toUserId, w1, w2, w3, wA)
 
 data MockAuctionState = MockAuctionState
   { _auctionHighestBid :: Maybe (Integer, Wallet)
@@ -236,7 +230,7 @@ instance ContractModel NftModel where
       && (s ^. contractState . mMintedCount > 0)
       && isJust ((s ^. contractState . mMarket . at aNftId) >>= _nftAuctionState)
       && (Just (s ^. currentSlot) > (view auctionDeadline <$> ((s ^. contractState . mMarket . at aNftId) >>= _nftAuctionState)))
-  precondition s ActionWait {} = True
+  precondition _ ActionWait {} = True
 
   nextState ActionInit {} = do
     mStarted $= True
@@ -367,7 +361,7 @@ instance ContractModel NftModel where
             InitParams
               [toUserId wAdmin]
               (5 % 1000)
-              (walletPubKeyHash wAdmin)
+              (mockWalletPaymentPubKeyHash wAdmin)
       callEndpoint @"app-init" hAdmin params
       void $ Trace.waitNSlots 5
     ActionMint {..} -> do
@@ -452,6 +446,7 @@ propContract =
   QC.withMaxSuccess 10
     . propRunActionsWithOptions
       checkOptions
+      defaultCoverageOptions
       instanceSpec
       (const $ Hask.pure True)
 

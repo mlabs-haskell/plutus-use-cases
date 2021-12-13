@@ -69,7 +69,7 @@ import Ledger (
   ChainIndexTxOut,
   CurrencySymbol,
   POSIXTime,
-  PubKeyHash,
+  PaymentPubKeyHash,
   TxOutRef,
  )
 
@@ -102,7 +102,7 @@ instance Eq Title where
   {-# INLINEABLE (==) #-}
   (Title t1) == (Title t2) = t1 == t2
 
-newtype UserId = UserId {getUserId :: PubKeyHash}
+newtype UserId = UserId {getUserId :: PaymentPubKeyHash}
   deriving stock (Hask.Show, Generic, Hask.Eq, Hask.Ord)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 PlutusTx.unstableMakeIsData ''UserId
@@ -182,7 +182,7 @@ data InitParams = InitParams
   , -- | Fee rate of transaction
     ip'feeRate :: Rational
   , -- | PKH where fee is sent
-    ip'feePkh :: PubKeyHash
+    ip'feePkh :: PaymentPubKeyHash
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)

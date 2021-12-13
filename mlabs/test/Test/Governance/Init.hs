@@ -18,18 +18,13 @@ module Test.Governance.Init (
 ) where
 
 import PlutusTx.Prelude
-import Prelude ()
 
 import Control.Lens ((&), (.~))
-import Data.Coerce (coerce)
-import Data.Map (Map)
 import Data.Map qualified as M
 
-import Mlabs.Governance.Contract.Api qualified as Api
-import Mlabs.Governance.Contract.Server qualified as Gov
 import Mlabs.Governance.Contract.Validation qualified as Gov
 
-import Ledger (Address, CurrencySymbol, Value)
+import Ledger (Address, PaymentPubKeyHash (unPaymentPubKeyHash), Value)
 import Ledger qualified
 import Mlabs.Utils.Wallet (walletFromNumber)
 
@@ -40,14 +35,12 @@ import Plutus.Contract.Test (
   assertOutcome,
   defaultCheckOptions,
   emulatorConfig,
-  walletPubKeyHash,
+  mockWalletPaymentPubKeyHash,
  )
 
 import Plutus.Trace.Emulator (initialChainState)
 import Plutus.V1.Ledger.Ada (adaSymbol, adaToken)
 import Plutus.V1.Ledger.Value qualified as Value (singleton)
-
-import Test.Utils (next)
 
 acGOV :: Gov.AssetClassGov
 acGOV = Gov.AssetClassGov "ff" "GOVToken"
@@ -76,16 +69,14 @@ xgov wallet =
     acGOV
     (mkPkh wallet)
   where
-    (Gov.AssetClassGov cs tn) = acGOV
     mkPkh :: Wallet -> Ledger.PubKeyHash
-    mkPkh = walletPubKeyHash
+    mkPkh = unPaymentPubKeyHash . mockWalletPaymentPubKeyHash
 
 xgovEP :: Wallet -> Integer -> [(Ledger.PubKeyHash, Integer)]
 xgovEP wallet value = [(mkPkh wallet, value)]
   where
-    (Gov.AssetClassGov cs tn) = acGOV
     mkPkh :: Wallet -> Ledger.PubKeyHash
-    mkPkh = walletPubKeyHash
+    mkPkh = unPaymentPubKeyHash . mockWalletPaymentPubKeyHash
 
 -- | Make `Ada` `Value`
 ada :: Integer -> Value

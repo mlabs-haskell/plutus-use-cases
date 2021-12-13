@@ -2,6 +2,7 @@ module Test.NFT.Script.Values where
 
 import Data.Aeson qualified as Aeson
 import Data.Maybe (fromJust)
+import Ledger (PaymentPubKeyHash (..))
 import Ledger qualified
 
 import Ledger.Value (TokenName (..))
@@ -28,31 +29,31 @@ authorWallet :: Emu.Wallet
 authorWallet = Emu.fromWalletNumber (CardanoWallet.WalletNumber 1)
 
 authorAddr :: Ledger.Address
-authorAddr = Emu.walletAddress authorWallet
+authorAddr = Emu.mockWalletAddress authorWallet
 
-authorPkh :: Ledger.PubKeyHash
-authorPkh = Emu.walletPubKeyHash authorWallet
+authorPkh :: Ledger.PaymentPubKeyHash
+authorPkh = Emu.mockWalletPaymentPubKeyHash authorWallet
 
 -- User 1
 userOneWallet :: Emu.Wallet
 userOneWallet = Emu.fromWalletNumber (CardanoWallet.WalletNumber 2)
 
-userOnePkh :: Ledger.PubKeyHash
-userOnePkh = Emu.walletPubKeyHash userOneWallet
+userOnePkh :: Ledger.PaymentPubKeyHash
+userOnePkh = Emu.mockWalletPaymentPubKeyHash userOneWallet
 
 -- User 2
 userTwoWallet :: Emu.Wallet
 userTwoWallet = Emu.fromWalletNumber (CardanoWallet.WalletNumber 3)
 
-userTwoPkh :: Ledger.PubKeyHash
-userTwoPkh = Emu.walletPubKeyHash userTwoWallet
+userTwoPkh :: Ledger.PaymentPubKeyHash
+userTwoPkh = Emu.mockWalletPaymentPubKeyHash userTwoWallet
 
 -- User 3
 userThreeWallet :: Emu.Wallet
 userThreeWallet = Emu.fromWalletNumber (CardanoWallet.WalletNumber 4)
 
-userThreePkh :: Ledger.PubKeyHash
-userThreePkh = Emu.walletPubKeyHash userThreeWallet
+userThreePkh :: Ledger.PaymentPubKeyHash
+userThreePkh = Emu.mockWalletPaymentPubKeyHash userThreeWallet
 
 testTxId :: Ledger.TxId
 testTxId = fromJust $ Aeson.decode "{\"getTxId\" : \"61626364\"}"
@@ -84,7 +85,12 @@ testStateAddr :: UniqueToken -> Ledger.Address
 testStateAddr = NFT.txScrAddress
 
 appInstance :: NftAppInstance
-appInstance = NftAppInstance (testStateAddr uniqueAsset) uniqueAsset (Gov.govScrAddress uniqueAsset) [UserId userOnePkh]
+appInstance =
+  NftAppInstance
+    (testStateAddr uniqueAsset)
+    uniqueAsset
+    (Gov.govScrAddress uniqueAsset)
+    [UserId userOnePkh]
 
 appSymbol :: NftAppSymbol
 appSymbol = NftAppSymbol . NFT.curSymbol $ appInstance

@@ -25,6 +25,7 @@ import Ledger (
   CurrencySymbol,
   Datum (..),
   MintingPolicy,
+  PaymentPubKeyHash (..),
   Redeemer (..),
   ScriptContext (..),
   TxInInfo (..),
@@ -269,7 +270,7 @@ mkMintPolicy !appInstance !act !ctx =
     -- Check an admin signed the transaction
     checkAdminSig =
       let admins = appInstance'Admins appInstance
-       in any (`elem` admins) $ UserId <$> txInfoSignatories info
+       in any (`elem` admins) $ UserId . PaymentPubKeyHash <$> txInfoSignatories info
 
 mintPolicy :: NftAppInstance -> MintingPolicy
 mintPolicy appInstance =
@@ -414,7 +415,7 @@ mkTxPolicy _ !datum' !act !ctx =
     -- getter functions. Helper function.
     correctPayment node !userIdGetter !shareCalcFn !bid = personGetsAda >= personWantsAda
       where
-        personId = getUserId . userIdGetter $ node
+        personId = unPaymentPubKeyHash . getUserId . userIdGetter $ node
         share = info'share . node'information $ node
         personGetsAda = getAda $ valuePaidTo info personId
         personWantsAda = subtractFee . getAda $ shareCalcFn bid share
@@ -502,7 +503,7 @@ mkTxPolicy _ !datum' !act !ctx =
         case as'highestBid auctionState of
           Nothing -> True
           Just (AuctionBid bid bidder) ->
-            valuePaidTo info (getUserId bidder) == Ada.lovelaceValueOf bid
+            valuePaidTo info (unPaymentPubKeyHash $ getUserId bidder) == Ada.lovelaceValueOf bid
 
     correctInputValue :: NftListNode -> Bool
     correctInputValue node =
@@ -632,7 +633,7 @@ mkTxPolicy _ !datum' !act !ctx =
     -- Check if the price of NFT is changed by the owner of NFT
     signedByOwner node =
       case txInfoSignatories $ scriptContextTxInfo ctx of
-        [pkh] -> pkh == getUserId (info'owner $ node'information node)
+        [pkh] -> PaymentPubKeyHash pkh == getUserId (info'owner $ node'information node)
         _ -> False
 
     -- Check if no new token is minted.

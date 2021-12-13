@@ -119,7 +119,7 @@ mint uT params = do
             txOutValue
               . fst
               $ (txOutRefMapForAddr scriptAddr (pi'CITx insertPoint) Map.! pi'TOR insertPoint)
-          newToken = assetClass (app'symbol appSymbol) (TokenName .getDatumValue . NodeDatum $ newNode)
+          newToken = assetClass (app'symbol appSymbol) (TokenName . getDatumValue . NodeDatum $ newNode)
           newDatum = updatePointer (Pointer newToken)
           oref = pi'TOR insertPoint
           redeemer = asRedeemer $ MintAct (NftId . getDatumValue . NodeDatum $ newNode) appSymbol

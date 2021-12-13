@@ -70,7 +70,7 @@ toDatum = Datum . PlutusTx.toBuiltinData
 
 -- | Get the current Wallet's publick key.
 getUserAddr :: GenericContract Address
-getUserAddr = pubKeyHashAddress <$> Contract.ownPubKeyHash
+getUserAddr = (`pubKeyHashAddress` Nothing) <$> Contract.ownPaymentPubKeyHash
 
 -- | Get the current wallet's utxos.
 getUserUtxos :: GenericContract (Map.Map TxOutRef Ledger.ChainIndexTxOut)
@@ -78,7 +78,7 @@ getUserUtxos = getAddrUtxos =<< getUserAddr
 
 -- | Get the current wallet's userId.
 getUId :: GenericContract UserId
-getUId = UserId <$> Contract.ownPubKeyHash
+getUId = UserId <$> Contract.ownPaymentPubKeyHash
 
 -- | Get the ChainIndexTxOut at an address.
 getAddrUtxos :: Address -> GenericContract (Map.Map TxOutRef ChainIndexTxOut)

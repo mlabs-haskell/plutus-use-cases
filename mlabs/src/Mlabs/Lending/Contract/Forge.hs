@@ -18,7 +18,7 @@ import PlutusTx.Prelude
 import Control.Monad.State.Strict (evalStateT)
 import Data.Either (fromRight)
 
-import Ledger (CurrencySymbol)
+import Ledger (CurrencySymbol, PaymentPubKeyHash (PaymentPubKeyHash))
 import Ledger.Constraints (TxConstraints, checkScriptContext, mustPayToPubKey)
 import Ledger.Contexts qualified as Contexts
 import Ledger.Typed.Scripts as Scripts (MintingPolicy, wrapMintingPolicy)
@@ -128,7 +128,12 @@ validate lendexId _ !ctx = case (getInState, getOutState) of
         -- Check that user received aCoins
         checkScriptPays uid =
           traceIfFalse "User has not received aCoins for Mint" $
-            checkScriptContext (mustPayToPubKey uid $ Value.assetClassValue aCoin amount :: TxConstraints () ()) ctx
+            checkScriptContext
+              ( mustPayToPubKey (PaymentPubKeyHash uid) $
+                  Value.assetClassValue aCoin amount ::
+                  TxConstraints () ()
+              )
+              ctx
 
     isValidBurn (Input _lendexId1 !st1 _stVal1) (Input _lendexId2 !st2 _stVal2) !coin _aCoin !amount =
       traceIfFalse "No user is allowed to burn" $ any checkUserBurn users
@@ -145,7 +150,12 @@ validate lendexId _ !ctx = case (getInState, getOutState) of
         -- Check that user received coins
         checkScriptPays uid =
           traceIfFalse "User does not receive for Burn" $
-            checkScriptContext (mustPayToPubKey uid $ Value.assetClassValue coin amount :: TxConstraints () ()) ctx
+            checkScriptContext
+              ( mustPayToPubKey (PaymentPubKeyHash uid) $
+                  Value.assetClassValue coin amount ::
+                  TxConstraints () ()
+              )
+              ctx
 
     -- check change of the user deposit for state prior to transition (st1) and after transition (st2)
     checkUserDepositDiffBy !cond !st1 !st2 !coin uid = fromRight False $ do
@@ -153,7 +163,10 @@ validate lendexId _ !ctx = case (getInState, getOutState) of
       !dep2 <- getDeposit uid coin st2
       pure $ cond dep1 dep2
 
-    getDeposit uid !coin !st = evalStateT (getsWallet (Types.UserId uid) coin wallet'deposit) st
+    getDeposit uid !coin !st =
+      evalStateT
+        (getsWallet (Types.UserId $ PaymentPubKeyHash uid) coin wallet'deposit)
+        st
 
     !users = Contexts.txInfoSignatories info
     !info = Contexts.scriptContextTxInfo ctx

@@ -8,7 +8,7 @@ module Test.Governance.Contract (
 import Data.Functor (void)
 import Data.Text (Text)
 import PlutusTx.Prelude hiding (error)
-import Prelude (Show (..), error)
+import Prelude (error)
 
 -- import Data.Monoid ((<>), mempty)
 
@@ -27,7 +27,6 @@ import Mlabs.Plutus.Contract (callEndpoint')
 import Plutus.Trace.Emulator (ContractInstanceTag)
 import Plutus.Trace.Emulator qualified as Trace
 import Plutus.Trace.Emulator.Types (ContractHandle)
-import Plutus.V1.Ledger.Scripts (ScriptError (EvaluationError))
 
 import Control.Monad.Freer (Eff, Member)
 import Data.Semigroup (Last)
