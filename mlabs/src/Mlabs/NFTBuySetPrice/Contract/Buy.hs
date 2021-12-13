@@ -4,36 +4,23 @@ module Mlabs.NFTBuySetPrice.Contract.Buy (
   buy,
 ) where
 
-import Prelude (mconcat)
-import Prelude qualified as Hask
+import PlutusTx.Prelude
+-- import Prelude qualified as Hask
 
--- import Control.Lens ((^.))
--- import Control.Monad (void, when)
--- import Data.Map qualified as Map
--- import Data.Monoid (Last (..), (<>))
--- import Data.Text (Text)
+import Data.Text (Text)
+import Plutus.Contract (Contract)
 
--- import Plutus.Contract (Contract)
--- import Plutus.Contract qualified as Contract
--- import Plutus.Contract.Constraints qualified as Constraints
--- import PlutusTx qualified
--- import PlutusTx.Prelude hiding (mconcat, mempty, (<>))
-
--- import Ledger (
---   Datum (..),
---   Redeemer (..),
---   ciTxOutValue,
---  )
--- import Ledger.Typed.Scripts (validatorScript)
-
--- import Mlabs.NFT.Contract.Aux
--- import Mlabs.NFT.Contract.Gov.Fees
--- import Mlabs.NFT.Contract.Gov.Query
-import Mlabs.NFT.Types
--- import Mlabs.NFT.Validation
+import Mlabs.NFT.Types (NftId(..), BuyRequestUser(..), UniqueToken, UserWriter)
+import Mlabs.NFTBuySetPrice.Types
+import Mlabs.NFT.Contract.Buy qualified as NFT.Buy
+import Mlabs.NFT.Contract.Aux (hashData)
 
 {- | BUY.
  Attempts to buy a new NFT by changing the owner, pays the current owner and
  the author, and sets a new price for the NFT.
 -}
-buy = Hask.undefined
+buy :: forall s. UniqueToken -> BSPBuyRequestUser -> Contract UserWriter s Text ()
+buy uT BSPBuyRequestUser {..} = 
+  let nftId = NftId $ hashData bsur'nftContent
+      buyParams = BuyRequestUser nftId bsur'price bsur'newPrice
+  in NFT.Buy.buy uT buyParams
