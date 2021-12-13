@@ -3,44 +3,22 @@ module Mlabs.NFTBuySetPrice.Api (
   buySetEndpoints,
 ) where
 
-import Data.Monoid (Last (..))
 import Data.Text (Text)
 
-import Control.Monad (void)
-
-import Playground.Contract (mkSchemaDefinitions)
-import Plutus.Contract (Contract, Endpoint, Promise, endpoint, type (.\/))
-import Prelude as Hask
-
-import Mlabs.NFT.Contract.BidAuction (bidAuction)
-import Mlabs.NFT.Contract.Buy (buy)
-import Mlabs.NFT.Contract.CloseAuction (closeAuction)
-import Mlabs.NFT.Contract.Init (initApp)
-import Mlabs.NFT.Contract.Mint (mint)
-import Mlabs.NFT.Contract.OpenAuction (openAuction)
-import Mlabs.NFT.Contract.Query (queryContent, queryCurrentOwner, queryCurrentPrice, queryListNfts)
-import Mlabs.NFT.Contract.SetPrice (setPrice)
-import Mlabs.NFT.Types (
-  AdminContract,
-  AuctionBidParams (..),
-  AuctionCloseParams (..),
-  AuctionOpenParams (..),
-  BuyRequestUser (..),
-  Content,
-  InitParams (..),
-  MintParams (..),
-  NftAppInstance (..),
-  NftId (..),
-  SetPriceParams (..),
-  UniqueToken,
-  UserContract,
-  UserWriter,
- )
 import Mlabs.Plutus.Contract (selectForever)
+import Mlabs.NFT.Types (UniqueToken, UserWriter)
+import Mlabs.NFTBuySetPrice.Types
+import Mlabs.NFTBuySetPrice.Contract as NFTBSP
 
--- | A common App schema works for now.
+import Plutus.Contract (Contract, Endpoint, endpoint, type (.\/))
+
+-- | Schema for NFT buy-set-price dApp
 type NFTBySetPriceSchema =
-    Endpoint "buy" BuyRequestUser
-    .\/ Endpoint "set-price" SetPriceParams
+    Endpoint "buy" BSPBuyRequestUser
+    .\/ Endpoint "set-price" BSPSetPriceParams
 
-buySetEndpoints = Hask.undefined
+buySetEndpoints :: UniqueToken -> Contract UserWriter NFTBySetPriceSchema Text ()
+buySetEndpoints uT = 
+  selectForever [ endpoint @"buy" (NFTBSP.buy uT)
+                , endpoint @"set-price"  (NFTBSP.setPrice uT)
+                ]

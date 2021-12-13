@@ -1,5 +1,6 @@
 module Mlabs.NFTBuySetPrice.Types (
-  BSPBuyRequestUser(..)
+  BSPBuyRequestUser(..),
+  BSPSetPriceParams(..)
 ) where
 
 import PlutusTx.Prelude
@@ -30,3 +31,17 @@ instance Eq BSPBuyRequestUser where
   {-# INLINEABLE (==) #-}
   (BSPBuyRequestUser content1 price1 newPrice1) == (BSPBuyRequestUser content2 price2 newPrice2) =
     content1 == content2 && price1 == price2 && newPrice1 == newPrice2
+
+data BSPSetPriceParams = BSPSetPriceParams
+  { -- | NFTid of the token which price is set.
+    bssp'nftContent :: Content
+  , -- | New price, in Lovelace.
+    bssp'price :: Maybe Integer 
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
+
+instance Eq BSPSetPriceParams where
+  {-# INLINEABLE (==) #-}
+  (BSPSetPriceParams nftId1 price1) == (BSPSetPriceParams nftId2 price2) =
+    nftId1 == nftId2 && price1 == price2
