@@ -243,6 +243,27 @@ executable nft-marketplace
   main-is: nft-marketplace/Main.hs
   build-depends: mlabs-plutus-use-cases
 
+executable nft-buy-set-price
+  import:  common-imports
+  import:  common-language
+  import:  common-configs
+  import:  common-ghc-options  
+
+  main-is: Main.hs
+  hs-source-dirs:
+    nft-buy-set-price
+    src
+  other-modules:
+    Mlabs.NFT.Validation
+    Mlabs.NFT.Types
+    Mlabs.NFT.Contract.Aux
+    Mlabs.NFTBuySetPrice.Contract.Buy
+    Mlabs.NFTBuySetPrice.Contract.SetPrice
+    Mlabs.NFTBuySetPrice.Api
+  build-depends: 
+    filepath
+    -- mlabs-plutus-use-cases
+
 Test-suite mlabs-plutus-use-cases-tests
   import:  common-imports
   import:  common-language
