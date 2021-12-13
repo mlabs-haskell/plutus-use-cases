@@ -43,6 +43,7 @@ import Mlabs.Governance.Contract.Api qualified as Api
 import Mlabs.Governance.Contract.Validation (AssetClassGov (..), GovernanceDatum (..), GovernanceRedeemer (..))
 import Mlabs.Governance.Contract.Validation qualified as Validation
 import Mlabs.Plutus.Contract (getEndpoint, selectForever)
+import Mlabs.Utils (submitTxConstraintsWithUnbalanced)
 
 --import GHC.Base (Applicative(pure))
 
@@ -92,7 +93,7 @@ deposit gov (Api.Deposit amnt) = do
 
       xGovValue = Validation.xgovSingleton gov ownPkh amnt
 
-  ledgerTx <- Contract.submitTxConstraintsWith @Validation.Governance lookups tx
+  ledgerTx <- submitTxConstraintsWithUnbalanced @Validation.Governance lookups tx
   void $ Contract.awaitTxConfirmed $ getCardanoTxId ledgerTx
   Contract.logInfo @String $ printf "deposited %s GOV tokens" (show amnt)
 
@@ -124,7 +125,7 @@ withdraw gov (Api.Withdraw assets) = do
                   ]
               )
 
-  ledgerTx <- Contract.submitTxConstraintsWith @Validation.Governance lookups tx
+  ledgerTx <- submitTxConstraintsWithUnbalanced @Validation.Governance lookups tx
   void $ Contract.awaitTxConfirmed $ getCardanoTxId ledgerTx
   Contract.logInfo @String $ printf "withdrew %s GOV tokens" (show . sum $ map snd assets)
 
@@ -154,7 +155,7 @@ provideRewards gov (Api.ProvideRewards val) = do
           [ Constraints.otherScript $ Validation.govValidator gov
           ]
 
-  ledgerTx <- Contract.submitTxConstraintsWith @Validation.Governance lookups tx
+  ledgerTx <- submitTxConstraintsWithUnbalanced @Validation.Governance lookups tx
   void $ Contract.awaitTxConfirmed $ getCardanoTxId ledgerTx
   Contract.logInfo @String $ printf "Provided rewards to all xGOV holders"
   where
