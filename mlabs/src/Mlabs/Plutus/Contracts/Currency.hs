@@ -165,6 +165,7 @@ mintContract pkh amounts = mapError (review _CurrencyError) $ do
       mintTx =
         Constraints.mustSpendScriptOutput txOutRef unitRedeemer
           <> Constraints.mustMintValue (mintedValue theCurrency)
+          <> Constraints.mustBeSignedBy pkh
   tx <- submitTxConstraintsWithUnbalanced @Scripts.Any lookups mintTx
   _ <- awaitTxConfirmed (getCardanoTxId tx)
   pure theCurrency
