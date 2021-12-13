@@ -260,6 +260,7 @@ executable nft-buy-set-price
     Mlabs.NFTBuySetPrice.Contract.Buy
     Mlabs.NFTBuySetPrice.Contract.SetPrice
     Mlabs.NFTBuySetPrice.Api
+    Mlabs.NFTBuySetPrice.PAB
   build-depends: 
     filepath
     -- mlabs-plutus-use-cases
