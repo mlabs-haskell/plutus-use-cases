@@ -70,6 +70,15 @@ pkgs.haskell-nix.cabalProject {
       quickcheck-dynamic
       Win32-network
       word-array
+
+      cardano-wallet
+      cardano-wallet-cli
+      cardano-wallet-launcher
+      cardano-wallet-core
+      cardano-wallet-core-integration
+      iohk-monitoring
+      lobemo-backend-ekg
+      contra-tracer
     ];
 
     withHoogle = true;
