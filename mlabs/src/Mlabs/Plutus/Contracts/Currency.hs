@@ -37,6 +37,7 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Map qualified as Map
 import Data.Semigroup (Last (..))
 import GHC.Generics (Generic)
+import Mlabs.Utils
 import Plutus.Contracts.PubKey qualified as PubKey
 import PlutusTx.AssocMap qualified as AssocMap
 import Schema (ToSchema)
@@ -157,7 +158,8 @@ mintContract pkh amounts = mapError (review _CurrencyError) $ do
       mintTx =
         Constraints.mustSpendScriptOutput txOutRef unitRedeemer
           <> Constraints.mustMintValue (mintedValue theCurrency)
-  tx <- submitTxConstraintsWith @Scripts.Any lookups mintTx
+          <> Constraints.mustBeSignedBy pkh
+  tx <- submitTxConstraintsWithUnbalanced @Scripts.Any lookups mintTx
   _ <- awaitTxConfirmed (getCardanoTxId tx)
   pure theCurrency
 

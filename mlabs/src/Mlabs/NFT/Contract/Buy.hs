@@ -31,6 +31,7 @@ import Mlabs.NFT.Contract.Gov.Fees
 import Mlabs.NFT.Contract.Gov.Query
 import Mlabs.NFT.Types
 import Mlabs.NFT.Validation
+import Mlabs.Utils
 
 {- | BUY.
  Attempts to buy a new NFT by changing the owner, pays the current owner and
@@ -90,7 +91,7 @@ buy uT BuyRequestUser {..} = do
               (Redeemer . PlutusTx.toBuiltinData $ action)
           ]
             <> govTx
-  void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
+  void $ submitTxConstraintsWithUnbalanced @NftTrade lookups tx
   Contract.tell . Last . Just . Left $ ur'nftId
   Contract.logInfo @Hask.String "buy successful!"
   where

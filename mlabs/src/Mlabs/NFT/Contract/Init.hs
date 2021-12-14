@@ -38,6 +38,7 @@ import Mlabs.NFT.Governance.Types (GovAct (..), GovDatum (..), GovLHead (..))
 import Mlabs.NFT.Governance.Validation (govMintPolicy, govScrAddress, govScript)
 import Mlabs.NFT.Types (GenericContract, InitParams (..), MintAct (..), NftAppInstance (..), NftAppSymbol (..), NftListHead (..))
 import Mlabs.NFT.Validation (DatumNft (..), NftTrade, asRedeemer, curSymbol, mintPolicy, txPolicy, txScrAddress)
+import Mlabs.Utils (submitTxConstraintsWithUnbalanced)
 
 {- | The App Symbol is written to the Writter instance of the Contract to be
  recovered for future opperations, and ease of use in Trace.
@@ -96,7 +97,7 @@ createListHead InitParams {..} = do
                 , Constraints.mustMintValueWithRedeemer govInitRedeemer govProofTokenValue
                 ]
             )
-      void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
+      void $ submitTxConstraintsWithUnbalanced @NftTrade lookups tx
       Contract.logInfo @Hask.String $ printf "Forged Script Head & Governance Head for %s" (Hask.show appInstance)
       return appInstance
 
