@@ -28,6 +28,7 @@ import Ledger.Value as Value (TokenName (..), assetClass, singleton)
 import Mlabs.NFT.Contract.Aux
 import Mlabs.NFT.Types
 import Mlabs.NFT.Validation
+import Mlabs.Utils
 
 --------------------------------------------------------------------------------
 -- MINT --
@@ -48,7 +49,7 @@ mint uT params = do
       (nLk, nCx) <- mintNode uT nftPolicy newNode rNode
       let lookups = mconcat [lLk, nLk]
           tx = mconcat [lCx, nCx]
-      void $ Contract.submitTxConstraintsWith @NftTrade lookups tx
+      void $ submitTxConstraintsWithUnbalanced @NftTrade lookups tx
       Contract.tell . Last . Just . Left . info'id . node'information $ newNode
       Contract.logInfo @Hask.String $ printf "mint successful!"
   where

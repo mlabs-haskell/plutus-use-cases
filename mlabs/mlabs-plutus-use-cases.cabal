@@ -181,6 +181,7 @@ library
     Mlabs.Plutus.PAB
     Mlabs.System.Console.PrettyLogger
     Mlabs.System.Console.Utils
+    Mlabs.Utils
     Mlabs.Utils.Wallet
     Mlabs.Plutus.Contracts.Currency
 
