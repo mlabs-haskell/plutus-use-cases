@@ -29,7 +29,6 @@ import Mlabs.NFT.Types (UniqueToken)
 import Plutus.Contracts.Currency ()
 import Plutus.V1.Ledger.Value (CurrencySymbol (..), TokenName (..), assetClass)
 
-import Plutus.PAB.Effects.Contract.Builtin qualified as Builtin
 import Plutus.PAB.Run (runWith)
 
 

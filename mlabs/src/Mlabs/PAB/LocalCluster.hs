@@ -94,8 +94,6 @@ import Data.Text qualified as Text
 import Data.Text.Class (ToText (toText))
 import Data.Text.Extras (tshow)
 
-import Mlabs.NFT.PAB.MarketplaceContract
-
 import Network.HTTP.Client (Manager, defaultManagerSettings, newManager)
 import Network.URI (URI)
 
