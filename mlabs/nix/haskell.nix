@@ -35,6 +35,12 @@ pkgs.haskell-nix.cabalProject {
       tasty-plutus
       plutus-pretty
       plutus-numeric
+      plutus-golden
+      plutus-laws
+      plutus-size-check
+      quickcheck-plutus-instances
+      plutus-deriving
+
       base-deriving-via
       cardano-addresses
       cardano-addresses-cli
@@ -61,6 +67,7 @@ pkgs.haskell-nix.cabalProject {
       plutus-core
       plutus-ledger
       plutus-ledger-api
+      plutus-ledger-constraints
       plutus-pab
       plutus-playground-server
       plutus-tx
@@ -89,7 +96,6 @@ pkgs.haskell-nix.cabalProject {
         # nixpkgs are too new and require builds
         plutusPkgs.haskellPackages.fourmolu
         plutusPkgs.niv
-        plutusPkgs.stack
 
         plutus.plutus.haskell-language-server
         plutus.plutus.hlint

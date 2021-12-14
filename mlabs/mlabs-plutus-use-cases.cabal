@@ -23,9 +23,9 @@ common common-imports
     , plutus-core
     , plutus-contract
     , plutus-ledger
+    , plutus-ledger-constraints
     , plutus-tx
     , plutus-ledger-api
-    , plutus-chain-index
     , plutus-chain-index-core
     , plutus-tx-plugin
     , plutus-pab
