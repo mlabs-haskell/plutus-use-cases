@@ -262,6 +262,7 @@ executable nft-buy-set-price
     Mlabs.NFTBuySetPrice.Contract.SetPrice
     Mlabs.NFTBuySetPrice.Api
     Mlabs.NFTBuySetPrice.PAB
+    Mlabs.NFTBuySetPrice.Simulator
     Mlabs.NFTBuySetPrice.Types
     -- Mlabs.NFT.Contract.Buy
     -- Mlabs.NFT.Contract.Buy
