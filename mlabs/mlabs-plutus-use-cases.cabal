@@ -117,6 +117,12 @@ common common-ghc-options
     -fno-warn-orphans
     -fobject-code
 
+common common-exe-ghc-options
+  ghc-options:
+    -threaded -rtsopts -with-rtsopts=-N -Wall -Wcompat
+    -Wincomplete-uni-patterns -Wincomplete-record-updates
+    -Wno-missing-import-lists -Wredundant-constraints -O0
+
 library
   import:  common-imports
   import:  common-language
@@ -279,6 +285,15 @@ executable nft-marketplace
   main-is: nft-marketplace/Main.hs
   build-depends: mlabs-plutus-use-cases
 
+executable nft-marketplace-local-cluster
+  import:  common-imports
+  import:  common-language
+  import:  common-configs
+  import:  common-exe-ghc-options
+
+  main-is: nft-marketplace/local-cluster.hs
+  build-depends: mlabs-plutus-use-cases
+
 executable nft-buy-set-price
   import:  common-imports
   import:  common-language
@@ -296,10 +311,7 @@ executable nft-local-cluster
   import:  common-imports
   import:  common-language
   import:  common-configs
-  ghc-options:
-    -threaded -rtsopts -with-rtsopts=-N -Wall -Wcompat
-    -Wincomplete-uni-patterns -Wincomplete-record-updates
-    -Wno-missing-import-lists -Wredundant-constraints -O0
+  import:  common-exe-ghc-options
 
   main-is: nft-buy-set-price/local-cluster.hs
   build-depends:
