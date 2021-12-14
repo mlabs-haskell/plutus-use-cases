@@ -27,6 +27,7 @@ import Plutus.Contract.Test.ContractModel (
   balanceChange,
   contractState,
   currentSlot,
+  defaultCoverageOptions,
   deposit,
   forAllDL,
   getContractState,
@@ -452,6 +453,7 @@ propContract =
   QC.withMaxSuccess 10
     . propRunActionsWithOptions
       checkOptions
+      defaultCoverageOptions
       instanceSpec
       (const $ Hask.pure True)
 
