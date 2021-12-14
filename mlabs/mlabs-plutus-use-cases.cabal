@@ -26,6 +26,7 @@ common common-imports
     , plutus-ledger-constraints
     , plutus-tx
     , plutus-ledger-api
+    , plutus-chain-index
     , plutus-chain-index-core
     , plutus-tx-plugin
     , plutus-pab
@@ -45,6 +46,30 @@ common common-imports
     , cardano-ledger-alonzo
     , plutus-extra
     , purescript-bridge
+
+    -- for local cluster
+    , directory
+    , filepath
+    , text-class
+    , beam-sqlite
+    , sqlite-simple
+    , beam-migrate
+    , cardano-wallet
+    , cardano-wallet-cli
+    , cardano-wallet-launcher
+    , cardano-wallet-core
+    , cardano-wallet-core-integration
+    , iohk-monitoring
+    , lobemo-backend-ekg
+    , contra-tracer
+    , plutus-pab
+    , async
+    , servant-client
+    , http-client
+    , servant-client-core
+    , cardano-addresses
+    , network-uri
+    , servant
 
 common common-language
     default-extensions:
@@ -183,7 +208,17 @@ library
     Mlabs.System.Console.Utils
     Mlabs.Utils
     Mlabs.Utils.Wallet
+    Mlabs.PAB.LocalCluster
+
+    -- TODO move to private sub-lib?
     Mlabs.Plutus.Contracts.Currency
+    Mlabs.NFTBuySetPrice.Api
+    Mlabs.NFTBuySetPrice.Contract
+    Mlabs.NFTBuySetPrice.Contract.Buy
+    Mlabs.NFTBuySetPrice.Contract.SetPrice
+    Mlabs.NFTBuySetPrice.Types
+    Mlabs.NFTBuySetPrice.PAB
+    Mlabs.NFTBuySetPrice.Simulator
 
 executable mlabs-plutus-use-cases
   import:  common-imports
@@ -253,23 +288,22 @@ executable nft-buy-set-price
   main-is: Main.hs
   hs-source-dirs:
     nft-buy-set-price
-    src
-  other-modules:
-    Mlabs.NFT.Validation
-    Mlabs.NFT.Types
-    Mlabs.NFT.Contract.Aux
-    Mlabs.NFTBuySetPrice.Contract
-    Mlabs.NFTBuySetPrice.Contract.Buy
-    Mlabs.NFTBuySetPrice.Contract.SetPrice
-    Mlabs.NFTBuySetPrice.Api
-    Mlabs.NFTBuySetPrice.PAB
-    Mlabs.NFTBuySetPrice.Simulator
-    Mlabs.NFTBuySetPrice.Types
-    -- Mlabs.NFT.Contract.Buy
-    -- Mlabs.NFT.Contract.Buy
-  build-depends: 
+  build-depends:
     filepath
-    -- mlabs-plutus-use-cases
+    , mlabs-plutus-use-cases
+
+executable nft-local-cluster
+  import:  common-imports
+  import:  common-language
+  import:  common-configs
+  ghc-options:
+    -threaded -rtsopts -with-rtsopts=-N -Wall -Wcompat
+    -Wincomplete-uni-patterns -Wincomplete-record-updates
+    -Wno-missing-import-lists -Wredundant-constraints -O0
+
+  main-is: nft-buy-set-price/local-cluster.hs
+  build-depends:
+    mlabs-plutus-use-cases
 
 Test-suite mlabs-plutus-use-cases-tests
   import:  common-imports
