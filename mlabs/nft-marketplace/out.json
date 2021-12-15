@@ -1,0 +1,4 @@
+ValueNotConservedUTxO 
+  Value 100002111651 (fromList [(PolicyID {policyID = ScriptHash \"3354193ea355fdfd4160e679a93ff7042762236e61bbd947e63ea9c1\"},fromList [(\"\",1)]),(PolicyID {policyID = ScriptHash \"4059a55b11cb4b09a0122ed099aeaea527b2e5da9c354988e304a09a\"},fromList [(\"Unique App Token\",2)]),(PolicyID {policyID = ScriptHash \"f986f849561c9b20fe10e62099c6d0a719c2cc0cbd676f914488183b\"},fromList [(\"\",1)])])) 
+  Value 100002329401 (fromList [(PolicyID {policyID = ScriptHash \"3354193ea355fdfd4160e679a93ff7042762236e61bbd947e63ea9c1\"},fromList [(\"\",1)]),(PolicyID {policyID = ScriptHash \"4059a55b11cb4b09a0122ed099aeaea527b2e5da9c354988e304a09a\"},fromList [(\"Unique App Token\",2)]),(PolicyID {policyID = ScriptHash \"f986f849561c9b20fe10e62099c6d0a719c2cc0cbd676f914488183b\"},fromList [(\"\",1)])]))
+

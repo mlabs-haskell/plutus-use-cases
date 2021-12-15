@@ -50,6 +50,16 @@ type InitContract a = forall s. Contract (Last NftAppInstance) s Text a
 -}
 initApp :: InitParams -> InitContract ()
 initApp params = do
+  res <- Contract.runError (initApp' params)
+  case res of
+    Right _ -> pure ()
+    Left e -> Contract.logInfo @Hask.String ("initApp error: " Hask.++ (Hask.show e))
+
+initApp' :: InitParams -> InitContract ()
+initApp' params = do
+  ownPKH <- ownPubKeyHash
+  Contract.logInfo @Hask.String ("PKH: " Hask.++ (Hask.show ownPKH))
+  Contract.logInfo @Hask.String "Creating list head"
   appInstance <- createListHead params
   Contract.tell . Last . Just $ appInstance
   Contract.logInfo @Hask.String $ printf "Finished Initialisation: App Instance: %s" (Hask.show appInstance)
@@ -59,9 +69,11 @@ initApp params = do
 -}
 createListHead :: InitParams -> GenericContract NftAppInstance
 createListHead InitParams {..} = do
+  Contract.logInfo @Hask.String "Generating unique token"
   uniqueToken <- generateUniqueToken
   let govAddr = govScrAddress uniqueToken
       scrAddr = txScrAddress uniqueToken
+  Contract.logInfo @Hask.String "Minting head"
   mintListHead $ NftAppInstance scrAddr uniqueToken govAddr ip'admins
   where
     -- Mint the Linked List Head and its associated token.
@@ -97,7 +109,9 @@ createListHead InitParams {..} = do
                 , Constraints.mustMintValueWithRedeemer govInitRedeemer govProofTokenValue
                 ]
             )
-      void $ submitTxConstraintsWithUnbalanced @NftTrade lookups tx
+      ownPKH <- ownPubKeyHash
+      void $ submitTxConstraintsWithUnbalanced @NftTrade lookups (tx <> Constraints.mustBeSignedBy ownPKH)
+      -- looks like signature won't be added w/o this constraint, same as Currency situation ^
       Contract.logInfo @Hask.String $ printf "Forged Script Head & Governance Head for %s" (Hask.show appInstance)
       return appInstance
 
