@@ -109,9 +109,11 @@ createListHead InitParams {..} = do
                 , Constraints.mustMintValueWithRedeemer govInitRedeemer govProofTokenValue
                 ]
             )
+
       ownPKH <- ownPubKeyHash
+      -- w/o `Constraints.mustBeSignedBy ownPKH`
+      -- throws validation error `Only an admin can initialise app`, which (I suppose) means, that Tx wasn't signed by the WBE at all
       void $ submitTxConstraintsWithUnbalanced @NftTrade lookups (tx <> Constraints.mustBeSignedBy ownPKH)
-      -- looks like signature won't be added w/o this constraint, same as Currency situation ^
       Contract.logInfo @Hask.String $ printf "Forged Script Head & Governance Head for %s" (Hask.show appInstance)
       return appInstance
 

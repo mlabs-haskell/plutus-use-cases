@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# Performs contract activation and call to initialization endpooint
+# As local cluster setup is fully reporducable, wallet ID and its PKH stayes the same
+
 set -euo pipefail
 
 WALLET_ID=2d4cc31a4b3116ab86bfe529d30d9c362acd0b44
