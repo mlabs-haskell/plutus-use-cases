@@ -8,7 +8,10 @@ module Mlabs.Plutus.Contracts.Currency (
   curPolicy,
 
   -- * Actions etc
-  mintContract,
+  -- mintContract,
+  mintContractViaScriptUtxo,
+  mintContractViaPkh,
+
   mintedValue,
   currencySymbol,
 
@@ -22,7 +25,7 @@ import PlutusTx.Prelude hiding (Monoid (..), Semigroup (..))
 
 import Plutus.Contract as Contract
 
-import Ledger (CurrencySymbol, PubKeyHash, TxId, TxOutRef (..), getCardanoTxId, scriptCurrencySymbol)
+import Ledger (CurrencySymbol, PubKeyHash, TxId, TxOutRef (..), getCardanoTxId, scriptCurrencySymbol, pubKeyHashAddress)
 import Ledger.Constraints qualified as Constraints
 import Ledger.Contexts qualified as V
 import Ledger.Scripts
@@ -142,14 +145,14 @@ instance AsContractError CurrencyError where
    then use that UTxO to mint one-shot currencies.
    This is the only change.
 -}
-mintContract ::
+mintContractViaScriptUtxo ::
   forall w s e.
   ( AsCurrencyError e
   ) =>
   PubKeyHash ->
   [(TokenName, Integer)] ->
   Contract w s e OneShotCurrency
-mintContract pkh amounts = mapError (review _CurrencyError) $ do
+mintContractViaScriptUtxo pkh amounts = mapError (review _CurrencyError) $ do
   (txOutRef, ciTxOut, pkInst) <- mapError PKError (PubKey.pubKeyContract pkh (Ada.adaValueOf 3))
   let theCurrency = mkCurrency txOutRef amounts
       curVali = curPolicy theCurrency
@@ -166,6 +169,36 @@ mintContract pkh amounts = mapError (review _CurrencyError) $ do
   _ <- awaitTxConfirmed (getCardanoTxId tx)
   pure theCurrency
 
+mintContractViaPkh ::
+  forall w s e.
+  ( AsCurrencyError e
+  ) =>
+  PubKeyHash ->
+  [(TokenName, Integer)] ->
+  Contract w s e OneShotCurrency
+mintContractViaPkh pkh amounts = mapError (review _CurrencyError) $ do
+  (txOutRef, ciTxOut) <- getUtxo
+  let theCurrency = mkCurrency txOutRef amounts
+      curVali = curPolicy theCurrency
+      lookups =
+        Constraints.mintingPolicy curVali
+          <> Constraints.otherData (Datum $ getRedeemer unitRedeemer)
+          <> Constraints.unspentOutputs (Map.singleton txOutRef ciTxOut)
+      mintTx =
+        Constraints.mustSpendScriptOutput txOutRef unitRedeemer
+          <> Constraints.mustMintValue (mintedValue theCurrency)
+          <> Constraints.mustBeSignedBy pkh
+  tx <- submitTxConstraintsWithUnbalanced @Scripts.Any lookups mintTx
+  _ <- awaitTxConfirmed (getCardanoTxId tx)
+  pure theCurrency
+  where
+    getUtxo = do
+      utxos <- Map.toList <$> utxosAt (pubKeyHashAddress pkh)
+      case utxos of
+        [] -> Contract.throwError $ 
+                CurContractError (OtherError "No utxo found for one shot minting")
+        (orefAndOut:_) -> pure orefAndOut
+
 {- | Minting policy for a currency that has a fixed amount of tokens issued
    in one transaction
 -}
@@ -177,13 +210,13 @@ data SimpleMPS = SimpleMPS
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 type CurrencySchema =
-  Endpoint "Create native token" SimpleMPS
+  Endpoint "create-osc" SimpleMPS
 
 -- | Use 'mintContract' to create the currency specified by a 'SimpleMPS'
 mintCurrency ::
   Promise (Maybe (Last OneShotCurrency)) CurrencySchema CurrencyError OneShotCurrency
-mintCurrency = endpoint @"Create native token" $ \SimpleMPS {tokenName, amount} -> do
+mintCurrency = endpoint @"create-osc" $ \SimpleMPS {tokenName, amount} -> do
   ownPK <- ownPubKeyHash
-  cur <- mintContract ownPK [(tokenName, amount)]
+  cur <- mintContractViaPkh ownPK [(tokenName, amount)]
   tell (Just (Last cur))
   pure cur

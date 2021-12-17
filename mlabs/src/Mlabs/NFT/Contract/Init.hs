@@ -26,7 +26,7 @@ import Plutus.Contracts.Currency (CurrencyError, mintContract)
 import Plutus.Contracts.Currency qualified as MC
 till it will be fixed, see `Mlabs.Plutus.Contracts.Currency.mintContract`
 for details -}
-import Mlabs.Plutus.Contracts.Currency (CurrencyError, mintContract)
+import Mlabs.Plutus.Contracts.Currency (CurrencyError, mintContractViaPkh)
 import Mlabs.Plutus.Contracts.Currency qualified as MC
 
 import Plutus.V1.Ledger.Value (TokenName (..), assetClass, assetClassValue)
@@ -125,7 +125,7 @@ createListHead InitParams {..} = do
       x <-
         mapError
           (pack . Hask.show @CurrencyError)
-          (mintContract self [(nftTokenName, 2)])
+          (mintContractViaPkh self [(nftTokenName, 2)])
       return $ assetClass (MC.currencySymbol x) nftTokenName
 
     nftHeadInit :: NftAppInstance -> DatumNft

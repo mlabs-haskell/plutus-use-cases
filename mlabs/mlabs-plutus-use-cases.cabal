@@ -138,7 +138,7 @@ library
     -Wredundant-constraints
     -Wmissing-export-lists
     -Wmissing-deriving-strategies
-    -Werror
+    -- -Werror
 
   hs-source-dirs:
     src/
@@ -285,6 +285,15 @@ executable nft-marketplace
   import:  common-ghc-options  
 
   main-is: nft-marketplace/Main.hs
+  build-depends: mlabs-plutus-use-cases
+
+executable nft-marketplace-dec-demo
+  import:  common-imports
+  import:  common-language
+  import:  common-configs
+  import:  common-ghc-options  
+
+  main-is: nft-marketplace-dec-demo/Main.hs
   build-depends: mlabs-plutus-use-cases
 
 executable nft-marketplace-local-cluster
