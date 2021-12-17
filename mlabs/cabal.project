@@ -3,4 +3,6 @@
 -- Keep this input-output-hk/plutus pinned with the one from plutus.
 index-state: 2021-10-20T00:00:00Z
 
-packages: ./.
+packages: 
+  ./. 
+  ./mlabs-pab

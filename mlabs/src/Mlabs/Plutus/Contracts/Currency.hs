@@ -44,6 +44,9 @@ import Schema (ToSchema)
 import Prelude (Semigroup (..))
 import Prelude qualified as Haskell
 
+
+import MLabsPAB.Types (PABConfig)
+
 {- HLINT ignore "Use uncurry" -}
 
 -- | A currency that can be created exactly once

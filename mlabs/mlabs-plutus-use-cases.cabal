@@ -71,6 +71,8 @@ common common-imports
     , network-uri
     , servant
 
+    , mlabs-pab
+
 common common-language
     default-extensions:
       BangPatterns
