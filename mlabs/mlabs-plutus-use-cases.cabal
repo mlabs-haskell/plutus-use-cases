@@ -220,6 +220,7 @@ library
 
     -- TODO move to private sub-lib?
     Mlabs.Plutus.Contracts.Currency
+    Mlabs.Plutus.Contracts.CurrencyMP
     Mlabs.NFTBuySetPrice.Api
     Mlabs.NFTBuySetPrice.Contract
     Mlabs.NFTBuySetPrice.Contract.Buy

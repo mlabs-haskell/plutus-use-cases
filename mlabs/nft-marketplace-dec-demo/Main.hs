@@ -11,14 +11,14 @@ import GHC.Generics (Generic)
 import MLabsPAB qualified
 import MLabsPAB.Types (
   CLILocation (Local),
-  LogLevel(Debug),
+  LogLevel(Debug, Info),
   HasDefinitions (..),
   PABConfig (..),
   SomeBuiltin (..),
   endpointsToSchemas,
   
  )
-import Mlabs.Plutus.Contracts.Currency qualified as Contract.Currency
+import Mlabs.Plutus.Contracts.CurrencyMP qualified as Contract.Currency
 
 import Prelude
 
@@ -37,7 +37,7 @@ data NftDemoContracts
   deriving anyclass (FromJSON, ToJSON)
 
 instance HasDefinitions NftDemoContracts where
-  getDefinitions = []
+  getDefinitions = [GenerateUniqueToken]
 
   getSchema = \case
     GenerateUniqueToken -> endpointsToSchemas @Contract.Currency.CurrencySchema
@@ -51,16 +51,17 @@ main :: IO ()
 main = do
   let paramsFile =  "./nft-marketplace-dec-demo/pparams.json"
   protocolParams :: Maybe ProtocolParameters <- JSON.decode <$> LazyByteString.readFile paramsFile
-  putStrLn $ show protocolParams
   let pabConf = PABConfig
         { pcCliLocation = Local
         , pcNetwork = Testnet (NetworkMagic 1097911063)
         , pcProtocolParams = protocolParams
-        , pcScriptFileDir  = "./nft-marketplace-dec-demo/scripts_and_data"
-        , pcSigningKeyFileDir = "./nft-marketplace-dec-demo/signing_keys"
-        , pcTxFileDir = "./nft-marketplace-dec-demo/transactions"
+        , pcScriptFileDir  = "/home/mike/dev/mlabs/plutus-use-cases/mlabs/nft-marketplace-dec-demo/scripts_and_data"
+        , pcSigningKeyFileDir = "/home/mike/dev/mlabs/plutus-use-cases/mlabs/nft-marketplace-dec-demo/signing_keys"
+        , pcTxFileDir = "/home/mike/dev/mlabs/plutus-use-cases/mlabs/nft-marketplace-dec-demo/transactions"
         , pcProtocolParamsFile = T.pack paramsFile
         , pcDryRun = False
         , pcLogLevel = Debug
+        , pcOwnPubKeyHash= "bcd6bceeb0d22a7ca6ba1cd00669f7eb60ca8938d853666d30d56a56"
         }
+  putStrLn "Starting ML-PAB"
   MLabsPAB.runPAB @NftDemoContracts pabConf 
