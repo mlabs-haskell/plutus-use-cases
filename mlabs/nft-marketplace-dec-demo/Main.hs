@@ -8,6 +8,9 @@ import Data.ByteString.Lazy qualified as LazyByteString
 import Data.Proxy (Proxy (Proxy))
 import Data.Default (def)
 import GHC.Generics (Generic)
+
+import Plutus.Contract (EmptySchema)
+
 import MLabsPAB qualified
 import MLabsPAB.Types (
   CLILocation (Local),
@@ -18,18 +21,24 @@ import MLabsPAB.Types (
   endpointsToSchemas,
   
  )
+import Mlabs.NFT.Types (UniqueToken, InitParams)
 import Mlabs.Plutus.Contracts.CurrencyMP qualified as Contract.Currency
+import Mlabs.NFT.Contract.InitMP qualified as Contract.Init
 
 import Prelude
 
 
 import Cardano.Api.Shelley (ProtocolParameters)
 
-data DummyParams
+data MintHeadParams = MintHeadParams
+  { mhp'uniqueToken :: UniqueToken
+  , mhp'initParams :: InitParams
+  } deriving stock (Show, Generic)
+    deriving anyclass (FromJSON, ToJSON)
 
 data NftDemoContracts
   = GenerateUniqueToken
-  -- | MintListHead -- TODO
+  | MintListHead MintHeadParams
   -- | MintNft Content -- TODO
   -- | BuyNFT -- TODO
   -- | SetNftPice -- TODO
@@ -41,10 +50,13 @@ instance HasDefinitions NftDemoContracts where
 
   getSchema = \case
     GenerateUniqueToken -> endpointsToSchemas @Contract.Currency.CurrencySchema
+    MintListHead _ -> endpointsToSchemas @EmptySchema
 
   getContract = \case
-    GenerateUniqueToken -> SomeBuiltin Contract.Currency.mintCurrency
-
+    GenerateUniqueToken 
+      -> SomeBuiltin $ Contract.Currency.mintCurrency Contract.Init.uniqueTokenName
+    MintListHead (MintHeadParams ut initPs) 
+      -> SomeBuiltin $ Contract.Init.initApp ut initPs
 
 
 main :: IO ()
@@ -55,9 +67,9 @@ main = do
         { pcCliLocation = Local
         , pcNetwork = Testnet (NetworkMagic 1097911063)
         , pcProtocolParams = protocolParams
-        , pcScriptFileDir  = "/home/mike/dev/mlabs/plutus-use-cases/mlabs/nft-marketplace-dec-demo/scripts_and_data"
-        , pcSigningKeyFileDir = "/home/mike/dev/mlabs/plutus-use-cases/mlabs/nft-marketplace-dec-demo/signing_keys"
-        , pcTxFileDir = "/home/mike/dev/mlabs/plutus-use-cases/mlabs/nft-marketplace-dec-demo/transactions"
+        , pcScriptFileDir  = "nft-marketplace-dec-demo/scripts_and_data"
+        , pcSigningKeyFileDir = "nft-marketplace-dec-demo/signing_keys"
+        , pcTxFileDir = "nft-marketplace-dec-demo/transactions"
         , pcProtocolParamsFile = T.pack paramsFile
         , pcDryRun = False
         , pcLogLevel = Debug

@@ -187,6 +187,7 @@ library
     Mlabs.NFT.Contract.Gov.Fees
     Mlabs.NFT.Contract.Gov.Query
     Mlabs.NFT.Contract.Init
+    Mlabs.NFT.Contract.InitMP
     Mlabs.NFT.Contract.Mint
     Mlabs.NFT.Contract.OpenAuction
     Mlabs.NFT.Contract.Query

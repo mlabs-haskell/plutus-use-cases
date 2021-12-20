@@ -16,7 +16,6 @@ module Mlabs.Plutus.Contracts.CurrencyMP (
   currencySymbol,
 
   -- * Simple minting policy currency
-  SimpleMPS (..),
   mintCurrency,
 ) where
 
@@ -202,29 +201,17 @@ mintContractViaPkh pkh amounts = mapError (review _CurrencyError) $ do
                 CurContractError (OtherError "No utxo found for one shot minting")
         (orefAndOut:_) -> pure orefAndOut
 
-{- | Minting policy for a currency that has a fixed amount of tokens issued
-   in one transaction
--}
-data SimpleMPS = SimpleMPS
-  { tokenName :: TokenName
-  , amount :: Integer
-  }
-  deriving stock (Haskell.Eq, Haskell.Show, Generic)
-  deriving anyclass (FromJSON, ToJSON, ToSchema)
 
-type CurrencySchema =
-  Endpoint "create-osc" SimpleMPS
+type CurrencySchema = EmptySchema
 
 -- | Use 'mintContract' to create the currency specified by a 'SimpleMPS'
 mintCurrency ::
+  BuiltinByteString ->
   Contract (Maybe (Last OneShotCurrency)) CurrencySchema CurrencyError UniqueToken
-mintCurrency = do
+mintCurrency uniqueTokenName = do
   Contract.logInfo @Haskell.String ("Check running mintCurrency")
   ownPK <- ownPubKeyHash
-  let -- | Token Name with which Unique Tokens are parametrised.
-      uniqueTokenName :: BuiltinByteString
-      uniqueTokenName = "UniqueAppToken"
-      nftTokenName = Value.TokenName uniqueTokenName --PlutusTx.Prelude.emptyByteString
+  let nftTokenName = Value.TokenName uniqueTokenName
   cur <- mintContractViaPkh ownPK [(nftTokenName, 2)]
   let ut = Value.assetClass (currencySymbol cur) nftTokenName
       utJson = Haskell.show $ encode ut
