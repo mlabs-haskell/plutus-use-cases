@@ -8,8 +8,9 @@ import Data.ByteString.Lazy qualified as LazyByteString
 import Data.Proxy (Proxy (Proxy))
 import Data.Default (def)
 import GHC.Generics (Generic)
+import Data.ByteString.Lazy.Char8 qualified as LBS
 
-import Plutus.Contract (EmptySchema)
+import Plutus.Contract (Contract, EmptySchema)
 
 import MLabsPAB qualified
 import MLabsPAB.Types (
@@ -21,11 +22,20 @@ import MLabsPAB.Types (
   endpointsToSchemas,
   
  )
-import Mlabs.NFT.Types (UniqueToken, InitParams)
+import Mlabs.NFT.Types (
+  UniqueToken, 
+  InitParams, 
+  MintParams,
+  Content(..),
+  Title(..),
+  MintParams(..)
+  )
 import Mlabs.Plutus.Contracts.CurrencyMP qualified as Contract.Currency
 import Mlabs.NFT.Contract.InitMP qualified as Contract.Init
+import Mlabs.NFT.Contract.MintMP qualified as Contract.Mint
 
 import Prelude
+import PlutusTx.Prelude qualified as PP
 
 
 import Cardano.Api.Shelley (ProtocolParameters)
@@ -36,10 +46,16 @@ data MintHeadParams = MintHeadParams
   } deriving stock (Show, Generic)
     deriving anyclass (FromJSON, ToJSON)
 
+data MintNftParams = MintNftParams
+  { mnp'uniqueToken :: UniqueToken,
+    mnp'mintParams :: MintParams
+  } deriving stock (Show, Generic)
+    deriving anyclass (FromJSON, ToJSON)
+
 data NftDemoContracts
   = GenerateUniqueToken
   | MintListHead MintHeadParams
-  -- | MintNft Content -- TODO
+  | MintNft MintNftParams
   -- | BuyNFT -- TODO
   -- | SetNftPice -- TODO
   deriving stock (Show, Generic)
@@ -51,17 +67,22 @@ instance HasDefinitions NftDemoContracts where
   getSchema = \case
     GenerateUniqueToken -> endpointsToSchemas @Contract.Currency.CurrencySchema
     MintListHead _ -> endpointsToSchemas @EmptySchema
+    MintNft _ -> endpointsToSchemas @EmptySchema
 
   getContract = \case
     GenerateUniqueToken 
       -> SomeBuiltin $ Contract.Currency.mintCurrency Contract.Init.uniqueTokenName
     MintListHead (MintHeadParams ut initPs) 
       -> SomeBuiltin $ Contract.Init.initApp ut initPs
+    MintNft (MintNftParams ut mintPs) 
+      -> SomeBuiltin $ Contract.Mint.mint ut mintPs
+
 
 
 main :: IO ()
 main = do
   let paramsFile =  "./nft-marketplace-dec-demo/pparams.json"
+      someMintParams = MintParams (Content "Some Content") (Title "Some Title") (1 PP.%2) Nothing
   protocolParams :: Maybe ProtocolParameters <- JSON.decode <$> LazyByteString.readFile paramsFile
   let pabConf = PABConfig
         { pcCliLocation = Local
@@ -75,5 +96,5 @@ main = do
         , pcLogLevel = Debug
         , pcOwnPubKeyHash= "bcd6bceeb0d22a7ca6ba1cd00669f7eb60ca8938d853666d30d56a56"
         }
-  putStrLn "Starting ML-PAB"
+  LBS.putStrLn $ JSON.encode someMintParams
   MLabsPAB.runPAB @NftDemoContracts pabConf 

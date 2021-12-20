@@ -189,6 +189,7 @@ library
     Mlabs.NFT.Contract.Init
     Mlabs.NFT.Contract.InitMP
     Mlabs.NFT.Contract.Mint
+    Mlabs.NFT.Contract.MintMP
     Mlabs.NFT.Contract.OpenAuction
     Mlabs.NFT.Contract.Query
     Mlabs.NFT.Contract.SetPrice
