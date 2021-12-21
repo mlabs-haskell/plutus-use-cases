@@ -26,16 +26,21 @@ import Mlabs.NFT.Types (
   UniqueToken, 
   InitParams, 
   MintParams,
-  Content(..),
-  Title(..),
-  MintParams(..)
+  Content(Content),
+  Title(Title),
+  MintParams(MintParams, mp'content),
+  NftId(NftId),
+  SetPriceParams(SetPriceParams)
   )
 import Mlabs.Plutus.Contracts.CurrencyMP qualified as Contract.Currency
 import Mlabs.NFT.Contract.InitMP qualified as Contract.Init
 import Mlabs.NFT.Contract.MintMP qualified as Contract.Mint
+import Mlabs.NFT.Contract.Aux (hashData)
 
 import Prelude
 import PlutusTx.Prelude qualified as PP
+
+import PlutusTx.Builtins.Class (stringToBuiltinByteString)
 
 
 import Cardano.Api.Shelley (ProtocolParameters)
@@ -46,9 +51,27 @@ data MintHeadParams = MintHeadParams
   } deriving stock (Show, Generic)
     deriving anyclass (FromJSON, ToJSON)
 
+data MintData = MintData
+  { mdContent :: String
+  , mdTitle :: String
+  , mdShare :: PP.Rational
+  , mdPrice :: Maybe Integer
+  } deriving stock (Show, Generic)
+    deriving anyclass (FromJSON, ToJSON)
+
+toMintParams :: MintData -> MintParams
+toMintParams (MintData content title share price) = 
+  MintParams 
+    (Content $ stringToBuiltinByteString  content) 
+    (Title $ stringToBuiltinByteString  title) 
+    share 
+    price
+
+
 data MintNftParams = MintNftParams
   { mnp'uniqueToken :: UniqueToken,
-    mnp'mintParams :: MintParams
+    mnp'mintParams :: MintData 
+    -- ^ `MintParams` not used straight to make request more readable for demo
   } deriving stock (Show, Generic)
     deriving anyclass (FromJSON, ToJSON)
 
@@ -74,8 +97,8 @@ instance HasDefinitions NftDemoContracts where
       -> SomeBuiltin $ Contract.Currency.mintCurrency Contract.Init.uniqueTokenName
     MintListHead (MintHeadParams ut initPs) 
       -> SomeBuiltin $ Contract.Init.initApp ut initPs
-    MintNft (MintNftParams ut mintPs) 
-      -> SomeBuiltin $ Contract.Mint.mint ut mintPs
+    MintNft (MintNftParams ut mintData) 
+      -> SomeBuiltin $ Contract.Mint.mint ut (toMintParams mintData)
 
 
 
@@ -96,5 +119,12 @@ main = do
         , pcLogLevel = Debug
         , pcOwnPubKeyHash= "bcd6bceeb0d22a7ca6ba1cd00669f7eb60ca8938d853666d30d56a56"
         }
-  LBS.putStrLn $ JSON.encode someMintParams
-  MLabsPAB.runPAB @NftDemoContracts pabConf 
+  logExampleParams someMintParams
+  MLabsPAB.runPAB @NftDemoContracts pabConf
+  where
+    logExampleParams mps = do
+      let nftId = NftId . hashData . mp'content $ mps
+          setPricePs = SetPriceParams nftId (Just 33)
+      LBS.putStrLn ("Mint parameters: " <> JSON.encode mps)
+      LBS.putStrLn ("Content hash: " <> JSON.encode nftId)
+      LBS.putStrLn ("Set price: " <> JSON.encode setPricePs)
