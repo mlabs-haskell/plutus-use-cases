@@ -194,6 +194,7 @@ library
     Mlabs.NFT.Contract.OpenAuction
     Mlabs.NFT.Contract.Query
     Mlabs.NFT.Contract.SetPrice
+    Mlabs.NFT.Contract.SetPriceMP
     Mlabs.NFT.Governance
     Mlabs.NFT.Governance.Types
     Mlabs.NFT.Governance.Validation
