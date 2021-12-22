@@ -75,17 +75,17 @@ initApp' ut params = do
  HEAD of the list, and coupling the one time token with the Head of the list.
 -}
 createListHead :: UniqueToken -> InitParams -> GenericContract NftAppInstance
-createListHead uniqueToken InitParams {..} = do
+createListHead uToken InitParams {..} = do
   Contract.logInfo @Hask.String "Generating unique token"
   {- If we can achieve `awaitTxConfirmed` with MlabsPAB,
      we can uncomment line below and use that contract instead of passing
      `UniqueToken` as parameter. 
   -}
   -- uniqueToken <- generateUniqueToken
-  let govAddr = govScrAddress uniqueToken
-      scrAddr = txScrAddress uniqueToken
+  let govAddr = govScrAddress uToken
+      scrAddr = txScrAddress uToken
   Contract.logInfo @Hask.String "Minting head"
-  mintListHead $ NftAppInstance scrAddr uniqueToken govAddr ip'admins
+  mintListHead $ NftAppInstance scrAddr uToken govAddr ip'admins
   where
     -- Mint the Linked List Head and its associated token.
     mintListHead :: NftAppInstance -> GenericContract NftAppInstance
