@@ -30,12 +30,14 @@ import Mlabs.NFT.Types (
   Title(Title),
   MintParams(MintParams, mp'content),
   NftId(NftId),
-  SetPriceParams(SetPriceParams)
+  SetPriceParams(SetPriceParams),
+  BuyRequestUser(BuyRequestUser)
   )
 import Mlabs.Plutus.Contracts.CurrencyMP qualified as Contract.Currency
 import Mlabs.NFT.Contract.InitMP qualified as Contract.Init
 import Mlabs.NFT.Contract.MintMP qualified as Contract.Mint
 import Mlabs.NFT.Contract.SetPriceMP qualified as Contract.SetPrice
+import Mlabs.NFT.Contract.BuyMP qualified as Contract.Buy
 import Mlabs.NFT.Contract.Aux (hashData)
 
 import Prelude
@@ -108,13 +110,35 @@ data SetPriceReq = SetPriceReq
   } deriving stock (Show, Generic)
     deriving anyclass (FromJSON, ToJSON)
 
+-- BUY NFT
+
+data BuyNftData = BuyNftData
+  { bnd'content :: String
+  , bnd'price :: Integer
+  , bnd'newPrice :: Maybe Integer
+  } deriving stock (Show, Generic)
+    deriving anyclass (FromJSON, ToJSON)
+
+data BuyNftReq = BuyNftReq
+  { bnr'uniqueToken :: UniqueToken
+  , bnr'data :: BuyNftData
+  } deriving stock (Show, Generic)
+    deriving anyclass (FromJSON, ToJSON)
+
+toBuyParams :: BuyNftData -> BuyRequestUser
+toBuyParams (BuyNftData content price newPrice) = 
+  BuyRequestUser
+    (nidFromContent $ toContent content)
+    price
+    newPrice
+
 -- PAB CONTRACTS
 data NftDemoContracts
   = GenerateUniqueToken
   | MintListHead MintHeadReq
   | MintNft MintNftReq
   | SetNftPice SetPriceReq
-  -- | BuyNFT -- TODO
+  | BuyNft BuyNftReq
   deriving stock (Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
 
@@ -126,6 +150,7 @@ instance HasDefinitions NftDemoContracts where
     MintListHead _ -> endpointsToSchemas @EmptySchema
     MintNft _ -> endpointsToSchemas @EmptySchema
     SetNftPice _ -> endpointsToSchemas @EmptySchema
+    BuyNft _ -> endpointsToSchemas @EmptySchema
 
   getContract = \case
     GenerateUniqueToken 
@@ -136,6 +161,8 @@ instance HasDefinitions NftDemoContracts where
       -> SomeBuiltin $ Contract.Mint.mint ut (toMintParams mintData)
     SetNftPice (SetPriceReq ut setPriceData)
       -> SomeBuiltin $ Contract.SetPrice.setPrice ut (toSetPriceParams setPriceData)
+    BuyNft (BuyNftReq ut buyData)
+      -> SomeBuiltin $ Contract.Buy.buy ut (toBuyParams buyData)
 
 
 

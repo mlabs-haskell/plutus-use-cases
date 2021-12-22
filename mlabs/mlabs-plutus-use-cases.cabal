@@ -181,6 +181,7 @@ library
     Mlabs.NFT.Contract
     Mlabs.NFT.Contract.Aux
     Mlabs.NFT.Contract.BidAuction
+    Mlabs.NFT.Contract.BuyMP
     Mlabs.NFT.Contract.Buy
     Mlabs.NFT.Contract.CloseAuction
     Mlabs.NFT.Contract.Gov
