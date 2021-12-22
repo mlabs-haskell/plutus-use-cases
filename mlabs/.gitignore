@@ -15,6 +15,5 @@ pab-core.db
 .envrc
 
 nft-marketplace-dec-demo/scripts_and_data
-nft-marketplace-dec-demo/signing_keys
 nft-marketplace-dec-demo/transactions
 nft-marketplace-dec-demo/pparams.json

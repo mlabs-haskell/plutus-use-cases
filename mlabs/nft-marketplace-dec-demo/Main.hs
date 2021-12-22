@@ -154,7 +154,8 @@ main = do
         , pcProtocolParamsFile = T.pack paramsFile
         , pcDryRun = False
         , pcLogLevel = Debug
-        , pcOwnPubKeyHash= "bcd6bceeb0d22a7ca6ba1cd00669f7eb60ca8938d853666d30d56a56"
+        , pcOwnPubKeyHash= "bcd6bceeb0d22a7ca6ba1cd00669f7eb60ca8938d853666d30d56a56" -- Used as admin
+        -- , pcOwnPubKeyHash= "25bd24abedaf5c68d898484d757f715c7b4413ad91a80d3cb0b3660d" -- Used as user
         }
   logExampleParams someMintParams
   MLabsPAB.runPAB @NftDemoContracts pabConf
