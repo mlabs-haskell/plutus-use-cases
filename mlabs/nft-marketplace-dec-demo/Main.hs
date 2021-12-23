@@ -38,11 +38,10 @@ import Mlabs.NFT.Contract.InitMP qualified as Contract.Init
 import Mlabs.NFT.Contract.MintMP qualified as Contract.Mint
 import Mlabs.NFT.Contract.SetPriceMP qualified as Contract.SetPrice
 import Mlabs.NFT.Contract.BuyMP qualified as Contract.Buy
-import Mlabs.NFT.Contract.Aux (hashData)
+import Mlabs.NFT.Contract.Aux (hashContent)
 
 import Prelude
 import PlutusTx.Prelude qualified as PP
-
 import PlutusTx.Builtins.Class (stringToBuiltinByteString)
 
 
@@ -96,7 +95,7 @@ data SetPriceData = SetPriceData
     deriving anyclass (FromJSON, ToJSON)
 
 nidFromContent :: Content -> NftId
-nidFromContent = NftId . hashData
+nidFromContent = NftId . hashContent
 
 toSetPriceParams :: SetPriceData -> SetPriceParams
 toSetPriceParams (SetPriceData content price) =
@@ -169,7 +168,6 @@ instance HasDefinitions NftDemoContracts where
 main :: IO ()
 main = do
   let paramsFile =  "./nft-marketplace-dec-demo/pparams.json"
-      someMintParams = MintParams (Content "Some Content") (Title "Some Title") (1 PP.%2) Nothing
   protocolParams :: Maybe ProtocolParameters <- JSON.decode <$> LazyByteString.readFile paramsFile
   let pabConf = PABConfig
         { pcCliLocation = Local
@@ -184,12 +182,4 @@ main = do
         , pcOwnPubKeyHash= "bcd6bceeb0d22a7ca6ba1cd00669f7eb60ca8938d853666d30d56a56" -- Used as admin
         -- , pcOwnPubKeyHash= "25bd24abedaf5c68d898484d757f715c7b4413ad91a80d3cb0b3660d" -- Used as user
         }
-  logExampleParams someMintParams
   MLabsPAB.runPAB @NftDemoContracts pabConf
-  where
-    logExampleParams mps = do
-      let nftId = nidFromContent . mp'content $ mps
-          setPricePs = SetPriceData "Content" (Just (-33))
-      LBS.putStrLn ("Mint parameters: " <> JSON.encode mps)
-      LBS.putStrLn ("Content hash: " <> JSON.encode nftId)
-      LBS.putStrLn ("Set price: " <> JSON.encode setPricePs)

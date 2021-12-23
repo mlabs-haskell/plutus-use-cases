@@ -13,7 +13,7 @@ import Plutus.Contract (Contract)
 import Mlabs.NFT.Types (NftId(..), SetPriceParams(..), UniqueToken, UserWriter)
 import Mlabs.NFTBuySetPrice.Types
 import Mlabs.NFT.Contract.SetPrice qualified as NFT.SetPrice
-import Mlabs.NFT.Contract.Aux (hashData)
+import Mlabs.NFT.Contract.Aux (hashContent)
 
 {- |
   Attempts to set price of NFT, checks if price is being set by the owner
@@ -21,6 +21,6 @@ import Mlabs.NFT.Contract.Aux (hashData)
 -}
 setPrice :: UniqueToken -> BSPSetPriceParams -> Contract UserWriter s Text ()
 setPrice uT BSPSetPriceParams {..} = 
-  let nftId = NftId $ hashData bssp'nftContent
+  let nftId = NftId $ hashContent bssp'nftContent
       setPriceParams = SetPriceParams nftId bssp'price
   in NFT.SetPrice.setPrice uT setPriceParams

@@ -15,7 +15,7 @@ import Control.Monad ()
 import Data.Monoid (Last (..), mconcat)
 import Data.Text (Text)
 import GHC.Base (join)
-import Mlabs.NFT.Contract.Aux (getDatumsTxsOrdered, getNftDatum, getsNftDatum, hashData)
+import Mlabs.NFT.Contract.Aux (getDatumsTxsOrdered, getNftDatum, getsNftDatum, hashContent)
 import Mlabs.NFT.Types (
   Content,
   DatumNft (..),
@@ -93,7 +93,7 @@ queryListNftsLog infos = mconcat ["Available NFTs: ", show infos]
 -- | Given an application instance and a `Content` returns the status of the NFT
 queryContent :: UniqueToken -> Content -> QueryContract QueryResponse
 queryContent uT content = do
-  let nftId = NftId . hashData $ content
+  let nftId = NftId . hashContent $ content
   datum <- getNftDatum nftId uT
   status <- wrap $ getStatus datum
   Contract.tell (Last . Just . Right $ status)

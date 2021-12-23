@@ -55,7 +55,7 @@ import Prelude ((<$>), (<*>), (==))
 import Prelude qualified as Hask
 
 import Mlabs.NFT.Api (NFTAppSchema, adminEndpoints, endpoints)
-import Mlabs.NFT.Contract (hashData)
+import Mlabs.NFT.Contract (hashContent)
 import Mlabs.NFT.Types (
   AuctionBidParams (..),
   AuctionCloseParams (..),
@@ -89,7 +89,7 @@ newtype MockContent = MockContent {getMockContent :: Content}
   deriving (Hask.Eq)
 
 instance Hask.Show MockContent where
-  show x = Hask.show (hashData . getMockContent $ x, getMockContent x)
+  show x = Hask.show (hashContent . getMockContent $ x, getMockContent x)
 
 -- We cannot use InformationNft because we need access to `Wallet`
 -- `PubKeyHash` is not enough for simulation
@@ -209,7 +209,7 @@ instance ContractModel NftModel where
   precondition s ActionMint {..} =
     (s ^. contractState . mStarted)
       && (s ^. contractState . mMintedCount <= 5)
-      && not (Map.member (NftId . hashData . getMockContent $ aContent) (s ^. contractState . mMarket))
+      && not (Map.member (NftId . hashContent . getMockContent $ aContent) (s ^. contractState . mMarket))
   precondition s ActionBuy {..} =
     (s ^. contractState . mStarted)
       && (s ^. contractState . mMintedCount > 0)
@@ -246,7 +246,7 @@ instance ContractModel NftModel where
     s <- view contractState <$> getModelState
     let nft =
           MockNft
-            { _nftId = NftId . hashData . getMockContent $ aContent
+            { _nftId = NftId . hashContent . getMockContent $ aContent
             , _nftPrice = aNewPrice
             , _nftOwner = aPerformer
             , _nftAuthor = aPerformer

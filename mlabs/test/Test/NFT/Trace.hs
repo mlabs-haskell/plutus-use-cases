@@ -32,7 +32,7 @@ import Plutus.Trace.Emulator qualified as Trace
 import Wallet.Emulator qualified as Emulator
 
 import Mlabs.NFT.Api
-import Mlabs.NFT.Contract.Aux (hashData)
+import Mlabs.NFT.Contract.Aux (hashContent)
 import Mlabs.NFT.Types
 import Mlabs.Utils.Wallet (walletFromNumber)
 
@@ -62,7 +62,7 @@ mintTrace aSymb wallet = do
   h1 :: AppTraceHandle <- activateContractWallet wallet $ endpoints aSymb
   callEndpoint @"mint" h1 artwork
   void $ Trace.waitNSlots 1
-  return . NftId . hashData . mp'content $ artwork
+  return . NftId . hashContent . mp'content $ artwork
   where
     artwork =
       MintParams

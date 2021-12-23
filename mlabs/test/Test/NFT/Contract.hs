@@ -19,7 +19,7 @@ import Prelude (mconcat)
 import Prelude qualified as Hask
 
 import Mlabs.Emulator.Scene (checkScene, owns)
-import Mlabs.NFT.Contract.Aux (hashData)
+import Mlabs.NFT.Contract.Aux (hashContent)
 import Mlabs.NFT.Contract.Mint (mintParamsToInfo)
 import Mlabs.NFT.Contract.Query (queryContentLog, queryCurrentOwnerLog, queryCurrentPriceLog, queryListNftsLog)
 import Mlabs.NFT.Types (
@@ -240,7 +240,7 @@ testAuctionWithPrice = check "Starting auction overrides price" (containsLog w1 
       userStartAuction w1 $ AuctionOpenParams nft2 (slotToBeginPOSIXTime def 20) 500_000
       userQueryPrice w1 nft2
 
-    nftId = NftId . hashData . mp'content $ artwork2
+    nftId = NftId . hashContent . mp'content $ artwork2
     price = QueryCurrentPrice Nothing
     msg = queryCurrentPriceLog nftId price
 
@@ -254,7 +254,7 @@ testSetPriceDuringAuction = check "Cannot set price during auction" (containsLog
       userQueryPrice w1 nft2
       userSetPrice w1 $ SetPriceParams nft2 (Just 1_000_000)
 
-    nftId = NftId . hashData . mp'content $ artwork2
+    nftId = NftId . hashContent . mp'content $ artwork2
     price = QueryCurrentPrice Nothing
     msg = queryCurrentPriceLog nftId price
 
@@ -289,7 +289,7 @@ testQueryPrice = check "Query price" (containsLog w1 msg) wA script
       nft2 <- userMint w1 artwork2
       userQueryPrice w1 nft2
 
-    nftId = NftId . hashData . mp'content $ artwork2
+    nftId = NftId . hashContent . mp'content $ artwork2
     price = QueryCurrentPrice . mp'price $ artwork2
     msg = queryCurrentPriceLog nftId price
 
@@ -300,7 +300,7 @@ testQueryOwner = check "Query owner" (containsLog w1 msg) wA script
       nft2 <- userMint w1 artwork2
       userQueryOwner w1 nft2
 
-    nftId = NftId . hashData . mp'content $ artwork2
+    nftId = NftId . hashContent . mp'content $ artwork2
     owner = QueryCurrentOwner . Just . toUserId $ w1
     msg = queryCurrentOwnerLog nftId owner
 

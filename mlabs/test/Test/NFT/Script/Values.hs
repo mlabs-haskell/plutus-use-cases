@@ -60,7 +60,7 @@ testTxId = fromJust $ Aeson.decode "{\"getTxId\" : \"61626364\"}"
 testTokenName :: TokenName
 testTokenName = TokenName hData
   where
-    hData = NFT.hashData $ Content "A painting."
+    hData = NFT.hashContent $ Content "A painting."
 
 testNftId :: NftId
 testNftId = NftId . unTokenName $ testTokenName

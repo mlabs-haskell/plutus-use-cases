@@ -13,7 +13,7 @@ import Plutus.Contract (Contract)
 import Mlabs.NFT.Types (NftId(..), BuyRequestUser(..), UniqueToken, UserWriter)
 import Mlabs.NFTBuySetPrice.Types
 import Mlabs.NFT.Contract.Buy qualified as NFT.Buy
-import Mlabs.NFT.Contract.Aux (hashData)
+import Mlabs.NFT.Contract.Aux (hashContent)
 
 {- | BUY.
  Attempts to buy a new NFT by changing the owner, pays the current owner and
@@ -21,6 +21,6 @@ import Mlabs.NFT.Contract.Aux (hashData)
 -}
 buy :: forall s. UniqueToken -> BSPBuyRequestUser -> Contract UserWriter s Text ()
 buy uT BSPBuyRequestUser {..} = 
-  let nftId = NftId $ hashData bsur'nftContent
+  let nftId = NftId $ hashContent bsur'nftContent
       buyParams = BuyRequestUser nftId bsur'price bsur'newPrice
   in NFT.Buy.buy uT buyParams

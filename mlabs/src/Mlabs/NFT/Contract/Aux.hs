@@ -16,6 +16,7 @@ module Mlabs.NFT.Contract.Aux (
   getUId,
   getUserAddr,
   getUserUtxos,
+  hashContent,
   hashData,
   serialiseDatum,
   toDatum,
@@ -28,12 +29,16 @@ import Prelude qualified as Hask
 import Control.Lens (filtered, to, traversed, (^.), (^..), _Just, _Right)
 import Data.List qualified as L
 import Data.Map qualified as Map
-import Data.Text (Text, pack)
+import Data.Text (Text)
+import Data.Text qualified as T 
+import Data.Text.Encoding (encodeUtf8 )
+import Data.Aeson.Extras (encodeByteString)
 
 import Plutus.ChainIndex.Tx (ChainIndexTx)
 import Plutus.Contract (utxosTxOutTxAt)
 import Plutus.Contract qualified as Contract
 import PlutusTx qualified
+import PlutusTx.Builtins.Class (stringToBuiltinByteString)
 
 import Plutus.V1.Ledger.Value (assetClassValueOf, symbols)
 
@@ -178,11 +183,11 @@ findNft nftId ut = do
     [v] -> do
       Contract.logInfo @Hask.String $ Hask.show $ "findNft: NFT Found:" <> Hask.show v
       pure $ pointInfo v
-    [] -> Contract.throwError $ "findNft: DatumNft not found for " <> (pack . Hask.show) nftId
+    [] -> Contract.throwError $ "findNft: DatumNft not found for " <> (T.pack . Hask.show) nftId
     _ ->
       Contract.throwError $
         "Should not happen! More than one DatumNft found for "
-          <> (pack . Hask.show) nftId
+          <> (T.pack . Hask.show) nftId
   where
     findData =
       L.filter hasCorrectNft -- filter only datums with desired NftId
@@ -221,7 +226,7 @@ getNftHead ut = do
       Contract.throwError $
         mconcat
           [ "This should have not happened! More than one Head Datums. Datums are: "
-          , pack . Hask.show . fmap pi'data $ utxos
+          , T.pack . Hask.show . fmap pi'data $ utxos
           ]
   where
     isHead = \case
@@ -240,7 +245,7 @@ getGovHead addr = do
       Contract.throwError $
         mconcat
           [ "This should have not happened! More than one Head Datums. Datums are: "
-          , pack . Hask.show . fmap pi'data $ utxos
+          , T.pack . Hask.show . fmap pi'data $ utxos
           ]
   where
     f = isHead . gov'list . pi'data
@@ -296,8 +301,22 @@ getDatumsTxsOrderedFromAddr addr = do
       Just d -> pure $ PointInfo d oref out tx
 
 -- | A hashing function to minimise the data to be attached to the NTFid.
-hashData :: Content -> BuiltinByteString
-hashData (Content b) = sha2_256 b
+hashContent :: Content -> BuiltinByteString
+hashContent (Content b) = hashData b
+
+hashData :: BuiltinByteString -> BuiltinByteString
+hashData = makeItWorkTM . sha2_256
+
+
+-- | `sha2_256` creates byte string with `0x` prefix,
+--    this byte string can't be parsed by MlabsPAB during transaction building.
+--    New release of cardano node probably will fix that - MlabsPAB update required
+makeItWorkTM :: BuiltinByteString -> BuiltinByteString
+makeItWorkTM bs =
+  let textRepr = encodeByteString $ fromBuiltin bs
+      cut = T.take (T.length textRepr `Hask.div` 2) textRepr
+  in stringToBuiltinByteString $ T.unpack cut
+  
 
 getApplicationCurrencySymbol :: NftAppInstance -> GenericContract NftAppSymbol
 getApplicationCurrencySymbol appInstance = do
