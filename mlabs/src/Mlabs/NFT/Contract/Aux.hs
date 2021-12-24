@@ -308,9 +308,12 @@ hashData :: BuiltinByteString -> BuiltinByteString
 hashData = makeItWorkTM . sha2_256
 
 
--- | `sha2_256` creates byte string with `0x` prefix,
---    this byte string can't be parsed by MlabsPAB during transaction building.
---    New release of cardano node probably will fix that - MlabsPAB update required
+{- `sha2_256` creates byte string with `0x` prefix,
+  this byte string can't be parsed by MlabsPAB during transaction building.
+  Stripping out prefix leads to token name being deserialized by cardano-cli 
+  as 64 bytes string, which doesn't fit TokenName length limit and fails.
+  This workaround tries to overcome this problem.
+-}
 makeItWorkTM :: BuiltinByteString -> BuiltinByteString
 makeItWorkTM bs =
   let textRepr = encodeByteString $ fromBuiltin bs
