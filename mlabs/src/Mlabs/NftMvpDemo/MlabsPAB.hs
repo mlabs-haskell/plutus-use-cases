@@ -1,21 +1,20 @@
-module Main (main) where
+module Mlabs.NftMvpDemo.MlabsPAB (
+  runMlabsPab
+) where
 
 import Cardano.Api (NetworkId (Testnet), NetworkMagic (..))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Aeson qualified as JSON
 import Data.Text qualified as T
 import Data.ByteString.Lazy qualified as LazyByteString
-import Data.Proxy (Proxy (Proxy))
-import Data.Default (def)
 import GHC.Generics (Generic)
-import Data.ByteString.Lazy.Char8 qualified as LBS
 
-import Plutus.Contract (Contract, EmptySchema)
+import Plutus.Contract (EmptySchema)
 
 import MLabsPAB qualified
 import MLabsPAB.Types (
   CLILocation (Local),
-  LogLevel(Debug, Info),
+  LogLevel(Debug),
   HasDefinitions (..),
   PABConfig (..),
   SomeBuiltin (..),
@@ -28,16 +27,16 @@ import Mlabs.NFT.Types (
   MintParams,
   Content(Content),
   Title(Title),
-  MintParams(MintParams, mp'content),
+  MintParams(MintParams),
   NftId(NftId),
   SetPriceParams(SetPriceParams),
   BuyRequestUser(BuyRequestUser)
   )
 import Mlabs.Plutus.Contracts.CurrencyMP qualified as Contract.Currency
-import Mlabs.NFT.Contract.InitMP qualified as Contract.Init
-import Mlabs.NFT.Contract.MintMP qualified as Contract.Mint
-import Mlabs.NFT.Contract.SetPriceMP qualified as Contract.SetPrice
-import Mlabs.NFT.Contract.BuyMP qualified as Contract.Buy
+import Mlabs.NftMvpDemo.Contract.Init qualified as Contract.Init
+import Mlabs.NftMvpDemo.Contract.Mint qualified as Contract.Mint
+import Mlabs.NftMvpDemo.Contract.SetPrice qualified as Contract.SetPrice
+import Mlabs.NftMvpDemo.Contract.Buy qualified as Contract.Buy
 import Mlabs.NFT.Contract.Aux (hashContent)
 
 import Prelude
@@ -55,7 +54,6 @@ data MintHeadReq = MintHeadReq
     deriving anyclass (FromJSON, ToJSON)
 
 -- MINT NFT
-
 -- Data to substitute original contracts parameter, accepts `Content` as plain text
 data MintNftData = MintNftData
   { mnd'content :: String
@@ -86,7 +84,6 @@ toTitle :: String -> Title
 toTitle = Title . stringToBuiltinByteString
 
 -- SET NFT PRICE
-
 -- Data to substitute original contracts parameter, accepts `Content` as plain text
 data SetPriceData = SetPriceData
   { spd'content :: String
@@ -110,7 +107,6 @@ data SetPriceReq = SetPriceReq
     deriving anyclass (FromJSON, ToJSON)
 
 -- BUY NFT
-
 data BuyNftData = BuyNftData
   { bnd'content :: String
   , bnd'price :: Integer
@@ -164,18 +160,17 @@ instance HasDefinitions NftDemoContracts where
       -> SomeBuiltin $ Contract.Buy.buy ut (toBuyParams buyData)
 
 
-
-main :: IO ()
-main = do
-  let paramsFile =  "./nft-marketplace-dec-demo/pparams.json"
+runMlabsPab :: IO ()
+runMlabsPab = do
+  let paramsFile =  "./nft-marketplace-mvp/pparams.json"
   protocolParams :: Maybe ProtocolParameters <- JSON.decode <$> LazyByteString.readFile paramsFile
   let pabConf = PABConfig
         { pcCliLocation = Local
         , pcNetwork = Testnet (NetworkMagic 1097911063)
         , pcProtocolParams = protocolParams
-        , pcScriptFileDir  = "nft-marketplace-dec-demo/scripts_and_data"
-        , pcSigningKeyFileDir = "nft-marketplace-dec-demo/signing_keys"
-        , pcTxFileDir = "nft-marketplace-dec-demo/transactions"
+        , pcScriptFileDir  = "nft-marketplace-mvp/scripts_and_data"
+        , pcSigningKeyFileDir = "nft-marketplace-mvp/signing_keys"
+        , pcTxFileDir = "nft-marketplace-mvp/transactions"
         , pcProtocolParamsFile = T.pack paramsFile
         , pcDryRun = False
         , pcLogLevel = Debug

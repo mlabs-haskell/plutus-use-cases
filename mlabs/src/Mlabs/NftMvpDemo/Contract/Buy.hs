@@ -1,16 +1,15 @@
 {-# LANGUAGE UndecidableInstances #-}
 
-module Mlabs.NFT.Contract.BuyMP (
+module Mlabs.NftMvpDemo.Contract.Buy (
   buy,
 ) where
 
-import Prelude (mconcat)
+import Prelude (mconcat, (<>))
 import Prelude qualified as Hask
 
 import Control.Lens ((^.))
 import Control.Monad (void, when)
 import Data.Map qualified as Map
-import Data.Monoid (Last (..), (<>))
 import Data.Text (Text)
 
 import Plutus.Contract (Contract)

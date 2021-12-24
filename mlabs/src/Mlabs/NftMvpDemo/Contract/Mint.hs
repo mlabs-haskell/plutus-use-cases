@@ -1,6 +1,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 
-module Mlabs.NFT.Contract.MintMP (
+module Mlabs.NftMvpDemo.Contract.Mint (
   mint,
   getDatumsTxsOrdered,
   mintParamsToInfo,
@@ -12,7 +12,6 @@ import Prelude qualified as Hask
 
 import Control.Monad (void)
 import Data.Map qualified as Map
-import Data.Monoid (Last (..))
 import Data.Text (Text)
 import Text.Printf (printf)
 

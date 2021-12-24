@@ -1,4 +1,4 @@
-module Mlabs.NFT.Contract.InitMP (
+module Mlabs.NftMvpDemo.Contract.Init (
   createListHead,
   getAppSymbol,
   initApp,

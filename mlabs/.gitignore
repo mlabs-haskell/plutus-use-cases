@@ -14,6 +14,5 @@ pab-core.db
 .direnv/
 .envrc
 
-nft-marketplace-dec-demo/scripts_and_data
-nft-marketplace-dec-demo/transactions
-nft-marketplace-dec-demo/pparams.json
+nft-marketplace-mvp/scripts_and_data
+nft-marketplace-mvp/transactions

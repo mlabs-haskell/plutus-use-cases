@@ -1,6 +1,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 
-module Mlabs.NFT.Contract.SetPriceMP (
+module Mlabs.NftMvpDemo.Contract.SetPrice (
   setPrice,
 ) where
 
