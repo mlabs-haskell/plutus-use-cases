@@ -25,7 +25,7 @@ import Ledger (
  )
 
 import Ledger.Constraints qualified as Constraints
-import Ledger.Typed.Scripts (validatorScript)
+import Ledger.Typed.Scripts (Any, validatorScript)
 import Ledger.Value qualified as Value
 
 import Mlabs.NFT.Contract.Aux
@@ -77,7 +77,7 @@ openAuction uT (AuctionOpenParams nftId deadline minBid) = do
               pi'TOR
               (Redeemer . PlutusTx.toBuiltinData $ action)
           ]
-  void $ submitTxConstraintsWithUnbalanced @NftTrade lookups tx
+  void $ submitTxConstraintsWithUnbalanced @Any lookups tx
   Contract.tell . Last . Just . Left $ nftId
   void $ Contract.logInfo @Hask.String $ printf "Started auction for %s" $ Hask.show nftVal
   where

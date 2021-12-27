@@ -23,14 +23,38 @@ import Ledger (
   Redeemer (..),
   ciTxOutValue,
  )
-import Ledger.Typed.Scripts (validatorScript)
-
-import Mlabs.NFT.Contract.Aux
-import Mlabs.NFT.Contract.Gov.Fees
-import Mlabs.NFT.Contract.Gov.Query
-import Mlabs.NFT.Types
-import Mlabs.NFT.Validation
-import Mlabs.Utils
+import Ledger.Typed.Scripts (Any, validatorScript)
+import Plutus.V1.Ledger.Api (ToData (toBuiltinData))
+import Mlabs.NFT.Contract.Aux (
+  findNft,
+  fstUtxoAt,
+  getNftAppSymbol,
+  getUId,
+  getUserAddr,
+  getUserUtxos,
+ )
+import Mlabs.NFT.Contract.Gov.Fees (getFeesConstraints)
+import Mlabs.NFT.Contract.Gov.Query (queryCurrFeeRate)
+import Mlabs.NFT.Spooky (toSpooky)
+import Mlabs.NFT.Types (
+  BuyRequestUser (..),
+  DatumNft (NodeDatum),
+  InformationNft (info'owner', info'price'),
+  NftListNode (node'information'),
+  PointInfo (pi'CITxO, pi'TOR, pi'data),
+  UniqueToken,
+  UserAct (BuyAct, act'bid', act'newPrice', act'symbol'),
+  UserId (UserId),
+  UserWriter,
+  getUserId,
+  info'author,
+  info'owner,
+  info'price,
+  info'share,
+  node'information,
+ )
+import Mlabs.NFT.Validation (NftTrade, calculateShares, txPolicy)
+import Mlabs.Utils (submitTxConstraintsWithUnbalanced)
 
 {- | BUY.
  Attempts to buy a new NFT by changing the owner, pays the current owner and
@@ -61,13 +85,13 @@ buy uT BuyRequestUser {..} = do
   let feeValue = round $ fromInteger ur'price * feeRate
       (paidToOwner, paidToAuthor) =
         calculateShares (ur'price - feeValue) . info'share . node'information $ node
-      nftDatum = NodeDatum $ updateNftDatum ownPkh node
+      nftDatum = NodeDatum $ updateNftDatum (toSpooky ownPkh) node
       nftVal = pi'CITxO nftPi ^. ciTxOutValue
       action =
         BuyAct
-          { act'bid = ur'price
-          , act'newPrice = ur'newPrice
-          , act'symbol = symbol
+          { act'bid' = toSpooky ur'price
+          , act'newPrice' = toSpooky ur'newPrice
+          , act'symbol' = toSpooky symbol
           }
       lookups =
         mconcat $
@@ -80,7 +104,7 @@ buy uT BuyRequestUser {..} = do
             <> govLookups
       tx =
         mconcat $
-          [ Constraints.mustPayToTheScript nftDatum nftVal
+          [ Constraints.mustPayToTheScript (toBuiltinData nftDatum) nftVal
           , Constraints.mustIncludeDatum (Datum . PlutusTx.toBuiltinData $ nftDatum)
           , Constraints.mustPayToPubKey (getUserId . info'author . node'information $ node) paidToAuthor
           , Constraints.mustPayToPubKey (getUserId . info'owner . node'information $ node) paidToOwner
@@ -90,14 +114,15 @@ buy uT BuyRequestUser {..} = do
               (Redeemer . PlutusTx.toBuiltinData $ action)
           ]
             <> govTx
-  void $ submitTxConstraintsWithUnbalanced @NftTrade lookups tx
+  void $ submitTxConstraintsWithUnbalanced @Any lookups tx
   Contract.logInfo @Hask.String "buy successful!"
   where
     updateNftDatum newOwner node =
       node
-        { node'information =
-            (node'information node)
-              { info'price = ur'newPrice
-              , info'owner = UserId newOwner
-              }
+        { node'information' =
+            toSpooky
+              (node'information node)
+                { info'price' = toSpooky ur'newPrice
+                , info'owner' = toSpooky $ UserId newOwner
+                }
         }

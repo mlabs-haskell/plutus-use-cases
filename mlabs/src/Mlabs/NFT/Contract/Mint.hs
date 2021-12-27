@@ -23,7 +23,7 @@ import Plutus.V1.Ledger.Api (ToData (toBuiltinData))
 
 import Ledger (txOutValue)
 import Ledger.Constraints qualified as Constraints
-import Ledger.Typed.Scripts (validatorScript)
+import Ledger.Typed.Scripts (Any, validatorScript)
 import Ledger.Value as Value (TokenName (..), assetClass, singleton)
 
 import Mlabs.NFT.Contract.Aux (
@@ -31,7 +31,7 @@ import Mlabs.NFT.Contract.Aux (
   getNftAppSymbol,
   getNftHead,
   getUId,
-  hashData,
+  hashContent,
  )
 import Mlabs.NFT.Spooky (toSpooky, unSpookyAddress)
 import Mlabs.NFT.Types (
@@ -61,7 +61,8 @@ import Mlabs.NFT.Types (
   node'appInstance,
   node'information,
  )
-import Mlabs.NFT.Validation (asRedeemer, mintPolicy, txPolicy)
+import Mlabs.NFT.Validation (NftTrade, asRedeemer, mintPolicy, txPolicy)
+import Mlabs.Utils (submitTxConstraintsWithUnbalanced)
 
 --------------------------------------------------------------------------------
 -- MINT --
@@ -82,7 +83,7 @@ mint uT params = do
       (nLk, nCx) <- mintNode uT nftPolicy newNode rNode
       let lookups = mconcat [lLk, nLk]
           tx = mconcat [lCx, nCx]
-      void $ submitTxConstraintsWithUnbalanced @NftTrade lookups tx
+      void $ submitTxConstraintsWithUnbalanced @Any lookups tx
       Contract.tell . Last . Just . Left . info'id . node'information $ newNode
       Contract.logInfo @Hask.String $ printf "mint successful!"
   where
@@ -189,4 +190,4 @@ mintParamsToInfo MintParams {..} author =
     , info'auctionState' = toSpooky @(Maybe AuctionState) Nothing
     }
   where
-    nftIdInit = NftId . toSpooky . hashData
+    nftIdInit = NftId . toSpooky . hashContent

@@ -321,7 +321,7 @@ getDatumsTxsOrderedFromAddr addr = do
 
 -- | A hashing function to minimise the data to be attached to the NTFid.
 hashContent :: Content -> BuiltinByteString
-hashContent (Content b) = hashData b
+hashContent = hashData . getContent
 
 hashData :: BuiltinByteString -> BuiltinByteString
 hashData = makeItWorkTM . sha2_256

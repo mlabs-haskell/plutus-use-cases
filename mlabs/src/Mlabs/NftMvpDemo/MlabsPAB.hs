@@ -47,6 +47,7 @@ import Mlabs.NFT.Contract.Aux (hashContent)
 import Prelude
 import PlutusTx.Prelude qualified as PP
 import PlutusTx.Builtins.Class (stringToBuiltinByteString)
+import Mlabs.NFT.Spooky (toSpooky)
 
 
 import Cardano.Api.Shelley (ProtocolParameters)
@@ -83,10 +84,10 @@ toMintParams (MintNftData content title share price) =
     price
 
 toContent :: String -> Content
-toContent = Content . stringToBuiltinByteString
+toContent = Content . toSpooky . stringToBuiltinByteString
 
 toTitle :: String -> Title
-toTitle = Title . stringToBuiltinByteString
+toTitle = Title . toSpooky . stringToBuiltinByteString
 
 -- SET NFT PRICE
 -- Data to substitute original contracts parameter, accepts `Content` as plain text
@@ -97,7 +98,7 @@ data SetPriceData = SetPriceData
     deriving anyclass (FromJSON, ToJSON)
 
 nidFromContent :: Content -> NftId
-nidFromContent = NftId . hashContent
+nidFromContent = NftId . toSpooky . hashContent
 
 toSetPriceParams :: SetPriceData -> SetPriceParams
 toSetPriceParams (SetPriceData content price) =

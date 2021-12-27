@@ -16,10 +16,13 @@ import Prelude qualified as Hask
 
 import Ledger (AssetClass, scriptCurrencySymbol)
 import Ledger.Constraints qualified as Constraints
-import Ledger.Typed.Scripts (validatorHash)
+import Ledger.Typed.Scripts (Any, validatorHash)
 import Ledger.Value as Value (singleton)
 import Plutus.Contract (EmptySchema, Contract, mapError, ownPubKeyHash)
 import Plutus.Contract qualified as Contract
+import Plutus.V1.Ledger.Api (ToData (toBuiltinData))
+import Plutus.V1.Ledger.Value (TokenName (..), assetClass, assetClassValue)
+
 
 {- Drop-in replacement for
 import Plutus.Contracts.Currency (CurrencyError, mintContract)
@@ -36,15 +39,20 @@ import Mlabs.Data.LinkedList (LList (..))
 import Mlabs.NFT.Contract.Aux (toDatum)
 import Mlabs.NFT.Governance.Types (GovAct (..), GovDatum (..), GovLHead (..))
 import Mlabs.NFT.Governance.Validation (govMintPolicy, govScrAddress, govScript)
+import Mlabs.NFT.Spooky (toSpooky)
 import Mlabs.NFT.Types (
   UniqueToken,
-  GenericContract, 
-  InitParams (..), 
-  MintAct (..), 
-  NftAppInstance (..), 
-  NftAppSymbol (..), 
-  NftListHead (..))
-import Mlabs.NFT.Validation (DatumNft (..), NftTrade, asRedeemer, curSymbol, mintPolicy, txPolicy, txScrAddress)
+  DatumNft (HeadDatum),
+  GenericContract,
+  InitParams (..),
+  MintAct (Initialise),
+  NftAppInstance (NftAppInstance),
+  NftAppSymbol (NftAppSymbol),
+  NftListHead (NftListHead, head'appInstance', head'next'),
+  Pointer,
+  appInstance'UniqueToken,
+ )
+import Mlabs.NFT.Validation (asRedeemer, curSymbol, mintPolicy, txPolicy, txScrAddress)
 import Mlabs.Utils (submitTxConstraintsWithUnbalanced)
 
 {- | The App Symbol is written to the Writter instance of the Contract to be
@@ -64,11 +72,7 @@ initApp ut params = do
 
 initApp' :: UniqueToken -> InitParams -> InitContract ()
 initApp' ut params = do
-  ownPKH <- ownPubKeyHash
-  Contract.logInfo @Hask.String ("PKH: " Hask.++ (Hask.show ownPKH))
-  Contract.logInfo @Hask.String "Creating list head"
   appInstance <- createListHead ut params
-  -- Contract.tell . Last . Just $ appInstance
   Contract.logInfo @Hask.String $ printf "Finished Initialisation: App Instance: %s" (Hask.show appInstance)
 
 {- | Initialise the application at the address of the script by creating the
@@ -84,8 +88,7 @@ createListHead uToken InitParams {..} = do
   -- uniqueToken <- generateUniqueToken
   let govAddr = govScrAddress uToken
       scrAddr = txScrAddress uToken
-  Contract.logInfo @Hask.String "Minting head"
-  mintListHead $ NftAppInstance scrAddr uToken govAddr ip'admins
+  mintListHead $ NftAppInstance (toSpooky scrAddr) (toSpooky uToken) (toSpooky govAddr) (toSpooky ip'admins)
   where
     -- Mint the Linked List Head and its associated token.
     mintListHead :: NftAppInstance -> GenericContract NftAppInstance
@@ -115,7 +118,7 @@ createListHead uToken InitParams {..} = do
                 , Constraints.mintingPolicy govHeadPolicy
                 ]
             , mconcat
-                [ Constraints.mustPayToTheScript headDatum (proofTokenValue <> uniqueTokenValue)
+                [ Constraints.mustPayToTheScript (toBuiltinData headDatum) (proofTokenValue <> uniqueTokenValue)
                 , Constraints.mustPayToOtherScript (validatorHash govScr) (toDatum govHeadDatum) (govProofTokenValue <> uniqueTokenValue)
                 , Constraints.mustMintValueWithRedeemer initRedeemer proofTokenValue
                 , Constraints.mustMintValueWithRedeemer govInitRedeemer govProofTokenValue
@@ -123,7 +126,7 @@ createListHead uToken InitParams {..} = do
                 ]
             )
 
-      void $ submitTxConstraintsWithUnbalanced @NftTrade lookups (tx <> Constraints.mustBeSignedBy ownPKH)
+      void $ submitTxConstraintsWithUnbalanced @Any lookups tx
       Contract.logInfo @Hask.String $ printf "Forged Script Head & Governance Head for %s" (Hask.show appInstance)
       return appInstance
 
@@ -142,8 +145,8 @@ createListHead uToken InitParams {..} = do
     nftHeadInit appInst =
       HeadDatum $
         NftListHead
-          { head'next = Nothing
-          , head'appInstance = appInst
+          { head'next' = toSpooky @(Maybe Pointer) Nothing
+          , head'appInstance' = toSpooky appInst
           }
 
     govHeadInit =
@@ -155,7 +158,7 @@ createListHead uToken InitParams {..} = do
 
 -- | Given an App Instance return the NftAppSymbol for that app instance.
 getAppSymbol :: NftAppInstance -> NftAppSymbol
-getAppSymbol = NftAppSymbol . curSymbol
+getAppSymbol = NftAppSymbol . toSpooky . curSymbol
 
 {-# INLINEABLE uniqueTokenName #-}
 

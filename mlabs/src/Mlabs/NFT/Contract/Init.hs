@@ -16,7 +16,7 @@ import Text.Printf (printf)
 
 import Ledger (AssetClass, scriptCurrencySymbol)
 import Ledger.Constraints qualified as Constraints
-import Ledger.Typed.Scripts (validatorHash)
+import Ledger.Typed.Scripts (Any, validatorHash)
 import Ledger.Value as Value (singleton)
 import Plutus.Contract (Contract, mapError, ownPubKeyHash)
 import Plutus.Contract qualified as Contract
@@ -28,7 +28,7 @@ import Plutus.Contracts.Currency (CurrencyError, mintContract)
 import Plutus.Contracts.Currency qualified as MC
 till it will be fixed, see `Mlabs.Plutus.Contracts.Currency.mintContract`
 for details -}
-import Mlabs.Plutus.Contracts.Currency (CurrencyError, mintContractViaPkh)
+import Mlabs.Plutus.Contracts.Currency (CurrencyError, mintContractViaScriptUtxo)
 import Mlabs.Plutus.Contracts.Currency qualified as MC
 
 import Mlabs.Data.LinkedList (LList (..))
@@ -78,6 +78,7 @@ createListHead InitParams {..} = do
     -- Mint the Linked List Head and its associated token.
     mintListHead :: NftAppInstance -> GenericContract NftAppInstance
     mintListHead appInstance = do
+      ownPKH <- ownPubKeyHash
       let -- Unique Token
           uniqueToken = appInstance'UniqueToken appInstance
           uniqueTokenValue = assetClassValue uniqueToken 1
@@ -106,13 +107,11 @@ createListHead InitParams {..} = do
                 , Constraints.mustPayToOtherScript (validatorHash govScr) (toDatum govHeadDatum) (govProofTokenValue <> uniqueTokenValue)
                 , Constraints.mustMintValueWithRedeemer initRedeemer proofTokenValue
                 , Constraints.mustMintValueWithRedeemer govInitRedeemer govProofTokenValue
+                , Constraints.mustBeSignedBy ownPKH
                 ]
             )
 
-      ownPKH <- ownPubKeyHash
-      -- w/o `Constraints.mustBeSignedBy ownPKH`
-      -- throws validation error `Only an admin can initialise app`, which (I suppose) means, that Tx wasn't signed by the WBE at all
-      void $ submitTxConstraintsWithUnbalanced @NftTrade lookups (tx <> Constraints.mustBeSignedBy ownPKH)
+      void $ submitTxConstraintsWithUnbalanced @Any lookups tx
       Contract.logInfo @Hask.String $ printf "Forged Script Head & Governance Head for %s" (Hask.show appInstance)
       return appInstance
 
@@ -124,7 +123,7 @@ createListHead InitParams {..} = do
       x <-
         mapError
           (pack . Hask.show @CurrencyError)
-          (mintContract self [(tn, 2)])
+          (mintContractViaScriptUtxo self [(tn, 2)])
       return $ assetClass (MC.currencySymbol x) tn
 
     nftHeadInit :: NftAppInstance -> DatumNft

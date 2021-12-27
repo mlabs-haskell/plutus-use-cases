@@ -20,7 +20,7 @@ import Ledger (
   Redeemer (..),
   ciTxOutValue,
  )
-import Ledger.Typed.Scripts (validatorScript)
+import Ledger.Typed.Scripts (Any, validatorScript)
 import Plutus.Contract (Contract)
 import Plutus.Contract qualified as Contract
 import Plutus.Contract.Constraints qualified as Constraints
@@ -54,7 +54,8 @@ import Mlabs.NFT.Types (
   info'share,
   node'information,
  )
-import Mlabs.NFT.Validation (calculateShares, txPolicy)
+import Mlabs.NFT.Validation (NftTrade, calculateShares, txPolicy)
+import Mlabs.Utils (submitTxConstraintsWithUnbalanced)
 
 {- | BUY.
  Attempts to buy a new NFT by changing the owner, pays the current owner and
@@ -114,7 +115,7 @@ buy uT BuyRequestUser {..} = do
               (Redeemer . PlutusTx.toBuiltinData $ action)
           ]
             <> govTx
-  void $ submitTxConstraintsWithUnbalanced @NftTrade lookups tx
+  void $ submitTxConstraintsWithUnbalanced @Any lookups tx
   Contract.tell . Last . Just . Left $ ur'nftId
   Contract.logInfo @Hask.String "buy successful!"
   where

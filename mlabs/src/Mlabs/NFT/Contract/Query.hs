@@ -19,7 +19,7 @@ import GHC.Base (join)
 import Plutus.Contract (Contract)
 import Plutus.Contract qualified as Contract
 
-import Mlabs.NFT.Contract.Aux (getDatumsTxsOrdered, getNftDatum, getsNftDatum, hashData)
+import Mlabs.NFT.Contract.Aux (getDatumsTxsOrdered, getNftDatum, getsNftDatum, hashContent)
 import Mlabs.NFT.Spooky (toSpooky)
 import Mlabs.NFT.Types (
   Content,
@@ -96,7 +96,7 @@ queryListNftsLog infos = mconcat ["Available NFTs: ", show infos]
 -- | Given an application instance and a `Content` returns the status of the NFT
 queryContent :: UniqueToken -> Content -> QueryContract QueryResponse
 queryContent uT content = do
-  let nftId = NftId . toSpooky . hashData $ content
+  let nftId = NftId . toSpooky . hashContent $ content
   datum <- getNftDatum nftId uT
   status <- wrap $ getStatus datum
   Contract.tell (Last . Just . Right $ status)

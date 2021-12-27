@@ -10,31 +10,41 @@ import Prelude qualified as Hask
 
 import Control.Lens ((^.))
 import Control.Monad (void, when)
-
 import Data.Map qualified as Map
-import Data.Monoid (Last (..))
 import Data.Text (Text)
 
---import Mlabs.Plutus.Contract ()
 import Plutus.Contract (Contract)
 import Plutus.Contract qualified as Contract
+import Plutus.V1.Ledger.Api (ToData (toBuiltinData))
 import PlutusTx qualified
 
-import Ledger (
-  Redeemer (..),
-  ciTxOutValue,
- )
-
+import Ledger (Redeemer (..), ciTxOutValue)
 import Ledger.Constraints qualified as Constraints
-import Ledger.Typed.Scripts (validatorScript)
+import Ledger.Typed.Scripts (Any, validatorScript)
 
---import Ledger.Value as Value (AssetClass (..), TokenName (..), singleton)
---import Plutus.ChainIndex.Tx ()
-
-import Mlabs.NFT.Contract.Aux
-import Mlabs.NFT.Types
-import Mlabs.NFT.Validation
-import Mlabs.Utils
+import Mlabs.NFT.Contract.Aux (
+  findNft,
+  fstUtxoAt,
+  getNftAppSymbol,
+  getUserAddr,
+ )
+import Mlabs.NFT.Spooky (toSpooky)
+import Mlabs.NFT.Types (
+  DatumNft (NodeDatum),
+  InformationNft (info'price'),
+  NftListNode (node'information'),
+  PointInfo (PointInfo, pi'CITx, pi'CITxO, pi'TOR, pi'data),
+  SetPriceParams (..),
+  UniqueToken,
+  UserAct (SetPriceAct),
+  UserWriter,
+  getUserId,
+  info'auctionState,
+  info'owner,
+  node'information,
+ )
+import Mlabs.NFT.Validation (txPolicy)
+import Mlabs.Utils (submitTxConstraintsWithUnbalanced)
 
 {- |
   Attempts to set price of NFT, checks if price is being set by the owner
@@ -57,7 +67,7 @@ setPrice ut SetPriceParams {..} = do
 
   let nftDatum = NodeDatum $ updateDatum oldNode
       nftVal = pi'CITxO ^. ciTxOutValue
-      action = SetPriceAct sp'price aSymbol
+      action = SetPriceAct (toSpooky sp'price) (toSpooky aSymbol)
       lookups =
         mconcat
           [ Constraints.unspentOutputs $ Map.fromList [ownOrefTxOut]
@@ -67,17 +77,17 @@ setPrice ut SetPriceParams {..} = do
           ]
       tx =
         mconcat
-          [ Constraints.mustPayToTheScript nftDatum nftVal
+          [ Constraints.mustPayToTheScript (toBuiltinData nftDatum) nftVal
           , Constraints.mustSpendPubKeyOutput (fst ownOrefTxOut)
           , Constraints.mustSpendScriptOutput
               pi'TOR
               (Redeemer . PlutusTx.toBuiltinData $ action)
           ]
 
-  void $ submitTxConstraintsWithUnbalanced @NftTrade lookups tx
+  void $ submitTxConstraintsWithUnbalanced @Any lookups tx
   Contract.logInfo @Hask.String "set-price successful!"
   where
-    updateDatum node = node {node'information = (node'information node) {info'price = sp'price}}
+    updateDatum node = node {node'information' = toSpooky ((node'information node) {info'price' = toSpooky sp'price})}
 
     negativePrice = case sp'price of
       Nothing -> False
