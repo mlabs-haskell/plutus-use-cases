@@ -5,8 +5,8 @@ import PlutusTx qualified
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.Plutus.Script.Size (fitsOnChain)
 
-import Mlabs.NFT.Validation (mkTxPolicy)
 import Mlabs.NFT.Governance.Validation (mkGovScript)
+import Mlabs.NFT.Validation (mkTxPolicy)
 
 test :: TestTree
 test = testGroup "Size" [testNftFitsOnChain, testGovFitsOnChain]
