@@ -12,7 +12,6 @@ import Data.Map.Strict qualified as Map
 import Data.Monoid (Last (..))
 import Data.String (IsString (..))
 import Data.Text (Text)
-import Ledger (getPubKeyHash)
 import Ledger.TimeSlot (slotToBeginPOSIXTime)
 import Plutus.Contract.Test (Wallet (..), walletPubKeyHash)
 import Plutus.Contract.Test.ContractModel (
@@ -24,19 +23,16 @@ import Plutus.Contract.Test.ContractModel (
   action,
   anyActions_,
   assertModel,
-  balanceChange,
   contractState,
   currentSlot,
   defaultCoverageOptions,
   deposit,
   forAllDL,
-  getContractState,
   getModelState,
   lockedValue,
   propRunActionsWithOptions,
   transfer,
   viewContractState,
-  viewModelState,
   wait,
   withdraw,
   ($=),
@@ -46,7 +42,7 @@ import Plutus.Trace.Emulator (callEndpoint)
 import Plutus.Trace.Emulator qualified as Trace
 import Plutus.V1.Ledger.Ada (lovelaceValueOf)
 import Plutus.V1.Ledger.Slot (Slot (..))
-import Plutus.V1.Ledger.Value (AssetClass (..), TokenName (..), Value, assetClassValue, valueOf)
+import Plutus.V1.Ledger.Value (valueOf)
 import PlutusTx.Prelude hiding ((<$>), (<*>), (==))
 import Test.QuickCheck qualified as QC
 import Test.Tasty (TestTree, testGroup)
@@ -55,7 +51,8 @@ import Prelude ((<$>), (<*>), (==))
 import Prelude qualified as Hask
 
 import Mlabs.NFT.Api (NFTAppSchema, adminEndpoints, endpoints)
-import Mlabs.NFT.Contract (hashContent)
+import Mlabs.NFT.Contract (hashData)
+import Mlabs.NFT.Spooky (toSpooky)
 import Mlabs.NFT.Types (
   AuctionBidParams (..),
   AuctionCloseParams (..),
@@ -65,16 +62,13 @@ import Mlabs.NFT.Types (
   InitParams (..),
   MintParams (..),
   NftAppInstance,
-  NftAppSymbol (..),
   NftId (..),
   QueryResponse,
   SetPriceParams (..),
   Title (..),
-  UniqueToken,
-  UserId (..),
  )
 import Mlabs.NFT.Validation (calculateShares)
-import Test.NFT.Init (appSymbol, checkOptions, getFreeGov, mkFreeGov, toUserId, w1, w2, w3, wA)
+import Test.NFT.Init (appSymbol, checkOptions, mkFreeGov, toUserId, w1, w2, w3, wA)
 
 data MockAuctionState = MockAuctionState
   { _auctionHighestBid :: Maybe (Integer, Wallet)
@@ -167,9 +161,9 @@ instance ContractModel NftModel where
         -- genDeadline = Hask.pure @QC.Gen (Slot 9999)
         genMaybePrice = QC.oneof [Hask.pure Nothing, Just <$> genNonNeg]
         genString = QC.listOf (QC.elements [Hask.minBound .. Hask.maxBound])
-        genContent = MockContent . Content . fromString . ('x' :) <$> genString
+        genContent = MockContent . Content . toSpooky @BuiltinByteString . fromString . ('x' :) <$> genString
         -- genTitle = Title . fromString <$> genString
-        genTitle = Hask.pure (Title "")
+        genTitle = Hask.pure (Title . toSpooky @BuiltinByteString $ "")
         genShare = (% 100) <$> QC.elements [1 .. 99]
         genNftId = QC.elements nfts
      in QC.oneof
@@ -209,7 +203,7 @@ instance ContractModel NftModel where
   precondition s ActionMint {..} =
     (s ^. contractState . mStarted)
       && (s ^. contractState . mMintedCount <= 5)
-      && not (Map.member (NftId . hashContent . getMockContent $ aContent) (s ^. contractState . mMarket))
+      && not (Map.member (NftId . toSpooky . hashData . getMockContent $ aContent) (s ^. contractState . mMarket))
   precondition s ActionBuy {..} =
     (s ^. contractState . mStarted)
       && (s ^. contractState . mMintedCount > 0)
@@ -237,7 +231,7 @@ instance ContractModel NftModel where
       && (s ^. contractState . mMintedCount > 0)
       && isJust ((s ^. contractState . mMarket . at aNftId) >>= _nftAuctionState)
       && (Just (s ^. currentSlot) > (view auctionDeadline <$> ((s ^. contractState . mMarket . at aNftId) >>= _nftAuctionState)))
-  precondition s ActionWait {} = True
+  precondition _ ActionWait {} = True
 
   nextState ActionInit {} = do
     mStarted $= True
@@ -246,7 +240,7 @@ instance ContractModel NftModel where
     s <- view contractState <$> getModelState
     let nft =
           MockNft
-            { _nftId = NftId . hashContent . getMockContent $ aContent
+            { _nftId = NftId . toSpooky . hashData . getMockContent $ aContent
             , _nftPrice = aNewPrice
             , _nftOwner = aPerformer
             , _nftAuthor = aPerformer
