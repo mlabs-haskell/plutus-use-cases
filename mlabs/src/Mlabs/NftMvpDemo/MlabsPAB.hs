@@ -2,11 +2,16 @@ module Mlabs.NftMvpDemo.MlabsPAB (
   runMlabsPab
 ) where
 
+import System.Environment (getArgs)
+import System.Exit (die)
+
 import Cardano.Api (NetworkId (Testnet), NetworkMagic (..))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Aeson qualified as JSON
+import Data.String (fromString)
 import Data.Text qualified as T
 import Data.ByteString.Lazy qualified as LazyByteString
+import Control.Monad (when)
 import GHC.Generics (Generic)
 
 import Plutus.Contract (EmptySchema)
@@ -162,7 +167,10 @@ instance HasDefinitions NftDemoContracts where
 
 runMlabsPab :: IO ()
 runMlabsPab = do
+  args <- getArgs
+  when (length args /= 1) $ die "Exactly one parameter representing PubKeyHash required" 
   let paramsFile =  "./nft-marketplace-mvp/pparams.json"
+      pkh = fromString $ head args
   protocolParams :: Maybe ProtocolParameters <- JSON.decode <$> LazyByteString.readFile paramsFile
   let pabConf = PABConfig
         { pcCliLocation = Local
@@ -174,7 +182,8 @@ runMlabsPab = do
         , pcProtocolParamsFile = T.pack paramsFile
         , pcDryRun = False
         , pcLogLevel = Debug
-        , pcOwnPubKeyHash= "bcd6bceeb0d22a7ca6ba1cd00669f7eb60ca8938d853666d30d56a56" -- Used as admin
+        , pcOwnPubKeyHash= pkh
+        -- , pcOwnPubKeyHash= "bcd6bceeb0d22a7ca6ba1cd00669f7eb60ca8938d853666d30d56a56" -- Used as admin
         -- , pcOwnPubKeyHash= "25bd24abedaf5c68d898484d757f715c7b4413ad91a80d3cb0b3660d" -- Used as user
         }
   MLabsPAB.runPAB @NftDemoContracts pabConf
