@@ -1,3 +1,6 @@
 [submodule "mlabs/mlabs-pab"]
 	path = mlabs/mlabs-pab
 	url = https://github.com/mlabs-haskell/mlabs-pab.git
+[submodule "mlabs/Shrinker"]
+	path = mlabs/Shrinker
+	url = https://github.com/Plutonomicon/Shrinker.git
