@@ -73,6 +73,7 @@ common common-imports
     , servant
 
     , mlabs-pab
+    , shrinker
 
 common common-language
     default-extensions:
