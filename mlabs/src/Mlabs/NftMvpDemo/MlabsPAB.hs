@@ -27,8 +27,9 @@ import MLabsPAB.Types (
   
  )
 import Mlabs.NFT.Types (
+  UserId(UserId),
   UniqueToken, 
-  InitParams, 
+  InitParams(InitParams), 
   MintParams,
   Content(Content),
   Title(Title),
@@ -45,7 +46,9 @@ import Mlabs.NftMvpDemo.Contract.Buy qualified as Contract.Buy
 import Mlabs.NFT.Contract.Aux (hashContent)
 
 import Prelude
+
 import PlutusTx.Prelude qualified as PP
+import Ledger (PubKeyHash)
 import PlutusTx.Builtins.Class (stringToBuiltinByteString)
 import Mlabs.NFT.Spooky (toSpooky)
 
@@ -53,9 +56,36 @@ import Mlabs.NFT.Spooky (toSpooky)
 import Cardano.Api.Shelley (ProtocolParameters)
 
 -- MINT HEAD
+{- Additional wrappers `UserIdData` and `InitData` serve to  maintain
+   same JSON API for spooky and non-spooky versions
+
+-}
+newtype UserIdData = UserIdData {getUserId :: PubKeyHash}
+  deriving stock (Show, Generic, Eq)
+  deriving anyclass (FromJSON, ToJSON)
+
+data InitData = InitData
+  { -- | List of app admins
+    ip'admins :: [UserIdData]
+  , -- | Fee rate of transaction
+    ip'feeRate :: PP.Rational
+  , -- | PKH where fee is sent
+    ip'feePkh :: PubKeyHash
+  }
+  deriving stock (Show, Generic, Eq)
+  deriving anyclass (FromJSON, ToJSON)
+
+toInitParams :: InitData -> InitParams
+toInitParams (InitData userIdData feeRate feePkh) = 
+  InitParams 
+    ((UserId . toSpooky . getUserId) <$> userIdData) 
+    feeRate
+    feePkh
+
+
 data MintHeadReq = MintHeadReq
   { mhr'uniqueToken :: UniqueToken
-  , mhr'initParams :: InitParams
+  , mhr'initParams :: InitData
   } deriving stock (Show, Generic)
     deriving anyclass (FromJSON, ToJSON)
 
@@ -156,8 +186,8 @@ instance HasDefinitions NftDemoContracts where
   getContract = \case
     GenerateUniqueToken 
       -> SomeBuiltin $ Contract.Currency.mintCurrency Contract.Init.uniqueTokenName
-    MintListHead (MintHeadReq ut initPs) 
-      -> SomeBuiltin $ Contract.Init.initApp ut initPs
+    MintListHead (MintHeadReq ut initPsData) 
+      -> SomeBuiltin $ Contract.Init.initApp ut (toInitParams initPsData)
     MintNft (MintNftReq ut mintData) 
       -> SomeBuiltin $ Contract.Mint.mint ut (toMintParams mintData)
     SetNftPice (SetPriceReq ut setPriceData)

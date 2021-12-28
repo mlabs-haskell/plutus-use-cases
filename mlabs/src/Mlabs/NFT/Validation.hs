@@ -297,6 +297,7 @@ mintPolicy appInstance =
 -- | A validator script for the user actions.
 mkTxPolicy :: UniqueToken -> DatumNft -> UserAct -> ScriptContext -> Bool
 mkTxPolicy _ !datum' !act !ctx =
+  traceIfFalse "A1" True &&
   case act of
     MintAct {} -> case datum' of
       NodeDatum _ ->
