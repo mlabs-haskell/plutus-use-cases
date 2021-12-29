@@ -89,61 +89,22 @@ mkGovMintPolicy appInstance act ctx =
         && traceIfFalse "NFT-Gov-Mint: List head with the unique token is not present" checkListHeadInit
     MintGov ->
       traceIfFalse "NFT-Gov-Mint: Fee wasn't paid to the head pubkey hash." checkFeeToHeadPkh
-        --      traceIfFalse "NFT-Gov-Mint: Fee must be paid to the list head." checkFeeToTheListHead -- It automatically checks that the list head is present.
         && traceIfFalse
           "NFT-Gov-Mint: List node incorrectly minted or updated"
-          (nodeCanBeUpdated && nodeUpdatedWithCorrectValues)
-          || (nodeCanBeInserted && nodeInsertedWithCorrectValues)
+          ( (nodeCanBeUpdated && nodeUpdatedWithCorrectValues)
+              || (nodeCanBeInserted && nodeInsertedWithCorrectValues)
+          )
         && traceIfFalse "NFT-Gov-Mint: Equal amounts of listGov and freeGov tokens must be minted/burned." checkListGovFreeGovEquality
+        -- TODO: Should this check be here? It would disallow minting differnt currencies,
+        -- and check for propper minting of gov tokens is below anyway
         && traceIfFalse "NFT-Gov-Mint: Only allowd to mint/burn listGov and freeGov" checkOnlyListGovFreeGovMinted
+        -- TODO: Isnt it implied by next check?
         && traceIfFalse "NFT-Gov-Mint: The minted amount of listGov must be positive." checkListGovPositive
         && traceIfFalse "NFT-Gov-Mint: The minted amount of listGov must be equal to the fee." checkListGovEqualToFee
     Proof -> traceError "NFT-Gov-Mint: Not allowed to mint using Proof as the redeemer."
-    ProofAndBurn ->
-      traceIfFalse "NFT-Gov-Mint: Only allowd to mint/burn freeGov and listGov" checkOnlyListGovFreeGovMinted
-        && traceIfFalse "NFT-Gov-Mint: Equal amounts of listGov and freeGov tokens must be minted/burned." checkListGovFreeGovEquality
-        && traceIfFalse "NFT-Gov-Mint: The burnt amount of listGov must be positive." checkListGovNegative
-        && traceIfFalse
-          "NFT-Gov-Mint: Values for burning are updated incorrectly."
-          (allTokensCanBeBurnt && allTokensBurntCorrectly)
-          || someTokensBurntCorrectly
-        && traceIfFalse "NFT-Gov-Mint: Stakes must be withdrawn correctly." checkStakeWithdrawnCorrectly
   where
     ------------------------------------------------------------------------------
     -- Checks
-
-    allTokensCanBeBurnt
-      | (length inputsWithNodeDatum == 2) && (length outputsWithNodeDatum == 1) = True
-      | length inputsWithNodeDatum == 1 && null outputsWithNodeDatum = True
-      | otherwise = False
-
-    allTokensBurntCorrectly
-      | length inputsWithNodeDatum == 2 && length outputsWithNodeDatum == 1 =
-        wrapMaybe $ do
-          ((_, txNode1), (_, txNode2)) <- sort2 <$> getMaybeTwo inputsWithNodeDatum
-          (_, txNode1New) <- getMaybeOne outputsWithNodeDatum
-          return $ checkAllBurnt txNode2 && (txOutValue txNode1 == txOutValue txNode1New)
-      | length inputsWithNodeDatum == 1 && null outputsWithNodeDatum =
-        wrapMaybe $ do
-          (_, txNode) <- getMaybeOne inputsWithNodeDatum
-          return $ checkAllBurnt txNode -- Head value is handled in checkStakeWithdrawnCorrectly
-      | otherwise = False
-      where
-        checkAllBurnt tx = assetClassValueOf (txOutValue tx) listGov == listGovMinted * (-1)
-
-    -- ProofAndBurn is used as the redeemer. There must be exactly one input and one output list node.
-    someTokensBurntCorrectly =
-      wrapMaybe $ do
-        (_, nodeTxIn) <- getMaybeOne inputsWithNodeDatum
-        (_, nodeTxOut) <- getMaybeOne outputsWithNodeDatum
-        let listGovBurnt = (-1) * listGovMinted
-            nodeInValue = txOutValue nodeTxIn
-            nodeOutValue = txOutValue nodeTxOut
-            nodeRemovedValue = nodeInValue <> negate nodeOutValue
-        return $
-          -- Every listGov that burnt must be from the node
-          (nodeRemovedValue == assetClassValue listGov listGovBurnt)
-            && assetClassValueOf nodeInValue listGov > listGovBurnt
 
     checkListHeadInit =
       any
@@ -165,18 +126,6 @@ mkGovMintPolicy appInstance act ctx =
     --        return $
     --          -- Fees are added to the head
     --          valOut `geq` (valIn <> lovelaceValueOf (getFee feeRate))
-
-    -- For ProofAndBurn, checks whether staked lovelace are removed from the head correctly or not.
-    checkStakeWithdrawnCorrectly =
-      wrapMaybe $ do
-        (_, headTxIn) <- getMaybeOne inputsWithHeadDatum
-        (_, headTxOut) <- getMaybeOne outputsWithHeadDatum
-        let listGovBurnt = (-1) * listGovMinted
-            headOutVal = txOutValue headTxOut
-            headInVal = txOutValue headTxIn
-        return $
-          -- Staked lovelace from the head are removed
-          headOutVal `geq` (headInVal <> (negate . lovelaceValueOf $ listGovBurnt))
 
     -- MingGov is used as the redeemer and finding a single and identical list node in inputs and outputs
     -- means that we want to update it, .e.g add listGov tokens to it
@@ -282,8 +231,6 @@ mkGovMintPolicy appInstance act ctx =
 
     checkListGovPositive = listGovMinted > 0
 
-    checkListGovNegative = listGovMinted < 0
-
     ------------------------------------------------------------------------------
     -- Helpers
 
@@ -335,11 +282,6 @@ mkGovMintPolicy appInstance act ctx =
           | otherwise ->
             do
               (datum, _) <- snd . sort2 <$> getMaybeTwo outputsWithNodeDatum
-              getId datum
-        ProofAndBurn
-          | (length inputsWithNodeDatum == 2) && (length outputsWithNodeDatum == 1) ->
-            do
-              (datum, _) <- snd . sort2 <$> getMaybeTwo inputsWithNodeDatum
               getId datum
           | (length inputsWithNodeDatum == 1) && null outputsWithNodeDatum ->
             do
@@ -470,67 +412,16 @@ mkGovScript ut _ act ctx =
       traceIfFalse "NFT-Gov-Script-Validator: New listGov tokens must be minted" checkListGovIsMinted -- We need to ensure that our minting policy verifications are called.
         && traceIfFalse
           "NFT-Gov-Script-Validator: List node incorrectly minted or updated."
-          (nodeCanBeUpdated && nodeUpdatedWithCorrectPointers)
-          || (nodeCanBeInserted && nodeInsertedWithCorrectPointers)
+          ( (nodeCanBeUpdated && nodeUpdatedWithCorrectPointers)
+              || (nodeCanBeInserted && nodeInsertedWithCorrectPointers)
+          )
     Proof ->
       traceIfFalse "NFT-Gov-Script-Validator: Free Gov tokens are required to unlock." checkFreeGovPresent
         && traceIfFalse "NFT-Gov-Script-Validator: ListGov must be sent back unchanged." listGovSentBackUnchanged
         && traceIfFalse "NFT-Gov-Script-Validator: FreeGov must be sent back unchanged." freeGovSentBackUnchanged
-    ProofAndBurn ->
-      traceIfFalse "NFT-Gov-Script-Validator: Free Gov tokens must be burnt." checkGovBurnt -- We need to ensure that our minting policy verifications are called.
-        && traceIfFalse "NFT-Gov-Script-Validator: Free Gov tokens are required to unlock." checkFreeGovPresent
-        && traceIfFalse
-          "NFT-Gov-Script-Validator: Pointers for burning are updated incorrectly."
-          (allTokensCanBeBurnt && allTokensBurntCorrectly)
-          || (someTokensCanBeBurnt && someTokensBurntCorrectly)
   where
     ------------------------------------------------------------------------------
     -- Checks
-
-    allTokensCanBeBurnt =
-      (length inputsWithNodeDatum == 2 && length outputsWithNodeDatum == 1)
-        || (length inputsWithNodeDatum == 1 && null outputsWithNodeDatum)
-
-    someTokensCanBeBurnt = (length inputsWithNodeDatum == length outputsWithNodeDatum) && (length inputsWithNodeDatum == 1)
-
-    someTokensBurntCorrectly = checkBurntNodeDatumUnchanged && checkHeadDatumUnchanged
-
-    -- The node's datum whose listGov is being burnt must remain unchanged.
-    checkBurntNodeDatumUnchanged =
-      wrapMaybe $ do
-        (oldDatum, _) <- getMaybeOne inputsWithNodeDatum
-        (newDatum, _) <- getMaybeOne outputsWithNodeDatum
-        return $
-          -- Can't alter node's datum
-          oldDatum == newDatum
-
-    checkHeadDatumUnchanged =
-      wrapMaybe $ do
-        (oldHead, _) <- getMaybeOne inputsWithHeadDatum
-        (newHead, _) <- getMaybeOne outputsWithHeadDatum
-        return $ oldHead == newHead
-
-    allTokensBurntCorrectly
-      | length outputsWithNodeDatum == 1 =
-        wrapMaybe $ do
-          ((node1, _), (node2, _)) <- sort2 <$> getMaybeTwo inputsWithNodeDatum
-          node1Next <- getNext node1
-          node1Key <- getKey node1
-          node2Key <- getKey node2
-          (node1New, _) <- getMaybeOne outputsWithNodeDatum
-          node1NewKey <- getKey node1New
-          return $
-            if isNothing . getNext $ node2
-              then (isNothing . getNext $ node1New) && (node1NewKey == node1Key) && (node1Next == node2Key)
-              else wrapMaybe $ do
-                node2Next <- getNext node2
-                node1NewNext <- getNext node1New
-                return $
-                  (node1NewKey == node1Key)
-                    && (node1NewNext == node2Next)
-                    && (node1Next == node2Key)
-      | length inputsWithNodeDatum == 1 && null outputsWithNodeDatum = True
-      | otherwise = False
 
     -- MingGov is used as the redeemer and finding a single and identical list node in inputs and outputs
     -- means that we want to update it, .e.g add listGov tokens to it
@@ -659,8 +550,6 @@ mkGovScript ut _ act ctx =
 
     checkListGovIsMinted = listGovMinted > 0
 
-    checkGovBurnt = freeGovMinted < 0
-
     listGovSentBackUnchanged = True -- TODO
     freeGovSentBackUnchanged = True -- TODO
 
@@ -734,11 +623,6 @@ mkGovScript ut _ act ctx =
             do
               (datum, _) <- snd . sort2 <$> getMaybeTwo outputsWithNodeDatum
               getId datum
-        ProofAndBurn
-          | (length inputsWithNodeDatum == 2) && (length outputsWithNodeDatum == 1) ->
-            do
-              (datum, _) <- snd .sort2 <$> getMaybeTwo inputsWithNodeDatum
-              getId datum
           | (length inputsWithNodeDatum == 1) && null outputsWithNodeDatum ->
             do
               (datum, _) <- getMaybeOne inputsWithNodeDatum
@@ -774,7 +658,7 @@ mkGovScript ut _ act ctx =
             $ allMinted
 
     listGovMinted = assetClassValueOf valueMinted listGov
-    freeGovMinted = assetClassValueOf valueMinted freeGov
+    -- freeGovMinted = assetClassValueOf valueMinted freeGov
     uTokenPresent txO = 1 == assetClassValueOf (txOutValue txO) ut
     pTokenPresent txO = 1 == assetClassValueOf (txOutValue txO) proofToken
 

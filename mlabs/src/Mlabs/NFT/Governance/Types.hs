@@ -72,8 +72,6 @@ data GovAct
     MintGov -- Gov Token is added / update on list, and as many xGov tokens are created and relelased.
   | -- | Use as Proof
     Proof -- Token is used as proof and must be returned unchanged to the application
-  | -- | Use as Proof and Burn
-    ProofAndBurn -- Token is used as proof and must be burned in totality.
   | -- | Initialises the Governance List at the given location
     InitialiseGov
   deriving stock (Hask.Show, Generic, Hask.Eq)
