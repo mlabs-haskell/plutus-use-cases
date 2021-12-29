@@ -25,6 +25,7 @@ import PlutusTx qualified
 import PlutusTx.Prelude
 
 import Ledger (
+  Validator(..),
   AssetClass,
   CurrencySymbol,
   Datum (..),
@@ -126,6 +127,8 @@ import Mlabs.NFT.Types (
   node'information,
   pointer'assetClass,
  )
+
+import Shrink (shrinkScript, shrinkScriptSp, withoutTactics )
 
 asRedeemer :: PlutusTx.ToData a => a -> Redeemer
 asRedeemer = Redeemer . PlutusTx.toBuiltinData
@@ -297,7 +300,7 @@ mintPolicy appInstance =
 -- | A validator script for the user actions.
 mkTxPolicy :: UniqueToken -> DatumNft -> UserAct -> ScriptContext -> Bool
 mkTxPolicy _ !datum' !act !ctx =
-  traceIfFalse "A1" True &&
+  traceIfFalse "Q1" True &&
   case act of
     MintAct {} -> case datum' of
       NodeDatum _ ->
@@ -706,7 +709,10 @@ instance ValidatorTypes NftTrade where
 
 {-# INLINEABLE txPolicy #-}
 txPolicy :: UniqueToken -> TypedValidator Any
-txPolicy x = unsafeMkTypedValidator v
+txPolicy x = 
+  unsafeMkTypedValidator v
+    -- -- unsafeMkTypedValidator (Validator . shrinkScript . getValidator $ v)
+    -- unsafeMkTypedValidator (Validator . shrinkScriptSp (withoutTactics ["subs", "weakUnsubs"])  . getValidator $ v)
   where
     v =
       mkValidatorScript

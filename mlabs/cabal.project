@@ -6,4 +6,4 @@ index-state: 2021-10-20T00:00:00Z
 packages: 
   ./. 
   ./mlabs-pab
-  ./shrinker
+  ./Shrinker
