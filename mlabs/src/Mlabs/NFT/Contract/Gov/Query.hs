@@ -11,7 +11,7 @@ import Data.Text (Text)
 
 import Plutus.Contract (Contract)
 import Plutus.Contract qualified as Contract
-import PlutusTx.Prelude hiding (mconcat, mempty, (<>))
+import PlutusTx.Prelude hiding (mconcat, mempty, (<>), (==))
 
 import Ledger (
   PubKeyHash,
@@ -56,7 +56,7 @@ querryCurrentStake uT _ = do
       where
         findPoint = \case
           (x1 : xs) ->
-            if pi'data x1 == node
+            if pi'data x1 Hask.== node
               then pure x1
               else findPoint xs
           _ -> Contract.throwError "GOV node not found"

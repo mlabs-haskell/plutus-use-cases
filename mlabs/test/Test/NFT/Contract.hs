@@ -42,6 +42,7 @@ import Test.NFT.Init (
   callStartNftFail,
   check,
   containsLog,
+  getNftAppInstance,
   mkFreeGov,
   noChangesScene,
   ownsAda,

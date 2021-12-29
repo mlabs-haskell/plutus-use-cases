@@ -17,6 +17,7 @@ module Test.NFT.Init (
   userQueryContent,
   userSetPrice,
   containsLog,
+  getNftAppInstance,
   w1,
   w2,
   w3,
@@ -96,6 +97,7 @@ import Mlabs.NFT.Types (
   NftAppInstance (appInstance'UniqueToken),
   NftAppSymbol (..),
   NftId (..),
+  QueryResponse (..),
   SetPriceParams (..),
   Title (..),
   UniqueToken,
@@ -116,7 +118,7 @@ wA = walletFromNumber 4 -- Admin Wallet
    tests start to fail with 2 slots waiting
 -}
 waitInit :: EmulatorTrace ()
-waitInit = void $ waitNSlots 3
+waitInit = void $ waitNSlots 4
 
 -- | Calls initialisation of state for Nft pool
 callStartNft :: Wallet -> EmulatorTrace NftAppInstance
@@ -133,7 +135,7 @@ callStartNft wal = do
   appInstance <- case getLast oState of
     Nothing -> throwError $ GenericError "App Symbol Could not be established."
     Just aS -> pure aS
-  void $ waitNSlots 1
+  void $ waitNSlots 4
   pure appInstance
 
 callStartNftFail :: Wallet -> ScriptM ()
@@ -196,6 +198,23 @@ userMint wal mp = do
     findNftId :: forall a b. Last (Either a b) -> Maybe a
     findNftId x = case getLast x of
       Just (Left x') -> Just x'
+      _ -> Nothing
+
+getNftAppInstance :: Wallet -> ScriptM NftAppInstance
+getNftAppInstance wal = do
+  uT <- ask
+  lift $ do
+    hdl <- activateContractWallet wal (queryEndpoints uT)
+    callEndpoint @"query-nft-app-instance" hdl ()
+    next
+    oState <- observableState hdl
+    case unWrap oState of
+      Nothing -> throwError $ GenericError "Could find appInstance"
+      Just appInstance -> pure appInstance
+  where
+    unWrap :: forall a c. Last (Either a QueryResponse) -> Maybe NftAppInstance
+    unWrap x = case getLast x of
+      Just (Right (QueryNftAppInstance (Just x'))) -> Just x'
       _ -> Nothing
 
 userSetPrice :: Wallet -> SetPriceParams -> Script
@@ -325,7 +344,7 @@ mkFreeGov wal = assetClassValue (AssetClass (govCurrency, tn))
   where
     tn = TokenName . ("freeGov" <>) . getPubKeyHash . getUserId . toUserId $ wal
 
-govCurrency = "bbd5c2abaecd5fd4156d8994366ee341728daa8693ead20892fb701e"
+govCurrency = "76189d1c4870493fe4b6bc9b7e779b49ea1a62a8086334e28e91f7be"
 
 getFreeGov :: Wallet -> Plutus.V1.Ledger.Value.Value -> Integer
 getFreeGov wal val = valueOf val govCurrency tn

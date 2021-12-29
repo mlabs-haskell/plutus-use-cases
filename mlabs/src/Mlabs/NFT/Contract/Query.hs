@@ -8,6 +8,7 @@ module Mlabs.NFT.Contract.Query (
   QueryContract,
   queryContent,
   queryContentLog,
+  queryNftAppInstance,
 ) where
 
 import Control.Monad ()
@@ -15,7 +16,7 @@ import Control.Monad ()
 import Data.Monoid (Last (..), mconcat)
 import Data.Text (Text)
 import GHC.Base (join)
-import Mlabs.NFT.Contract.Aux (getDatumsTxsOrdered, getNftDatum, getsNftDatum, hashData)
+import Mlabs.NFT.Contract.Aux (getDatumsTxsOrdered, getHead, getNftDatum, getsNftDatum, hashData)
 import Mlabs.NFT.Types (
   Content,
   DatumNft (..),
@@ -26,6 +27,7 @@ import Mlabs.NFT.Types (
   QueryResponse (..),
   UniqueToken,
   UserWriter,
+  head'appInstance,
  )
 import Plutus.Contract (Contract)
 import Plutus.Contract qualified as Contract
@@ -110,3 +112,24 @@ queryContent uT content = do
 -- | Log of status of a content. Used in testing as well.
 queryContentLog :: Content -> QueryResponse -> String
 queryContentLog content info = mconcat ["Content status of: ", show content, " is: ", show info]
+
+queryNftAppInstance :: UniqueToken -> QueryContract QueryResponse
+queryNftAppInstance uT = do
+  head' <- getHead uT
+  res <- case head' of
+    Nothing -> return Nothing
+    Just (PointInfo listHead _ _ _) ->
+      do
+        let status = head'appInstance listHead
+        tell' $ QueryNftAppInstance . Just $ status
+        log $ QueryNftAppInstance . Just $ status
+        return $ Just status
+  wrap res
+  where
+    wrap = return . QueryNftAppInstance
+    tell' s = Contract.tell (Last . Just . Right $ s)
+    log status = Contract.logInfo @String $ queryNftAppInstanceLog uT status
+
+-- | Log of status of a content. Used in testing as well.
+queryNftAppInstanceLog :: UniqueToken -> QueryResponse -> String
+queryNftAppInstanceLog uT symbol = mconcat ["NftAppInstance of the app standing at UniqueToken: ", show uT, " is: ", show symbol]

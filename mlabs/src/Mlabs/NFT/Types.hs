@@ -113,8 +113,8 @@ instance Eq UserId where
   (UserId u1) == (UserId u2) = u1 == u2
 
 instance Ord UserId where
-  {-# INLINEABLE (<=) #-}
-  (UserId u1) <= (UserId u2) = u1 <= u2
+  {-# INLINEABLE compare #-}
+  compare (UserId u1) (UserId u2) = compare u1 u2
 
 {- | Unique identifier of NFT.
  The NftId contains a human readable title, the hashed information of the
@@ -470,7 +470,7 @@ instance Eq NftListNode where
 
 -- | The datum of an Nft is either head or node.
 data DatumNft
-  = -- | Head of a List
+  = -- | Head of the List
     HeadDatum NftListHead
   | -- | A node of the list.
     NodeDatum NftListNode
@@ -580,6 +580,7 @@ data QueryResponse
   | QueryCurrentPrice (Maybe Integer)
   | QueryContent (Maybe InformationNft)
   | QueryListNfts [InformationNft]
+  | QueryNftAppInstance (Maybe NftAppInstance)
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON)
 

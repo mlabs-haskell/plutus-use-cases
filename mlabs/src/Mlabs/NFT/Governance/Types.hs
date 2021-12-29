@@ -5,13 +5,15 @@ module Mlabs.NFT.Governance.Types (
   GovLList,
   GovDatum (..),
   LList (..),
+  GovAppSymbol (..),
 ) where
 
+import Data.OpenApi.Schema qualified as OpenApi
+import Ledger (CurrencySymbol)
 import Mlabs.Data.LinkedList (LList (..))
 import Mlabs.NFT.Types (UserId)
-import Prelude qualified as Hask
-
 import PlutusTx qualified
+import Prelude qualified as Hask
 
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
@@ -28,6 +30,17 @@ data GovLHead = GovLHead
 
 PlutusTx.unstableMakeIsData ''GovLHead
 PlutusTx.makeLift ''GovLHead
+
+newtype GovAppSymbol = GovAppSymbol {gov'symbol :: CurrencySymbol}
+  deriving stock (Hask.Show, Generic, Hask.Eq, Hask.Ord)
+  deriving anyclass (ToJSON, FromJSON, OpenApi.ToSchema)
+
+PlutusTx.unstableMakeIsData ''GovAppSymbol
+PlutusTx.makeLift ''GovAppSymbol
+
+instance Eq GovAppSymbol where
+  {-# INLINEABLE (==) #-}
+  (GovAppSymbol a) == (GovAppSymbol a') = a == a'
 
 instance Eq GovLHead where
   {-# INLINEABLE (==) #-}
@@ -59,8 +72,6 @@ data GovAct
     MintGov -- Gov Token is added / update on list, and as many xGov tokens are created and relelased.
   | -- | Use as Proof
     Proof -- Token is used as proof and must be returned unchanged to the application
-  | -- | Use as Proof and Burn
-    ProofAndBurn -- Token is used as proof and must be burned in totality.
   | -- | Initialises the Governance List at the given location
     InitialiseGov
   deriving stock (Hask.Show, Generic, Hask.Eq)

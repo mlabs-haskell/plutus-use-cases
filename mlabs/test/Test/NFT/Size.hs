@@ -4,18 +4,21 @@ import Plutus.V1.Ledger.Scripts (Script, fromCompiledCode)
 import PlutusTx qualified
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.Plutus.Script.Size (fitsOnChain)
-import Prelude (String)
 
+import Mlabs.NFT.Governance.Validation (mkGovScript)
 import Mlabs.NFT.Validation (mkTxPolicy)
 
 test :: TestTree
-test = testGroup "Size" [testFitOnChain]
+test = testGroup "Size" [testNftFitsOnChain, testGovFitsOnChain]
 
-testFitOnChain :: TestTree
-testFitOnChain = fitsOnChain scriptName script
+testNftFitsOnChain :: TestTree
+testNftFitsOnChain = fitsOnChain "NFT marketplace" scriptNft
 
-scriptName :: String
-scriptName = "NFT marketplace"
+testGovFitsOnChain :: TestTree
+testGovFitsOnChain = fitsOnChain "Governance" scriptGov
 
-script :: Script
-script = fromCompiledCode $$(PlutusTx.compile [||mkTxPolicy||])
+scriptNft :: Script
+scriptNft = fromCompiledCode $$(PlutusTx.compile [||mkTxPolicy||])
+
+scriptGov :: Script
+scriptGov = fromCompiledCode $$(PlutusTx.compile [||mkGovScript||])
