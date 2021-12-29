@@ -1,4 +1,4 @@
-module Test.Nft.Contract (
+module Test.NftStateMachine.Contract (
   test,
 ) where
 
@@ -6,11 +6,11 @@ import PlutusTx.Prelude hiding (foldMap, mconcat, (<>))
 import Prelude (foldMap, mconcat, (<>))
 
 import Plutus.Contract.Test (Wallet (..), checkPredicateOptions)
-import Test.Nft.Init (Script, adaCoin, checkOptions, runScript, userAct, w1, w2, w3)
+import Test.NftStateMachine.Init (Script, adaCoin, checkOptions, runScript, userAct, w1, w2, w3)
 import Test.Tasty (TestTree, testGroup)
 
 import Mlabs.Emulator.Scene (Scene, checkScene, owns)
-import Mlabs.Nft.Logic.Types (UserAct (..))
+import Mlabs.NftStateMachine.Logic.Types (UserAct (..))
 
 test :: TestTree
 test =
