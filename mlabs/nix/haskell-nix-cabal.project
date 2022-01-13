@@ -2,11 +2,12 @@
 
 source-repository-package
   type: git
-  location: https://github.com/Liqwid-Labs/plutus-extra.git
-  tag: cf3d12645fd461a73ef64471852092d215399e86
+  location: https://github.com/t4ccer/plutus-extra.git
+  tag: 80b48c148b49deb68c436e8bbdf289633c042b06
   subdir: plutus-extra
           tasty-plutus
           plutus-pretty
+          plutus-laws
           plutus-numeric
 
 source-repository-package
@@ -21,7 +22,7 @@ source-repository-package
     prettyprinter-configurable
     stubs/plutus-ghc-stub
   -- Update plutus revision here! Make sure this matches `cat ./nix/sources.json | jq '.plutus.rev'`
-  tag: 3f089ccf0ca746b399c99afe51e063b0640af547
+  tag: 2721c59fd2302b75c4138456c29fd5b509e8340a
 
 source-repository-package
   type: git
@@ -33,13 +34,14 @@ source-repository-package
     plutus-chain-index
     plutus-chain-index-core
     plutus-contract
+    plutus-ledger-constraints
     plutus-ledger
     plutus-pab
     plutus-playground-server
     plutus-use-cases
     quickcheck-dynamic
     web-ghc
-  tag: 404af7ac3e27ebcb218c05f79d9a70ca966407c9
+  tag: 21b592b1ea4bc727c1d486432e8aa8388d9e706c
 
 -- The following sections are copied from the combined 'plutus' and 'plutus-apps' repositories'
 -- 'cabal.project's at the revisions given above.

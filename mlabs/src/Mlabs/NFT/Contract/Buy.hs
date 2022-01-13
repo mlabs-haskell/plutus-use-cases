@@ -63,7 +63,7 @@ import Mlabs.NFT.Validation (calculateShares, txPolicy)
 buy :: forall s. UniqueToken -> BuyRequestUser -> Contract UserWriter s Text ()
 buy uT BuyRequestUser {..} = do
   ownOrefTxOut <- getUserAddr >>= fstUtxoAt
-  ownPkh <- Contract.ownPubKeyHash
+  ownPkh <- Contract.ownPaymentPubKeyHash
   nftPi <- findNft ur'nftId uT
   node <- case pi'data nftPi of
     NodeDatum n -> Hask.pure n

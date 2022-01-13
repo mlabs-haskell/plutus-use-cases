@@ -38,6 +38,7 @@ import Ledger (
   mkValidatorScript,
   scriptCurrencySymbol,
   to,
+  unPaymentPubKeyHash,
  )
 import Ledger.Typed.Scripts (
   DatumType,
@@ -431,7 +432,7 @@ mkTxPolicy _ !datum' !act !ctx =
       where
         personId = getUserId . userIdGetter $ node
         share = info'share . node'information $ node
-        personGetsAda = getAda $ valuePaidTo info personId
+        personGetsAda = getAda $ valuePaidTo info (unPaymentPubKeyHash personId)
         personWantsAda = subtractFee . getAda $ shareCalcFn bid share
 
     ownerIsAuthor =
@@ -641,10 +642,10 @@ mkTxPolicy _ !datum' !act !ctx =
     -- Check if the price of NFT is changed by the owner of NFT
     signedByOwner node =
       case txInfoSignatories $ scriptContextTxInfo ctx of
-        [pkh] -> pkh == getUserId (info'owner $ node'information node)
+        [pkh] -> pkh == unPaymentPubKeyHash (getUserId (info'owner $ node'information node))
         _ -> False
 
-    -- Check if no new token is minted.
+    -- Check If No new token is minted.
     !noMint = all ((nftCurr /=) . fst3) . flattenValue $ minted
       where
         minted = txInfoMint . scriptContextTxInfo $ ctx

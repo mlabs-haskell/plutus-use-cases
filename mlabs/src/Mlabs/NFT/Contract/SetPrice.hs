@@ -55,7 +55,7 @@ setPrice ut SetPriceParams {..} = do
   aSymbol <- getNftAppSymbol ut
   when negativePrice $ Contract.throwError "New price can not be negative"
   ownOrefTxOut <- getUserAddr >>= fstUtxoAt
-  ownPkh <- Contract.ownPubKeyHash
+  ownPkh <- Contract.ownPaymentPubKeyHash
   PointInfo {..} <- findNft sp'nftId ut
   oldNode <- case pi'data of
     NodeDatum n -> Hask.pure n

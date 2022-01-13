@@ -40,7 +40,7 @@ import Data.Aeson (Value (String))
 import Data.Map qualified as M
 import Data.Monoid (Last (..))
 import Data.Text qualified as T
-import Ledger (getPubKeyHash)
+import Ledger (PaymentPubKeyHash (unPaymentPubKeyHash), getPubKeyHash)
 import Numeric.Natural (Natural)
 import Plutus.Contract.Test (
   CheckOptions,
@@ -50,12 +50,12 @@ import Plutus.Contract.Test (
   checkPredicateOptions,
   defaultCheckOptions,
   emulatorConfig,
-  walletPubKeyHash,
+  mockWalletPaymentPubKeyHash,
  )
 import Plutus.Trace.Effects.Assert (Assert)
 import Plutus.Trace.Effects.EmulatedWalletAPI (EmulatedWalletAPI)
 import Plutus.Trace.Effects.EmulatorControl (EmulatorControl)
-import Plutus.Trace.Effects.RunContract (RunContract)
+import Plutus.Trace.Effects.RunContract (RunContract, StartContract)
 import Plutus.Trace.Effects.Waiting (Waiting)
 import Plutus.Trace.Emulator (
   EmulatorRuntimeError (GenericError),
@@ -126,9 +126,9 @@ callStartNft wal = do
   hAdmin <- activateContractWallet wal adminEndpoints
   let params =
         InitParams
-          [UserId . toSpooky . walletPubKeyHash $ wal]
+          [UserId . toSpooky . mockWalletPaymentPubKeyHash $ wal]
           (5 % 1000)
-          (walletPubKeyHash wal)
+          (unPaymentPubKeyHash $ mockWalletPaymentPubKeyHash wal)
   callEndpoint @"app-init" hAdmin params
   waitInit
   oState <- observableState hAdmin
@@ -143,9 +143,9 @@ callStartNftFail wal = do
   let w5 = walletFromNumber 5
       params =
         InitParams
-          [UserId . toSpooky . walletPubKeyHash $ w5]
+          [UserId . toSpooky . mockWalletPaymentPubKeyHash $ w5]
           (5 % 1000)
-          (walletPubKeyHash wal)
+          (unPaymentPubKeyHash $ mockWalletPaymentPubKeyHash wal)
   lift $ do
     hAdmin <- activateContractWallet wal adminEndpoints
     callEndpoint @"app-init" hAdmin params
@@ -155,7 +155,8 @@ type ScriptM a =
   ReaderT
     UniqueToken
     ( Eff
-        '[ RunContract
+        '[ StartContract
+         , RunContract
          , Assert
          , Waiting
          , EmulatorControl
@@ -172,7 +173,7 @@ checkOptions :: CheckOptions
 checkOptions = defaultCheckOptions & emulatorConfig . initialChainState .~ Left initialDistribution
 
 toUserId :: Wallet -> UserId
-toUserId = UserId . toSpooky . walletPubKeyHash
+toUserId = UserId . toSpooky . mockWalletPaymentPubKeyHash
 
 {- | Script runner. It inits NFT by user 1 and provides nft id to all sequent
  endpoint calls.
@@ -325,7 +326,7 @@ artwork2 =
 mkFreeGov :: Wallet -> Integer -> Plutus.V1.Ledger.Value.Value
 mkFreeGov wal = assetClassValue (AssetClass (govCurrency, tn))
   where
-    tn = TokenName . ("freeGov" <>) . getPubKeyHash . getUserId . toUserId $ wal
+    tn = TokenName . ("freeGov" <>) . getPubKeyHash . unPaymentPubKeyHash . getUserId . toUserId $ wal
 
 govCurrency :: CurrencySymbol
 govCurrency = "b3bd3382dbf45ba1ba3e46c5b9b80febe7b47209ddacc2cc0cb1a088"
@@ -333,7 +334,7 @@ govCurrency = "b3bd3382dbf45ba1ba3e46c5b9b80febe7b47209ddacc2cc0cb1a088"
 getFreeGov :: Wallet -> Plutus.V1.Ledger.Value.Value -> Integer
 getFreeGov wal val = valueOf val govCurrency tn
   where
-    tn = TokenName . ("freeGov" <>) . getPubKeyHash . getUserId . toUserId $ wal
+    tn = TokenName . ("freeGov" <>) . getPubKeyHash . unPaymentPubKeyHash . getUserId . toUserId $ wal
 
 appSymbol :: UniqueToken
 appSymbol = AssetClass ("038ecf2f85dcb99b41d7ebfcbc0d988f4ac2971636c3e358aa8d6121", "Unique App Token")

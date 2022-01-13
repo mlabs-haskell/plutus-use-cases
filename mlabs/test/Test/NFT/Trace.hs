@@ -31,6 +31,7 @@ import Plutus.Trace.Emulator (EmulatorTrace, activateContractWallet, callEndpoin
 import Plutus.Trace.Emulator qualified as Trace
 import Wallet.Emulator qualified as Emulator
 
+import Ledger (unPaymentPubKeyHash)
 import Mlabs.NFT.Api
 import Mlabs.NFT.Contract.Aux (hashData)
 import Mlabs.NFT.Spooky
@@ -47,7 +48,11 @@ type AppInitHandle = Trace.ContractHandle (Last NftAppInstance) NFTAppSchema Tex
 appInitTrace :: EmulatorTrace NftAppInstance
 appInitTrace = do
   let admin = walletFromNumber 4 :: Emulator.Wallet
-  let params = InitParams [UserId . toSpooky . Emulator.walletPubKeyHash $ admin] (5 % 1000) (Emulator.walletPubKeyHash admin)
+  let params =
+        InitParams
+          [UserId . toSpooky . Emulator.mockWalletPaymentPubKeyHash $ admin]
+          (5 % 1000)
+          (unPaymentPubKeyHash $ Emulator.mockWalletPaymentPubKeyHash admin)
   hAdmin :: AppInitHandle <- activateContractWallet admin adminEndpoints
   callEndpoint @"app-init" hAdmin params
   void $ Trace.waitNSlots 3

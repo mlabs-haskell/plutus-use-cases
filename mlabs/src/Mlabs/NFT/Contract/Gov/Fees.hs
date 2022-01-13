@@ -19,9 +19,11 @@ import PlutusTx.Prelude hiding (mconcat, mempty, (<>))
 
 import Ledger (
   Address,
+  PaymentPubKeyHash (PaymentPubKeyHash),
   getPubKeyHash,
   scriptCurrencySymbol,
   txOutValue,
+  unPaymentPubKeyHash,
  )
 import Ledger.Typed.Scripts (Any, validatorHash, validatorScript)
 import Ledger.Value as Value (TokenName (..), singleton)
@@ -56,7 +58,7 @@ getFeesConstraints uT nftId price user = do
       govScriptHash = validatorHash govValidator
 
   feeRate <- queryCurrFeeRate uT
-  feePkh <- queryFeePkh uT
+  feePkh <- PaymentPubKeyHash <$> queryFeePkh uT
   govHead' <- getGovHead govAddr
   govHead <- case govHead' of
     Just x -> Hask.pure x
@@ -68,7 +70,7 @@ getFeesConstraints uT nftId price user = do
       mkGov name =
         Value.singleton
           (scriptCurrencySymbol govPolicy)
-          (TokenName . (name <>) . getPubKeyHash $ ownPkh)
+          (TokenName . (name <>) . getPubKeyHash . unPaymentPubKeyHash $ ownPkh)
           feeValue
       mintedFreeGov = mkGov "freeGov"
       mintedListGov = mkGov "listGov"

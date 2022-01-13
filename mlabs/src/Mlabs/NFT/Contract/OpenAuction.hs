@@ -40,7 +40,7 @@ openAuction :: UniqueToken -> AuctionOpenParams -> Contract UserWriter s Text ()
 openAuction uT (AuctionOpenParams nftId deadline minBid) = do
   ownOrefTxOut <- getUserAddr >>= fstUtxoAt
   symbol <- getNftAppSymbol uT
-  ownPkh <- Contract.ownPubKeyHash
+  ownPkh <- Contract.ownPaymentPubKeyHash
   PointInfo {..} <- findNft nftId uT
   node <- case pi'data of
     NodeDatum n -> Hask.pure n
