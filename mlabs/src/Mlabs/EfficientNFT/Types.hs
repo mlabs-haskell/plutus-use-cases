@@ -3,6 +3,7 @@
 module Mlabs.EfficientNFT.Types (
   GenericContract,
   UserContract,
+  NFTAppSchema,
   MintParams (..),
   NftId (..),
   NftCollection (..),
@@ -14,27 +15,31 @@ module Mlabs.EfficientNFT.Types (
   LockAct (..),
   LockDatum (..),
   MarketplaceDatum (..),
+  MintCnftParams (..),
+  SeabugMetadata (..),
 ) where
 
 import PlutusTx qualified
-import PlutusTx.Prelude
+import PlutusTx.Prelude hiding (decodeUtf8)
 import Prelude qualified as Hask
 
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON, ToJSON, toJSON, object, (.=))
 import Data.Monoid (Last)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Ledger (PaymentPubKeyHash (PaymentPubKeyHash), Slot, ValidatorHash (ValidatorHash))
-import Plutus.Contract (Contract)
-import Plutus.V1.Ledger.Api (fromBuiltinData, toBuiltinData, unsafeFromBuiltinData)
+import Ledger (PaymentPubKeyHash (PaymentPubKeyHash), Slot, ValidatorHash (ValidatorHash), StakePubKeyHash, ScriptHash (getScriptHash), PubKeyHash (getPubKeyHash))
+import Plutus.V1.Ledger.Api (fromBuiltinData, toBuiltinData, unsafeFromBuiltinData, unTokenName, unCurrencySymbol)
 import Plutus.V1.Ledger.Crypto (PubKeyHash (PubKeyHash))
 import Plutus.V1.Ledger.Value (AssetClass (AssetClass), CurrencySymbol (CurrencySymbol), TokenName (TokenName))
 import PlutusTx.Builtins (blake2b_256, matchData', matchList)
-import PlutusTx.Builtins.Internal (equalsInteger, ifThenElse, mkCons, mkConstr, mkNilData, unitval, unsafeDataAsConstr)
+import PlutusTx.Builtins.Internal (equalsInteger, ifThenElse, mkCons, mkConstr, mkNilData, unitval, unsafeDataAsConstr, BuiltinByteString (BuiltinByteString))
+import Plutus.Contract (Contract, Endpoint, type (.\/))
 import PlutusTx.Builtins.Internal qualified as Internal
 import PlutusTx.ErrorCodes (reconstructCaseError)
 import PlutusTx.Natural (Natural)
 import Schema (ToSchema)
+import Cardano.Prelude (decodeUtf8)
+import Data.ByteString.Base16 (encode)
 
 -- | Parameters that need to be submitted when minting a new NFT.
 data MintParams = MintParams
@@ -47,6 +52,7 @@ data MintParams = MintParams
   , mp'lockLockupEnd :: Slot
   , mp'fakeAuthor :: Maybe PaymentPubKeyHash
   , mp'feeVaultKeys :: [PubKeyHash]
+  , mp'owner :: Maybe (PaymentPubKeyHash, Maybe StakePubKeyHash)
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
@@ -57,7 +63,7 @@ data NftId = NftId
   , nftId'owner :: PaymentPubKeyHash
   }
   deriving stock (Hask.Show, Generic, Hask.Eq, Hask.Ord)
-  deriving anyclass (FromJSON, ToJSON)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 instance PlutusTx.ToData NftId where
   {-# INLINEABLE toBuiltinData #-}
@@ -142,14 +148,14 @@ data NftCollection = NftCollection
   , nftCollection'daoShare :: Natural
   }
   deriving stock (Hask.Show, Generic, Hask.Eq, Hask.Ord)
-  deriving anyclass (FromJSON, ToJSON)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 data NftData = NftData
   { nftData'nftCollection :: NftCollection
   , nftData'nftId :: NftId
   }
   deriving stock (Hask.Show, Generic, Hask.Eq, Hask.Ord)
-  deriving anyclass (FromJSON, ToJSON)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 data SetPriceParams = SetPriceParams
   { -- | Token which price is set.
@@ -158,7 +164,7 @@ data SetPriceParams = SetPriceParams
     sp'price :: Natural
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
-  deriving anyclass (FromJSON, ToJSON)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 data ChangeOwnerParams = ChangeOwnerParams
   { -- | Token which owner is set.
@@ -167,10 +173,7 @@ data ChangeOwnerParams = ChangeOwnerParams
     cp'owner :: PaymentPubKeyHash
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
-  deriving anyclass (FromJSON, ToJSON)
-
-type GenericContract a = forall w s. Contract w s Text a
-type UserContract a = forall s. Contract (Last NftData) s Text a
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 data MintAct
   = MintToken NftId
@@ -551,3 +554,62 @@ instance Hashable NftId where
         , hash $ nftId'owner nft
         , hash $ nftId'collectionNftTn nft
         ]
+
+data MintCnftParams = MintCnftParams
+  { mc'image :: Text
+  , mc'tokenName :: BuiltinByteString
+  , mc'name :: Text
+  , mc'description :: Text
+  }
+  deriving stock (Hask.Show, Generic, Hask.Eq, Hask.Ord)
+  deriving anyclass (FromJSON, ToJSON, ToSchema)
+
+data SeabugMetadata = SeabugMetadata
+  { sm'mintPolicy :: ScriptHash
+  , sm'collectionNftCS :: CurrencySymbol
+  , sm'collectionNftTN :: TokenName
+  , sm'lockingScript :: ValidatorHash
+  , sm'authorPkh :: PubKeyHash
+  , sm'authorShare :: Natural
+  , sm'marketplaceScript :: ValidatorHash
+  , sm'marketplaceShare :: Natural
+  , sm'ownerPkh :: PubKeyHash
+  , sm'ownerPrice :: Natural
+  }
+
+instance ToJSON SeabugMetadata where
+  toJSON SeabugMetadata{..} = object
+    [ (toHex . getScriptHash $ sm'mintPolicy) .= object
+      [ "collectionNftCS" .= unCurrencySymbol sm'collectionNftCS
+      , "collectionNftTN" .= unTokenName sm'collectionNftTN
+      , "lockingScript" .= sm'lockingScript
+      , "authorPkh" .= getPubKeyHash sm'authorPkh
+      , "authorShare" .= sm'authorShare
+      , "marketplaceScript" .= sm'marketplaceScript
+      , "marketplaceShare" .= sm'marketplaceShare
+      , "ownerPkh" .= getPubKeyHash sm'ownerPkh
+      , "ownerPrice" .= sm'ownerPrice
+      ]
+    ]
+    where
+      toHex :: BuiltinByteString -> Text
+      toHex (BuiltinByteString str) = decodeUtf8 (encode str)
+    
+-- | A common App schema works for now.
+type NFTAppSchema =
+  -- Author Endpoints
+  Endpoint "mint" MintParams
+    .\/ Endpoint "mint-with-collection" (AssetClass, MintParams)
+    -- User Action Endpoints
+    .\/ Endpoint "change-owner" ChangeOwnerParams
+    .\/ Endpoint "set-price" SetPriceParams
+    .\/ Endpoint "marketplace-deposit" NftData
+    .\/ Endpoint "marketplace-redeem" NftData
+    .\/ Endpoint "marketplace-buy" NftData
+    .\/ Endpoint "marketplace-set-price" SetPriceParams
+    .\/ Endpoint "burn" NftData
+    .\/ Endpoint "fee-withdraw" [PubKeyHash]
+    .\/ Endpoint "mint-cnft" [MintCnftParams]
+
+type GenericContract a = forall w s. Contract w s Text a
+type UserContract a = Contract (Last NftData) NFTAppSchema Text a

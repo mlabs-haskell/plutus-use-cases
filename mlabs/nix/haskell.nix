@@ -54,9 +54,9 @@ pkgs.haskell-nix.cabalProject {
         plutus-tx
         plutus-tx-plugin
         plutus-tx-spooky
-        plutus-simple-model
+        # plutus-simple-model
         plutus-use-cases
-        plutip
+        # plutip
         prettyprinter-configurable
         quickcheck-dynamic
         Win32-network
@@ -111,8 +111,8 @@ pkgs.haskell-nix.cabalProject {
       plutus-ledger.doHaddock = deferPluginErrors;
       plutus-ledger.flags.defer-plugin-errors = deferPluginErrors;
 
-      plutus-simple-model.doHaddock = false;
-      plutus-simple-model.flags.defer-plugin-errors = deferPluginErrors;
+      # plutus-simple-model.doHaddock = false;
+      # plutus-simple-model.flags.defer-plugin-errors = deferPluginErrors;
 
       # see https://github.com/input-output-hk/haskell.nix/issues/1128
       ieee.components.library.libs = pkgs.lib.mkForce [ ];
@@ -161,24 +161,25 @@ pkgs.haskell-nix.cabalProject {
     {
       src = inputs.cardano-ledger;
       subdirs = [
-        "byron/ledger/impl"
-        "cardano-ledger-core"
-        "cardano-protocol-tpraos"
         "eras/alonzo/impl"
         "eras/byron/chain/executable-spec"
         "eras/byron/crypto"
         "eras/byron/crypto/test"
         "eras/byron/ledger/executable-spec"
+        "eras/byron/ledger/impl"
         "eras/byron/ledger/impl/test"
         "eras/shelley/impl"
         "eras/shelley-ma/impl"
-        "eras/shelley/chain-and-ledger/executable-spec"
         "eras/shelley/test-suite"
-        "shelley/chain-and-ledger/shelley-spec-ledger-test"
-        "libs/non-integral"
-        "libs/small-steps"
+        "libs/cardano-data"
+        "libs/cardano-ledger-core"
         "libs/cardano-ledger-pretty"
-        "semantics/small-steps-test"
+        "libs/cardano-protocol-tpraos"
+        "libs/compact-map"
+        "libs/non-integral"
+        "libs/set-algebra"
+        "libs/small-steps"
+        "libs/small-steps-test"
       ];
     }
     {
@@ -192,16 +193,16 @@ pkgs.haskell-nix.cabalProject {
     {
       src = inputs.cardano-wallet;
       subdirs = [
-        "lib/dbvar"
-        "lib/text-class"
-        "lib/strict-non-empty-containers"
-        "lib/core"
-        "lib/test-utils"
-        "lib/numeric"
-        "lib/launcher"
-        "lib/core-integration"
         "lib/cli"
+        "lib/core"
+        "lib/core-integration"
+        "lib/dbvar"
+        "lib/launcher"
+        "lib/numeric"
         "lib/shelley"
+        "lib/strict-non-empty-containers"
+        "lib/test-utils"
+        "lib/text-class"
       ];
     }
     {
@@ -232,21 +233,23 @@ pkgs.haskell-nix.cabalProject {
     {
       src = inputs.ouroboros-network;
       subdirs = [
+        "io-classes"
+        "io-sim"
         "monoidal-synchronisation"
-        "typed-protocols"
-        "typed-protocols-cborg"
-        "typed-protocols-examples"
-        "ouroboros-network"
-        "ouroboros-network-testing"
-        "ouroboros-network-framework"
+        "network-mux"
+        "ntp-client"
         "ouroboros-consensus"
         "ouroboros-consensus-byron"
         "ouroboros-consensus-cardano"
+        "ouroboros-consensus-protocol"
         "ouroboros-consensus-shelley"
-        "io-sim"
-        "io-classes"
-        "network-mux"
-        "ntp-client"
+        "ouroboros-network"
+        "ouroboros-network-framework"
+        "ouroboros-network-testing"
+        "strict-stm"
+        "typed-protocols"
+        "typed-protocols-cborg"
+        "typed-protocols-examples"
       ];
     }
     {
@@ -256,9 +259,9 @@ pkgs.haskell-nix.cabalProject {
         "plutus-ledger-api"
         "plutus-tx"
         "plutus-tx-plugin"
-        "word-array"
         "prettyprinter-configurable"
         "stubs/plutus-ghc-stub"
+        "word-array"
       ];
     }
     {
@@ -289,7 +292,7 @@ pkgs.haskell-nix.cabalProject {
         "plutus-golden"
         "plutus-laws"
         "plutus-list"
-        "plutus-size-check"
+        # "plutus-size-check"
         "quickcheck-plutus-instances"
         "plutus-deriving"
       ];
@@ -298,10 +301,10 @@ pkgs.haskell-nix.cabalProject {
       src = inputs.plutus-tx-spooky;
       subdirs = [ "." ];
     }
-    {
-      src = inputs.plutus-simple-model;
-      subdirs = [ "." ];
-    }
+    # {
+    #   src = inputs.plutus-simple-model;
+    #   subdirs = [ "." ];
+    # }
     {
       src = inputs.purescript-bridge;
       subdirs = [ "." ];
@@ -314,10 +317,10 @@ pkgs.haskell-nix.cabalProject {
       src = inputs.Win32-network;
       subdirs = [ "." ];
     }
-    {
-      src = inputs.plutip;
-      subdirs = [ "." ];
-    }
+    # {
+    #   src = inputs.plutip;
+    #   subdirs = [ "." ];
+    # }
     {
       src = inputs.bot-plutus-interface;
       subdirs = [ "." ];

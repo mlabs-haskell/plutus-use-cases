@@ -12,6 +12,8 @@ cradle:
       component: "exe:nft-demo"
     - path: "./nft-marketplace/"
       component: "exe:nft-marketplace"
+    - path: "./efficient-nft-pab/"
+      component: "exe:efficient-nft-pab"
     - path: "./deploy-app/"
       component: "exe:deploy-app"
     - path: "./test"

@@ -7,7 +7,7 @@ import Control.Monad (void)
 import Data.Default (def)
 import Data.Text (pack)
 import Data.Void (Void)
-import Ledger (Datum (Datum), Redeemer (Redeemer), minAdaTxOut)
+import Ledger (Datum (Datum), Redeemer (Redeemer), minAdaTxOut, MintingPolicy (getMintingPolicy), scriptHash, unPaymentPubKeyHash)
 import Ledger.Constraints qualified as Constraints
 import Ledger.Contexts (scriptCurrencySymbol)
 import Ledger.TimeSlot (slotToBeginPOSIXTime)
@@ -15,7 +15,7 @@ import Ledger.Typed.Scripts (validatorHash)
 import Plutus.Contract qualified as Contract
 import Plutus.Contracts.Currency (CurrencyError, mintContract)
 import Plutus.Contracts.Currency qualified as MC
-import Plutus.V1.Ledger.Ada (toValue)
+import Plutus.V1.Ledger.Ada (toValue, lovelaceValueOf)
 import Plutus.V1.Ledger.Api (Extended (Finite, PosInf), Interval (Interval), LowerBound (LowerBound), ToData (toBuiltinData), TokenName (TokenName), UpperBound (UpperBound))
 import Plutus.V1.Ledger.Value (AssetClass, assetClass, assetClassValue, singleton, unAssetClass)
 import Text.Printf (printf)
@@ -25,6 +25,10 @@ import Mlabs.EfficientNFT.Dao (daoValidator)
 import Mlabs.EfficientNFT.Lock (lockValidator)
 import Mlabs.EfficientNFT.Token (mkTokenName, policy)
 import Mlabs.EfficientNFT.Types
+import Mlabs.EfficientNFT.Marketplace
+import Ledger.Constraints.Metadata (TxMetadata(TxMetadata), OtherFields (OtherFields))
+import qualified Data.Map as Map
+import Data.Aeson (toJSON)
 
 mint :: MintParams -> UserContract NftData
 mint mp = do
@@ -37,12 +41,13 @@ mintWithCollection (ac, mp) = do
   utxos <- getUserUtxos
   currSlot <- Contract.currentSlot
   Contract.logInfo @Hask.String $ printf "Curr slot: %s" (Hask.show currSlot)
-  let now = slotToBeginPOSIXTime def currSlot
+  let owner = fromMaybe (pkh, Nothing) (mp'owner mp)
+      now = slotToBeginPOSIXTime def currSlot
       author = fromMaybe pkh $ mp'fakeAuthor mp
       nft =
         NftId
           { nftId'price = mp'price mp
-          , nftId'owner = author
+          , nftId'owner = fst owner
           , nftId'collectionNftTn = snd . unAssetClass $ ac
           }
       collection =
@@ -63,6 +68,21 @@ mintWithCollection (ac, mp) = do
       nftValue = singleton curr tn 1
       mintRedeemer = Redeemer . toBuiltinData . MintToken $ nft
       nftData = NftData collection nft
+      seabugMeta = SeabugMetadata
+                     { sm'mintPolicy = scriptHash . getMintingPolicy $ policy'
+                     , sm'collectionNftCS = nftCollection'collectionNftCs collection
+                     , sm'collectionNftTN = nftId'collectionNftTn nft
+                     , sm'lockingScript = nftCollection'lockingScript collection
+                     , sm'authorPkh = unPaymentPubKeyHash $ nftCollection'author collection
+                     , sm'authorShare = nftCollection'authorShare collection
+                     , sm'marketplaceScript = nftCollection'daoScript collection
+                     , sm'marketplaceShare = nftCollection'daoShare collection
+                     , sm'ownerPkh = unPaymentPubKeyHash $ nftId'owner nft
+                     , sm'ownerPrice = nftId'price nft
+                     }
+  
+      meta = TxMetadata Nothing $ OtherFields $ Map.singleton "727" $ toJSON seabugMeta
+      valHash = validatorHash marketplaceValidator
       lookup =
         Hask.mconcat
           [ Constraints.mintingPolicy policy'
@@ -71,7 +91,10 @@ mintWithCollection (ac, mp) = do
       tx =
         Hask.mconcat
           [ Constraints.mustMintValueWithRedeemer mintRedeemer nftValue
-          , Constraints.mustPayToPubKey pkh (nftValue <> toValue minAdaTxOut)
+          , Constraints.mustPayToOtherScript
+              valHash
+              (Datum . toBuiltinData . MarketplaceDatum $ assetClass curr tn)
+              (nftValue <> toValue minAdaTxOut)
           , Constraints.mustPayToOtherScript
               (nftCollection'lockingScript collection)
               (Datum $ toBuiltinData $ LockDatum curr currSlot (snd $ unAssetClass ac))
@@ -80,6 +103,11 @@ mintWithCollection (ac, mp) = do
               Interval
                 (LowerBound (Finite now) True)
                 (UpperBound PosInf False)
+          , Constraints.mustIncludeMetadata meta
+          , Constraints.mustPayWithDatumToPubKey pkh (Datum $ toBuiltinData ()) (lovelaceValueOf 5_000_000)
+          , Constraints.mustPayWithDatumToPubKey pkh (Datum $ toBuiltinData ()) (lovelaceValueOf 5_000_000)
+          , Constraints.mustPayWithDatumToPubKey pkh (Datum $ toBuiltinData ()) (lovelaceValueOf 5_000_000)
+          , Constraints.mustPayWithDatumToPubKey pkh (Datum $ toBuiltinData ()) (lovelaceValueOf 5_000_000)
           ]
   void $ Contract.submitTxConstraintsWith @Void lookup tx
   Contract.tell . Hask.pure $ nftData

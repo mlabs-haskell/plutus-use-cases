@@ -9,7 +9,7 @@ import Ledger.Constraints qualified as Constraints
 import Ledger.Contexts (scriptCurrencySymbol)
 import Ledger.Typed.Scripts (Any, validatorHash, validatorScript)
 import Plutus.Contract qualified as Contract
-import Plutus.V1.Ledger.Ada (toValue)
+import Plutus.V1.Ledger.Ada (toValue, lovelaceValueOf)
 import Plutus.V1.Ledger.Api (ToData (toBuiltinData))
 import Plutus.V1.Ledger.Value (assetClass, singleton)
 import Text.Printf (printf)
@@ -27,6 +27,7 @@ marketplaceDeposit nftData = do
       tn = mkTokenName . nftData'nftId $ nftData
       nftValue = singleton curr tn 1
       valHash = validatorHash marketplaceValidator
+  pkh <- Contract.ownPaymentPubKeyHash
   utxos <- getUserUtxos
   let lookup =
         Hask.mconcat
@@ -41,6 +42,7 @@ marketplaceDeposit nftData = do
               valHash
               (Datum . toBuiltinData . MarketplaceDatum $ assetClass curr tn)
               (nftValue <> toValue minAdaTxOut)
+          , Constraints.mustPayToPubKey pkh $ lovelaceValueOf 5_000_000
           ]
   void $ Contract.submitTxConstraintsWith @Any lookup tx
   Contract.tell . Hask.pure $ nftData
