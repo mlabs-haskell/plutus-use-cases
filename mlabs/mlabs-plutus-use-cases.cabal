@@ -256,9 +256,10 @@ executable efficient-nft-pab
   main-is:       efficient-nft-pab/Main.hs
   ghc-options:   -Wall -threaded -rtsopts
   build-depends:
-    , mlabs-plutus-use-cases
-    , servant-client-core
     , bot-plutus-interface
+    , mlabs-plutus-use-cases
+    , optparse-applicative
+    , servant-client-core
 
 test-suite mlabs-plutus-use-cases-tests
   import:             common-imports
