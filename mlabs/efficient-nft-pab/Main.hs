@@ -1,9 +1,12 @@
+{-# LANGUAGE NamedFieldPuns #-}
+
 module Main (main) where
 
 import Prelude qualified as Hask hiding (toEnum)
 import PlutusTx.Prelude
 
 import Data.Default (def)
+import Data.String (fromString)
 import Mlabs.EfficientNFT.Types (MintParams (..), SetPriceParams, NFTAppSchema, UserContract, MintCnftParams (..), NftCollection (..), NftData (..), nftData'nftCollection, NftId (..))
 import Data.Monoid (Last (Last))
 import GHC.Generics (Generic)
@@ -38,17 +41,30 @@ import Mlabs.EfficientNFT.Contract.MarketplaceDeposit (marketplaceDeposit)
 import Mlabs.EfficientNFT.Marketplace (marketplaceValidator)
 import Mlabs.EfficientNFT.Token qualified as Token
 import Plutus.V1.Ledger.Api (ToData(toBuiltinData), Datum (Datum))
+import Options.Applicative (
+  Parser,
+  execParser,
+  fullDesc,
+  header,
+  help,
+  helper,
+  info,
+  long,
+  strOption,
+  value,
+  (<**>),
+ )
 
 {-# INLINEABLE mkPolicy #-}
 mkPolicy :: TxOutRef -> BuiltinData -> ScriptContext -> Bool
 mkPolicy oref _ ctx =
   traceIfFalse "UTxO not consumed" hasUTxO
   where
-    info :: TxInfo
-    info = scriptContextTxInfo ctx
+    info_ :: TxInfo
+    info_ = scriptContextTxInfo ctx
 
     hasUTxO :: Bool
-    hasUTxO = any (\i -> txInInfoOutRef i == oref) $ txInfoInputs info
+    hasUTxO = any (\i -> txInInfoOutRef i == oref) $ txInfoInputs info_
 
 policy :: TxOutRef -> MintingPolicy
 policy oref =
@@ -122,6 +138,24 @@ mkCollateral = do
     $ Contract.submitTxConstraintsWith @Void Hask.mempty
     $ Constraints.mustPayToPubKey pkh (lovelaceValueOf 5_000_000)
 
+data CliOptions = CliOptions
+  { phk :: Hask.String
+  , authPhk :: Hask.String
+  , currencySymbol :: Hask.String
+  , tokenName :: Hask.String
+  }
+
+cliOptionsParser :: Parser CliOptions
+cliOptionsParser =
+  CliOptions
+    Hask.<$> strOption (long "pkh" Hask.<> value "" Hask.<> help "own pub key hash")
+    Hask.<*> strOption (long "auth-pkh" Hask.<> value "" Hask.<> help "author pub key hash")
+    Hask.<*> strOption (long "currency" Hask.<> value "" Hask.<> help "currency symbol")
+    Hask.<*> strOption (long "token" Hask.<> value "" Hask.<> help "tokenName as a string")
+
+getCliOptions :: Hask.IO CliOptions
+getCliOptions = execParser (info (cliOptionsParser <**> helper) (fullDesc Hask.<> header "Efficient NFT PAB"))
+
 main :: Hask.IO ()
 main = do
   -- Hask.print $ deserialiseAddress (AsAddress AsShelleyAddr) "addr_test"
@@ -137,8 +171,9 @@ main = do
   -- ByteString.putStrLn
   --   $ JSON.encode foo1
 
-  let uCs = "" -- CURRENCY_SYMBOL
-      auth = PaymentPubKeyHash "" -- YOUR_PKH
+  CliOptions{phk, authPhk, currencySymbol, tokenName} <- getCliOptions
+  let uCs = fromString currencySymbol -- CURRENCY_SYMBOL
+      auth = PaymentPubKeyHash $ fromString authPhk -- YOUR_PKH
       mp = MintParams
              { mp'authorShare = toEnum 1000
              , mp'daoShare = toEnum 500
@@ -152,7 +187,7 @@ main = do
   Hask.putStr "seabug-mint-request: "
   ByteString.putStrLn
     $ JSON.encode
-    $ Mint (assetClass uCs "cat-123", mp)
+    $ Mint (assetClass uCs $ fromString tokenName, mp)
 
   let c = NftCollection
         { nftCollection'collectionNftCs = uCs
@@ -184,7 +219,7 @@ main = do
           , pcDryRun = False
           , pcPort = 3003
           , pcLogLevel = Debug
-          , pcOwnPubKeyHash = "3f3464650beb5324d0e463ebe81fbe1fd519b6438521e96d0d35bd75" -- OWN_PUB_KEY
+          , pcOwnPubKeyHash = fromString phk -- OWN_PUB_KEY
           , pcSlotConfig = def
           , pcEnableTxEndpoint = True
           , pcTipPollingInterval = 1_000_000
