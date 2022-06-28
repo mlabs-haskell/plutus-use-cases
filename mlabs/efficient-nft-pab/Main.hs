@@ -184,6 +184,9 @@ main = do
              , mp'fakeAuthor = Just auth
              , mp'feeVaultKeys = []
              }
+
+  Hask.putStrLn $ "uCs: " <> Hask.show uCs
+
   Hask.putStr "seabug-mint-request: "
   ByteString.putStrLn
     $ JSON.encode
@@ -191,14 +194,22 @@ main = do
 
   let c = NftCollection
         { nftCollection'collectionNftCs = uCs
-        , nftCollection'lockLockup = 1
-        , nftCollection'lockLockupEnd = 1
         , nftCollection'lockingScript = validatorHash $ lockValidator uCs 1 1
         , nftCollection'author = auth
         , nftCollection'authorShare = toEnum 1000
         , nftCollection'daoScript = validatorHash $ daoValidator []
         , nftCollection'daoShare = toEnum 500
+
+        , nftCollection'lockLockup = 1
+        , nftCollection'lockLockupEnd = 1
         }
+
+  Hask.putStrLn $ Hask.show c
+
+  Hask.putStr "unapplied-minting-policy: "
+  ByteString.putStrLn
+    $ JSON.encode
+    $ Token.unappliedPolicyScript
 
   Hask.putStr "minting-policy: "
   ByteString.putStrLn

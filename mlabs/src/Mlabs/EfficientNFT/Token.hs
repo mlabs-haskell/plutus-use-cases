@@ -4,12 +4,15 @@
 
 module Mlabs.EfficientNFT.Token (
   mkPolicy,
+  unappliedPolicyScript,
   policy,
   mkTokenName,
 ) where
 
 import Ledger (
   CurrencySymbol,
+  Script,
+  fromCompiledCode,
   Datum (Datum),
   MintingPolicy,
   PaymentPubKeyHash (unPaymentPubKeyHash),
@@ -29,7 +32,7 @@ import Ledger.Address (
   scriptHashAddress,
  )
 import Ledger.Scripts qualified as Scripts
-import Ledger.Typed.Scripts (wrapMintingPolicy)
+import Ledger.Typed.Scripts (WrappedMintingPolicyType, wrapMintingPolicy)
 import Ledger.Value (TokenName (TokenName), valueOf)
 import Ledger.Value qualified as Value
 import Mlabs.EfficientNFT.Types (
@@ -170,10 +173,25 @@ mkPolicy collectionNftCs lockingScript author authorShare daoScript daoShare min
 mkTokenName :: NftId -> TokenName
 mkTokenName = TokenName . hash
 
+compiledPolicy ::
+  PlutusTx.CompiledCode
+    ( CurrencySymbol ->
+      ValidatorHash ->
+      PaymentPubKeyHash ->
+      Natural ->
+      ValidatorHash ->
+      Natural ->
+      WrappedMintingPolicyType
+    )
+compiledPolicy = $$(PlutusTx.compile [||\a b c d e f -> wrapMintingPolicy (mkPolicy a b c d e f)||])
+
+unappliedPolicyScript :: Script
+unappliedPolicyScript = fromCompiledCode compiledPolicy
+
 policy :: NftCollection -> MintingPolicy
 policy NftCollection {..} =
   Scripts.mkMintingPolicyScript $
-    $$(PlutusTx.compile [||\a b c d e f -> wrapMintingPolicy (mkPolicy a b c d e f)||])
+    compiledPolicy
       `PlutusTx.applyCode` PlutusTx.liftCode nftCollection'collectionNftCs
       `PlutusTx.applyCode` PlutusTx.liftCode nftCollection'lockingScript
       `PlutusTx.applyCode` PlutusTx.liftCode nftCollection'author
