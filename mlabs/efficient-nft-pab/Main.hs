@@ -185,7 +185,7 @@ main = do
              , mp'feeVaultKeys = []
              }
 
-  Hask.putStrLn $ "uCs: " <> Hask.show uCs
+  Hask.putStrLn $ "currencySymbol: " <> Hask.show uCs
 
   Hask.putStr "seabug-mint-request: "
   ByteString.putStrLn
@@ -199,17 +199,18 @@ main = do
         , nftCollection'authorShare = toEnum 1000
         , nftCollection'daoScript = validatorHash $ daoValidator []
         , nftCollection'daoShare = toEnum 500
-
+        -- unused:
         , nftCollection'lockLockup = 1
         , nftCollection'lockLockupEnd = 1
         }
-
-  Hask.putStrLn $ Hask.show c
 
   Hask.putStr "unapplied-minting-policy: "
   ByteString.putStrLn
     $ JSON.encode
     $ Token.unappliedPolicyScript
+
+  Hask.putStr "NftCollection: "
+  Hask.putStrLn $ Hask.show c
 
   Hask.putStr "minting-policy: "
   ByteString.putStrLn
