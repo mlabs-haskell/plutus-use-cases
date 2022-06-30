@@ -24,7 +24,7 @@ import Plutus.Contract qualified as Contract
 import Ledger.Constraints qualified as Constraints
 import Data.Void (Void)
 import Control.Monad (void)
-import Ledger (PaymentPubKeyHash (PaymentPubKeyHash), StakePubKeyHash (StakePubKeyHash), MintingPolicy, TxOutRef, ScriptContext, TxInfo, pubKeyHashAddress, scriptContextTxInfo, txInInfoOutRef, txInfoInputs, mkMintingPolicyScript, scriptCurrencySymbol, minAdaTxOut)
+import Ledger (scriptHash, mintingPolicyHash, PaymentPubKeyHash (PaymentPubKeyHash), StakePubKeyHash (StakePubKeyHash), MintingPolicy, TxOutRef, ScriptContext, TxInfo, pubKeyHashAddress, scriptContextTxInfo, txInInfoOutRef, txInfoInputs, mkMintingPolicyScript, scriptCurrencySymbol, minAdaTxOut)
 import Ledger.Value (AssetClass, TokenName (TokenName), assetClass, singleton)
 import Ledger.Typed.Scripts (wrapMintingPolicy, validatorHash)
 import Plutus.V1.Ledger.Ada (lovelaceValueOf, toValue)
@@ -209,6 +209,9 @@ main = do
     $ JSON.encode
     $ Token.unappliedPolicyScript
 
+  Hask.putStr "unapplied-minting-policy hash: "
+  Hask.print $ scriptHash Token.unappliedPolicyScript
+
   Hask.putStr "NftCollection: "
   Hask.putStrLn $ Hask.show c
 
@@ -216,6 +219,9 @@ main = do
   ByteString.putStrLn
     $ JSON.encode      
     $ Token.policy c
+
+  Hask.putStr "unapplied-minting-policy hash: "
+  Hask.print $ mintingPolicyHash $ Token.policy c
 
   protocolParams <- fromJust . JSON.decode Hask.<$> LazyByteString.readFile "data/testnet-protocol-params.json"
   let pabConf =
