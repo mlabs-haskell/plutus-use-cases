@@ -6,21 +6,23 @@ module Mlabs.EfficientNFT.Token (
   mkPolicy,
   unappliedPolicyScript,
   policy,
+  policyDataScript,
+  policyData,
   mkTokenName,
 ) where
 
 import Ledger (
   CurrencySymbol,
-  Script,
-  fromCompiledCode,
   Datum (Datum),
-  MintingPolicy,
+  MintingPolicy (MintingPolicy),
   PaymentPubKeyHash (unPaymentPubKeyHash),
+  Script,
   ScriptContext,
   TxInfo (txInfoMint, txInfoOutputs),
   TxOut (TxOut, txOutAddress, txOutValue),
   ValidatorHash,
   findDatum,
+  fromCompiledCode,
   minAdaTxOut,
   ownCurrencySymbol,
   pubKeyHashAddress,
@@ -44,10 +46,33 @@ import Mlabs.EfficientNFT.Types (
   nftId'owner,
   nftId'price,
  )
+import Plutus.V1.Ledger.Scripts qualified as Plutus
 import PlutusTx qualified
 import PlutusTx.AssocMap qualified as Map
 import PlutusTx.Natural (Natural)
 import PlutusTx.Prelude
+
+import PlutusTx (toData)
+
+{-# INLINEABLE mkPolicyData #-}
+mkPolicyData ::
+  BuiltinData ->
+  BuiltinData ->
+  BuiltinData ->
+  BuiltinData ->
+  BuiltinData ->
+  BuiltinData ->
+  MintAct ->
+  ScriptContext ->
+  Bool
+mkPolicyData collectionNftCs lockingScript author authorShare daoScript daoShare =
+  mkPolicy
+    (PlutusTx.unsafeFromBuiltinData collectionNftCs)
+    (PlutusTx.unsafeFromBuiltinData lockingScript)
+    (PlutusTx.unsafeFromBuiltinData author)
+    (PlutusTx.unsafeFromBuiltinData authorShare)
+    (PlutusTx.unsafeFromBuiltinData daoScript)
+    (PlutusTx.unsafeFromBuiltinData daoShare)
 
 {-# INLINEABLE mkPolicy #-}
 mkPolicy ::
@@ -198,3 +223,18 @@ policy NftCollection {..} =
       `PlutusTx.applyCode` PlutusTx.liftCode nftCollection'authorShare
       `PlutusTx.applyCode` PlutusTx.liftCode nftCollection'daoScript
       `PlutusTx.applyCode` PlutusTx.liftCode nftCollection'daoShare
+
+policyDataScript :: Script
+policyDataScript = fromCompiledCode $$(PlutusTx.compile [||\a b c d e f -> wrapMintingPolicy (mkPolicyData a b c d e f)||])
+
+policyData :: NftCollection -> MintingPolicy
+policyData NftCollection {..} =
+  MintingPolicy $
+    policyDataScript
+      `Plutus.applyArguments` [ toData nftCollection'collectionNftCs
+                              , toData nftCollection'lockingScript
+                              , toData nftCollection'author
+                              , toData nftCollection'authorShare
+                              , toData nftCollection'daoScript
+                              , toData nftCollection'daoShare
+                              ]

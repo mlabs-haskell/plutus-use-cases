@@ -205,9 +205,7 @@ main = do
         }
 
   Hask.putStr "unapplied-minting-policy: "
-  ByteString.putStrLn
-    $ JSON.encode
-    $ Token.unappliedPolicyScript
+  ByteString.putStrLn $ JSON.encode Token.policyDataScript
 
   Hask.putStr "unapplied-minting-policy hash: "
   Hask.print $ scriptHash Token.unappliedPolicyScript
@@ -216,9 +214,7 @@ main = do
   Hask.putStrLn $ Hask.show c
 
   Hask.putStr "minting-policy: "
-  ByteString.putStrLn
-    $ JSON.encode      
-    $ Token.policy c
+  ByteString.putStrLn $ JSON.encode $ Token.policy c
 
   Hask.putStr "unapplied-minting-policy hash: "
   Hask.print $ mintingPolicyHash $ Token.policy c

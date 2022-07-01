@@ -23,7 +23,7 @@ import Text.Printf (printf)
 import Mlabs.EfficientNFT.Contract.Aux (getUserUtxos)
 import Mlabs.EfficientNFT.Dao (daoValidator)
 import Mlabs.EfficientNFT.Lock (lockValidator)
-import Mlabs.EfficientNFT.Token (mkTokenName, policy)
+import Mlabs.EfficientNFT.Token (mkTokenName, policyData)
 import Mlabs.EfficientNFT.Types
 import Mlabs.EfficientNFT.Marketplace
 import Ledger.Constraints.Metadata (TxMetadata(TxMetadata), OtherFields (OtherFields))
@@ -62,7 +62,7 @@ mintWithCollection (ac, mp) = do
           , nftCollection'daoScript = validatorHash $ daoValidator $ mp'feeVaultKeys mp
           , nftCollection'daoShare = mp'daoShare mp
           }
-      policy' = policy collection
+      policy' = policyData collection
       curr = scriptCurrencySymbol policy'
       tn = mkTokenName nft
       nftValue = singleton curr tn 1
