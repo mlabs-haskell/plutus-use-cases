@@ -566,6 +566,7 @@ data MintCnftParams = MintCnftParams
 
 data SeabugMetadata = SeabugMetadata
   { sm'policyId :: ScriptHash -- ^ applied script hash
+  , sm'mintPolicy :: ScriptHash -- ^ not-applied script hash
   , sm'collectionNftCS :: CurrencySymbol
   , sm'collectionNftTN :: TokenName
   , sm'lockingScript :: ValidatorHash
@@ -580,7 +581,8 @@ data SeabugMetadata = SeabugMetadata
 instance ToJSON SeabugMetadata where
   toJSON SeabugMetadata{..} = object
     [ (toHex . getScriptHash $ sm'policyId) .= object
-      [ "collectionNftCS" .= unCurrencySymbol sm'collectionNftCS
+      [ "mintPolicy" .= (toHex . getScriptHash $ sm'mintPolicy)
+      , "collectionNftCS" .= unCurrencySymbol sm'collectionNftCS
       , "collectionNftTN" .= unTokenName sm'collectionNftTN
       , "lockingScript" .= sm'lockingScript
       , "authorPkh" .= getPubKeyHash sm'authorPkh

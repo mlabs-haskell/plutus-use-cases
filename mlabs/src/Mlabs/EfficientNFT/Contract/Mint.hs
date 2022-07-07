@@ -23,7 +23,7 @@ import Text.Printf (printf)
 import Mlabs.EfficientNFT.Contract.Aux (getUserUtxos)
 import Mlabs.EfficientNFT.Dao (daoValidator)
 import Mlabs.EfficientNFT.Lock (lockValidator)
-import Mlabs.EfficientNFT.Token (mkTokenName, policyData)
+import Mlabs.EfficientNFT.Token (mkTokenName, policyData, policyDataScript)
 import Mlabs.EfficientNFT.Types
 import Mlabs.EfficientNFT.Marketplace
 import Ledger.Constraints.Metadata (TxMetadata(TxMetadata), OtherFields (OtherFields))
@@ -70,6 +70,7 @@ mintWithCollection (ac, mp) = do
       nftData = NftData collection nft
       seabugMeta = SeabugMetadata
                      { sm'policyId = scriptHash . getMintingPolicy $ policy'
+                     , sm'mintPolicy = scriptHash policyDataScript
                      , sm'collectionNftCS = nftCollection'collectionNftCs collection
                      , sm'collectionNftTN = nftId'collectionNftTn nft
                      , sm'lockingScript = nftCollection'lockingScript collection
