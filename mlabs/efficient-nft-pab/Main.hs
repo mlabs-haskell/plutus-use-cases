@@ -2,45 +2,39 @@
 
 module Main (main) where
 
-import Prelude qualified as Hask hiding (toEnum)
 import PlutusTx.Prelude
+import Prelude qualified as Hask hiding (toEnum)
 
-import Data.Default (def)
-import Data.String (fromString)
-import Mlabs.EfficientNFT.Types (MintParams (..), SetPriceParams, NFTAppSchema, UserContract, MintCnftParams (..), NftCollection (..), NftData (..), nftData'nftCollection, NftId (..))
-import Data.Monoid (Last (Last))
-import GHC.Generics (Generic)
-import Data.Aeson (FromJSON, ToJSON)
+import BotPlutusInterface (runPAB)
 import BotPlutusInterface.Types
+import Cardano.Api (AsType (..), NetworkId (Testnet), NetworkMagic (NetworkMagic), deserialiseAddress)
+import Control.Monad (void)
+import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson qualified as JSON
+import Data.ByteString.Lazy qualified as LazyByteString
+import Data.ByteString.Lazy.Char8 qualified as ByteString
+import Data.Default (def)
+import Data.Map qualified as Map
+import Data.Maybe (fromJust)
+import Data.Monoid (Last (Last))
+import Data.String (fromString)
+import Data.Text (Text)
+import Data.Text qualified as Text
+import Data.Void (Void)
+import GHC.Generics (Generic)
+import Ledger (MintingPolicy, PaymentPubKeyHash (PaymentPubKeyHash), ScriptContext, StakePubKeyHash (StakePubKeyHash), TxInfo, TxOutRef, minAdaTxOut, mintingPolicyHash, mkMintingPolicyScript, pubKeyHashAddress, scriptContextTxInfo, scriptCurrencySymbol, scriptHash, txInInfoOutRef, txInfoInputs)
+import Ledger.Constraints qualified as Constraints
+import Ledger.Constraints.Metadata (NftMetadata (..), NftMetadataToken (..), TxMetadata (..))
+import Ledger.Typed.Scripts (validatorHash, wrapMintingPolicy)
+import Ledger.Value (AssetClass, TokenName (TokenName), assetClass, singleton)
+import Mlabs.EfficientNFT.Contract.MarketplaceDeposit (marketplaceDeposit)
 import Mlabs.EfficientNFT.Contract.Mint (mintWithCollection)
 import Mlabs.EfficientNFT.Contract.SetPrice (setPrice)
-import qualified Data.ByteString.Lazy as LazyByteString
-import qualified Data.Aeson as JSON
-import Cardano.Api (NetworkId(Testnet), NetworkMagic (NetworkMagic))
-import Data.Maybe (fromJust)
-import BotPlutusInterface (runPAB)
-import Servant.Client.Core (BaseUrl (BaseUrl), Scheme (Http))
-import Plutus.Contract qualified as Contract
-import Ledger.Constraints qualified as Constraints
-import Data.Void (Void)
-import Control.Monad (void)
-import Ledger (scriptHash, mintingPolicyHash, PaymentPubKeyHash (PaymentPubKeyHash), StakePubKeyHash (StakePubKeyHash), MintingPolicy, TxOutRef, ScriptContext, TxInfo, pubKeyHashAddress, scriptContextTxInfo, txInInfoOutRef, txInfoInputs, mkMintingPolicyScript, scriptCurrencySymbol, minAdaTxOut)
-import Ledger.Value (AssetClass, TokenName (TokenName), assetClass, singleton)
-import Ledger.Typed.Scripts (wrapMintingPolicy, validatorHash)
-import Plutus.V1.Ledger.Ada (lovelaceValueOf, toValue)
-import Data.ByteString.Lazy.Char8 qualified as ByteString
-import Cardano.Api (AsType (..), deserialiseAddress)
-import Data.Map qualified as Map
-import Data.Text qualified as Text
-import Data.Text (Text)
-import qualified PlutusTx
-import Ledger.Constraints.Metadata (NftMetadata (..), TxMetadata (..), NftMetadataToken (..))
 import Mlabs.EfficientNFT.Dao (daoValidator)
 import Mlabs.EfficientNFT.Lock (lockValidator)
-import Mlabs.EfficientNFT.Contract.MarketplaceDeposit (marketplaceDeposit)
 import Mlabs.EfficientNFT.Marketplace (marketplaceValidator)
 import Mlabs.EfficientNFT.Token qualified as Token
-import Plutus.V1.Ledger.Api (ToData(toBuiltinData), Datum (Datum))
+import Mlabs.EfficientNFT.Types (MintCnftParams (..), MintParams (..), NFTAppSchema, NftCollection (..), NftData (..), NftId (..), SetPriceParams, UserContract, nftData'nftCollection)
 import Options.Applicative (
   Parser,
   execParser,
@@ -54,6 +48,11 @@ import Options.Applicative (
   value,
   (<**>),
  )
+import Plutus.Contract qualified as Contract
+import Plutus.V1.Ledger.Ada (lovelaceValueOf, toValue)
+import Plutus.V1.Ledger.Api (Datum (Datum), ToData (toBuiltinData))
+import PlutusTx qualified
+import Servant.Client.Core (BaseUrl (BaseUrl), Scheme (Http))
 
 {-# INLINEABLE mkPolicy #-}
 mkPolicy :: TxOutRef -> BuiltinData -> ScriptContext -> Bool
@@ -69,7 +68,7 @@ mkPolicy oref _ ctx =
 policy :: TxOutRef -> MintingPolicy
 policy oref =
   mkMintingPolicyScript $
-    $$(PlutusTx.compile [||\oref' -> wrapMintingPolicy $ mkPolicy oref' ||])
+    $$(PlutusTx.compile [||wrapMintingPolicy . mkPolicy||])
       `PlutusTx.applyCode` PlutusTx.liftCode oref
 
 generateNft :: [MintCnftParams] -> Contract.Contract (Last Text) NFTAppSchema Text ()
@@ -86,15 +85,20 @@ generateNft tokens = do
             NftMetadata $
               Map.singleton cs $
                 Map.fromList $
-                Hask.fmap (\MintCnftParams{..} -> (TokenName mc'tokenName,
-                  NftMetadataToken
-                    { nmtName = mc'name
-                    , nmtImage = mc'image
-                    , nmtMediaType = Hask.pure "image/png"
-                    , nmtDescription = Just mc'description
-                    , nmtFiles = Hask.mempty
-                    , nmtOtherFields = Hask.mempty
-                    })) tokens
+                  Hask.fmap
+                    ( \MintCnftParams {..} ->
+                        ( TokenName mc'tokenName
+                        , NftMetadataToken
+                            { nmtName = mc'name
+                            , nmtImage = mc'image
+                            , nmtMediaType = Hask.pure "image/png"
+                            , nmtDescription = Just mc'description
+                            , nmtFiles = Hask.mempty
+                            , nmtOtherFields = Hask.mempty
+                            }
+                        )
+                    )
+                    tokens
           lookups =
             Hask.mconcat
               [ Constraints.mintingPolicy (policy oref)
@@ -110,7 +114,6 @@ generateNft tokens = do
               ]
       void $ Contract.submitTxConstraintsWith @Void lookups tx
       Contract.tell $ Last $ Just "Finished"
-
 
 data NftContracts
   = MkCollateral
@@ -134,9 +137,9 @@ instance HasDefinitions NftContracts where
 mkCollateral :: UserContract ()
 mkCollateral = do
   pkh <- Contract.ownPaymentPubKeyHash
-  void
-    $ Contract.submitTxConstraintsWith @Void Hask.mempty
-    $ Constraints.mustPayToPubKey pkh (lovelaceValueOf 5_000_000)
+  void $
+    Contract.submitTxConstraintsWith @Void Hask.mempty $
+      Constraints.mustPayToPubKey pkh (lovelaceValueOf 5_000_000)
 
 data CliOptions = CliOptions
   { phk :: Hask.String
@@ -159,7 +162,7 @@ getCliOptions = execParser (info (cliOptionsParser <**> helper) (fullDesc Hask.<
 main :: Hask.IO ()
 main = do
   -- Hask.print $ deserialiseAddress (AsAddress AsShelleyAddr) "addr_test"
-  
+
   -- let foo1 = MintCnft
   --       [ MintCnftParams
   --           { mc'image = "ipfs://INSERT_HASH_HERE"
@@ -171,38 +174,40 @@ main = do
   -- ByteString.putStrLn
   --   $ JSON.encode foo1
 
-  CliOptions{phk, authPhk, currencySymbol, tokenName} <- getCliOptions
+  CliOptions {phk, authPhk, currencySymbol, tokenName} <- getCliOptions
   let uCs = fromString currencySymbol -- CURRENCY_SYMBOL
       auth = PaymentPubKeyHash $ fromString authPhk -- YOUR_PKH
-      mp = MintParams
-             { mp'authorShare = toEnum 1000
-             , mp'daoShare = toEnum 500
-             , mp'price = toEnum 100_000_000
-             , mp'lockLockup = 5
-             , mp'lockLockupEnd = 5
-             , mp'owner = Just (auth, Nothing)
-             , mp'fakeAuthor = Just auth
-             , mp'feeVaultKeys = []
-             }
+      mp =
+        MintParams
+          { mp'authorShare = toEnum 1000
+          , mp'daoShare = toEnum 500
+          , mp'price = toEnum 100_000_000
+          , mp'lockLockup = 5
+          , mp'lockLockupEnd = 5
+          , mp'owner = Just (auth, Nothing)
+          , mp'fakeAuthor = Just auth
+          , mp'feeVaultKeys = []
+          }
 
   Hask.putStrLn $ "currencySymbol: " <> Hask.show uCs
 
   Hask.putStr "seabug-mint-request: "
-  ByteString.putStrLn
-    $ JSON.encode
-    $ Mint (assetClass uCs $ fromString tokenName, mp)
+  ByteString.putStrLn $
+    JSON.encode $
+      Mint (assetClass uCs $ fromString tokenName, mp)
 
-  let c = NftCollection
-        { nftCollection'collectionNftCs = uCs
-        , nftCollection'lockingScript = validatorHash $ lockValidator uCs 1 1
-        , nftCollection'author = auth
-        , nftCollection'authorShare = toEnum 1000
-        , nftCollection'daoScript = validatorHash $ daoValidator []
-        , nftCollection'daoShare = toEnum 500
-        -- unused:
-        , nftCollection'lockLockup = 1
-        , nftCollection'lockLockupEnd = 1
-        }
+  let c =
+        NftCollection
+          { nftCollection'collectionNftCs = uCs
+          , nftCollection'lockingScript = validatorHash $ lockValidator uCs 1 1
+          , nftCollection'author = auth
+          , nftCollection'authorShare = toEnum 1000
+          , nftCollection'daoScript = validatorHash $ daoValidator []
+          , nftCollection'daoShare = toEnum 500
+          , -- unused:
+            nftCollection'lockLockup = 1
+          , nftCollection'lockLockupEnd = 1
+          }
 
   Hask.putStr "unapplied-minting-policy: "
   ByteString.putStrLn $ JSON.encode Token.policyDataScript
@@ -211,7 +216,7 @@ main = do
   Hask.print $ scriptHash Token.unappliedPolicyScript
 
   Hask.putStr "NftCollection: "
-  Hask.putStrLn $ Hask.show c
+  Hask.print c
 
   Hask.putStr "minting-policy: "
   ByteString.putStrLn $ JSON.encode $ Token.policy c
@@ -228,7 +233,7 @@ main = do
           , pcScriptFileDir = "pab/result-scripts"
           , pcTxFileDir = "pab/txs"
           , pcSigningKeyFileDir = "pab/signing-keys"
-          , pcProtocolParamsFile  = "data/testnet-protocol-params.json"
+          , pcProtocolParamsFile = "data/testnet-protocol-params.json"
           , pcChainIndexUrl = BaseUrl Http "localhost" 9083 ""
           , pcDryRun = False
           , pcPort = 3003

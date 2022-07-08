@@ -109,7 +109,7 @@ initialDistribution =
     , (w3, val 1000_000_000 <> v3 100)
     ]
   where
-    val x = Value.singleton Ada.adaSymbol Ada.adaToken x
+    val = Value.singleton Ada.adaSymbol Ada.adaToken
 
     coinVal coin = uncurry Value.singleton (Value.unAssetClass coin)
     v1 = coinVal coin1

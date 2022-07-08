@@ -438,7 +438,7 @@ auctionTrace1 = do
 
     slotTenTime = slotToBeginPOSIXTime def 10
     openParams nftId = AuctionOpenParams nftId slotTenTime 400
-    closeParams nftId = AuctionCloseParams nftId
+    closeParams = AuctionCloseParams
     bidParams = AuctionBidParams
 
 -- | Test for prototyping.
