@@ -7,7 +7,7 @@ import Prelude qualified as Hask hiding (toEnum)
 
 import BotPlutusInterface (runPAB)
 import BotPlutusInterface.Types
-import Cardano.Api (AsType (..), NetworkId (Testnet), NetworkMagic (NetworkMagic), deserialiseAddress)
+import Cardano.Api (NetworkId (Testnet), NetworkMagic (NetworkMagic))
 import Control.Monad (void)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Aeson qualified as JSON
@@ -22,19 +22,16 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
 import GHC.Generics (Generic)
-import Ledger (MintingPolicy, PaymentPubKeyHash (PaymentPubKeyHash), ScriptContext, StakePubKeyHash (StakePubKeyHash), TxInfo, TxOutRef, minAdaTxOut, mintingPolicyHash, mkMintingPolicyScript, pubKeyHashAddress, scriptContextTxInfo, scriptCurrencySymbol, scriptHash, txInInfoOutRef, txInfoInputs)
+import Ledger (MintingPolicy, PaymentPubKeyHash (PaymentPubKeyHash), ScriptContext, TxInfo, TxOutRef, minAdaTxOut, mkMintingPolicyScript, pubKeyHashAddress, scriptContextTxInfo, scriptCurrencySymbol, txInInfoOutRef, txInfoInputs)
 import Ledger.Constraints qualified as Constraints
 import Ledger.Constraints.Metadata (NftMetadata (..), NftMetadataToken (..), TxMetadata (..))
-import Ledger.Typed.Scripts (validatorHash, wrapMintingPolicy)
+import Ledger.Typed.Scripts (wrapMintingPolicy)
 import Ledger.Value (AssetClass, TokenName (TokenName), assetClass, singleton)
 import Mlabs.EfficientNFT.Contract.MarketplaceDeposit (marketplaceDeposit)
 import Mlabs.EfficientNFT.Contract.Mint (mintWithCollection)
 import Mlabs.EfficientNFT.Contract.SetPrice (setPrice)
-import Mlabs.EfficientNFT.Dao (daoValidator)
-import Mlabs.EfficientNFT.Lock (lockValidator)
-import Mlabs.EfficientNFT.Marketplace (marketplaceValidator)
 import Mlabs.EfficientNFT.Token qualified as Token
-import Mlabs.EfficientNFT.Types (MintCnftParams (..), MintParams (..), NFTAppSchema, NftCollection (..), NftData (..), NftId (..), SetPriceParams, UserContract, nftData'nftCollection)
+import Mlabs.EfficientNFT.Types (MintCnftParams (..), MintParams (..), NFTAppSchema, NftData, SetPriceParams, UserContract)
 import Options.Applicative (
   Parser,
   execParser,
@@ -161,19 +158,6 @@ getCliOptions = execParser (info (cliOptionsParser <**> helper) (fullDesc Hask.<
 
 main :: Hask.IO ()
 main = do
-  -- Hask.print $ deserialiseAddress (AsAddress AsShelleyAddr) "addr_test"
-
-  -- let foo1 = MintCnft
-  --       [ MintCnftParams
-  --           { mc'image = "ipfs://INSERT_HASH_HERE"
-  --           , mc'tokenName = "cat-123"
-  --           , mc'name = "Cat number 123"
-  --           , mc'description = "Cat eating piece of cheese"
-  --           }
-  --       ]
-  -- ByteString.putStrLn
-  --   $ JSON.encode foo1
-
   CliOptions {phk, authPhk, currencySymbol, tokenName} <- getCliOptions
   let uCs = fromString currencySymbol -- CURRENCY_SYMBOL
       auth = PaymentPubKeyHash $ fromString authPhk -- YOUR_PKH
@@ -189,40 +173,13 @@ main = do
           , mp'feeVaultKeys = []
           }
 
-  Hask.putStrLn $ "currencySymbol: " <> Hask.show uCs
-
   Hask.putStr "seabug-mint-request: "
   ByteString.putStrLn $
     JSON.encode $
       Mint (assetClass uCs $ fromString tokenName, mp)
 
-  let c =
-        NftCollection
-          { nftCollection'collectionNftCs = uCs
-          , nftCollection'lockingScript = validatorHash $ lockValidator uCs 1 1
-          , nftCollection'author = auth
-          , nftCollection'authorShare = toEnum 1000
-          , nftCollection'daoScript = validatorHash $ daoValidator []
-          , nftCollection'daoShare = toEnum 500
-          , -- unused:
-            nftCollection'lockLockup = 1
-          , nftCollection'lockLockupEnd = 1
-          }
-
   Hask.putStr "unapplied-minting-policy: "
   ByteString.putStrLn $ JSON.encode Token.policyDataScript
-
-  Hask.putStr "unapplied-minting-policy hash: "
-  Hask.print $ scriptHash Token.unappliedPolicyScript
-
-  Hask.putStr "NftCollection: "
-  Hask.print c
-
-  Hask.putStr "minting-policy: "
-  ByteString.putStrLn $ JSON.encode $ Token.policy c
-
-  Hask.putStr "unapplied-minting-policy hash: "
-  Hask.print $ mintingPolicyHash $ Token.policy c
 
   protocolParams <- fromJust . JSON.decode Hask.<$> LazyByteString.readFile "data/testnet-protocol-params.json"
   let pabConf =
