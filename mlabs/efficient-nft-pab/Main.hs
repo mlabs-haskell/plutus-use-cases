@@ -143,6 +143,7 @@ data CliOptions = CliOptions
   , authPhk :: Hask.String
   , currencySymbol :: Hask.String
   , tokenName :: Hask.String
+  , mintPolicy :: Hask.String
   }
 
 cliOptionsParser :: Parser CliOptions
@@ -152,13 +153,14 @@ cliOptionsParser =
     Hask.<*> strOption (long "auth-pkh" Hask.<> value "" Hask.<> help "author pub key hash")
     Hask.<*> strOption (long "currency" Hask.<> value "" Hask.<> help "currency symbol")
     Hask.<*> strOption (long "token" Hask.<> value "" Hask.<> help "tokenName as a string")
+    Hask.<*> strOption (long "mint-policy" Hask.<> value "" Hask.<> help "arbitrary string for mintPolicy version")
 
 getCliOptions :: Hask.IO CliOptions
 getCliOptions = execParser (info (cliOptionsParser <**> helper) (fullDesc Hask.<> header "Efficient NFT PAB"))
 
 main :: Hask.IO ()
 main = do
-  CliOptions {phk, authPhk, currencySymbol, tokenName} <- getCliOptions
+  CliOptions {phk, authPhk, currencySymbol, tokenName, mintPolicy} <- getCliOptions
   let uCs = fromString currencySymbol -- CURRENCY_SYMBOL
       auth = PaymentPubKeyHash $ fromString authPhk -- YOUR_PKH
       mp =
@@ -171,8 +173,10 @@ main = do
           , mp'owner = Just (auth, Nothing)
           , mp'fakeAuthor = Just auth
           , mp'feeVaultKeys = []
+          , mp'mintPolicy = mintPolicy
           }
 
+  -- in case of types changing, can help with request rewriting
   Hask.putStr "seabug-mint-request: "
   ByteString.putStrLn $
     JSON.encode $

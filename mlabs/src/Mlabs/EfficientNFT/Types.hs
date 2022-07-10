@@ -53,6 +53,7 @@ data MintParams = MintParams
   , mp'fakeAuthor :: Maybe PaymentPubKeyHash
   , mp'feeVaultKeys :: [PubKeyHash]
   , mp'owner :: Maybe (PaymentPubKeyHash, Maybe StakePubKeyHash)
+  , mp'mintPolicy :: Hask.String
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
@@ -567,8 +568,8 @@ data MintCnftParams = MintCnftParams
 data SeabugMetadata = SeabugMetadata
   { -- | applied script hash
     sm'policyId :: ScriptHash
-  , -- | not-applied script hash
-    sm'mintPolicy :: ScriptHash
+  , -- | arbitrary string for mintPolicy version identification
+    sm'mintPolicy :: Hask.String
   , sm'collectionNftCS :: CurrencySymbol
   , sm'collectionNftTN :: TokenName
   , sm'lockingScript :: ValidatorHash
@@ -585,7 +586,7 @@ instance ToJSON SeabugMetadata where
     object
       [ (toHex . getScriptHash $ sm'policyId)
           .= object
-            [ "mintPolicy" .= (toHex . getScriptHash $ sm'mintPolicy)
+            [ "mintPolicy" .= sm'mintPolicy
             , "collectionNftCS" .= unCurrencySymbol sm'collectionNftCS
             , "collectionNftTN" .= unTokenName sm'collectionNftTN
             , "lockingScript" .= sm'lockingScript

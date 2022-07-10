@@ -37,7 +37,7 @@ import Mlabs.EfficientNFT.Contract.Aux (getUserUtxos)
 import Mlabs.EfficientNFT.Dao (daoValidator)
 import Mlabs.EfficientNFT.Lock (lockValidator)
 import Mlabs.EfficientNFT.Marketplace
-import Mlabs.EfficientNFT.Token (mkTokenName, policyData, policyDataScript)
+import Mlabs.EfficientNFT.Token (mkTokenName, policyData)
 import Mlabs.EfficientNFT.Types
 
 mint :: MintParams -> UserContract NftData
@@ -81,7 +81,7 @@ mintWithCollection (ac, mp) = do
       seabugMeta =
         SeabugMetadata
           { sm'policyId = scriptHash . getMintingPolicy $ policy'
-          , sm'mintPolicy = scriptHash policyDataScript
+          , sm'mintPolicy = mp'mintPolicy mp
           , sm'collectionNftCS = nftCollection'collectionNftCs collection
           , sm'collectionNftTN = nftId'collectionNftTn nft
           , sm'lockingScript = nftCollection'lockingScript collection
