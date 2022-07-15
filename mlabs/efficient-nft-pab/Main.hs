@@ -31,6 +31,7 @@ import Mlabs.EfficientNFT.Contract.MarketplaceDeposit (marketplaceDeposit)
 import Mlabs.EfficientNFT.Contract.Mint (mintWithCollection)
 import Mlabs.EfficientNFT.Contract.SetPrice (setPrice)
 import Mlabs.EfficientNFT.Token qualified as Token
+import Mlabs.EfficientNFT.Lock qualified as Lock
 import Mlabs.EfficientNFT.Types (MintCnftParams (..), MintParams (..), NFTAppSchema, NftData, SetPriceParams, UserContract)
 import Options.Applicative (
   Parser,
