@@ -7,6 +7,7 @@ import Prelude qualified as Hask hiding (toEnum)
 
 import BotPlutusInterface (runPAB)
 import BotPlutusInterface.Types
+import Codec.Serialise
 import Cardano.Api (NetworkId (Testnet), NetworkMagic (NetworkMagic))
 import Control.Monad (void)
 import Data.Aeson (FromJSON, ToJSON)
@@ -22,7 +23,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
 import GHC.Generics (Generic)
-import Ledger (MintingPolicy, PaymentPubKeyHash (PaymentPubKeyHash), ScriptContext, TxInfo, TxOutRef, minAdaTxOut, mkMintingPolicyScript, pubKeyHashAddress, scriptContextTxInfo, scriptCurrencySymbol, txInInfoOutRef, txInfoInputs)
+import Ledger (MintingPolicy (MintingPolicy), PaymentPubKeyHash (PaymentPubKeyHash), ScriptContext, TxInfo, TxOutRef (TxOutRef, txOutRefId, txOutRefIdx), minAdaTxOut, mkMintingPolicyScript, pubKeyHashAddress, scriptContextTxInfo, scriptCurrencySymbol, txInInfoOutRef, txInfoInputs, Script, fromCompiledCode, applyArguments, TxId (TxId, getTxId), unMintingPolicyScript)
 import Ledger.Constraints qualified as Constraints
 import Ledger.Constraints.Metadata (NftMetadata (..), NftMetadataToken (..), TxMetadata (..))
 import Ledger.Typed.Scripts (wrapMintingPolicy)
@@ -48,9 +49,11 @@ import Options.Applicative (
  )
 import Plutus.Contract qualified as Contract
 import Plutus.V1.Ledger.Ada (lovelaceValueOf, toValue)
-import Plutus.V1.Ledger.Api (Datum (Datum), ToData (toBuiltinData))
+import Plutus.V1.Ledger.Api (Datum (Datum), ToData (toBuiltinData), toData, unsafeFromBuiltinData)
 import PlutusTx qualified
 import Servant.Client.Core (BaseUrl (BaseUrl), Scheme (Http))
+import qualified Data.Text.Lazy.Encoding as Text
+import qualified Data.ByteString.Base16.Lazy as Base16
 
 {-# INLINEABLE mkPolicy #-}
 mkPolicy :: TxOutRef -> BuiltinData -> ScriptContext -> Bool
@@ -62,6 +65,28 @@ mkPolicy oref _ ctx =
 
     hasUTxO :: Bool
     hasUTxO = any (\i -> txInInfoOutRef i == oref) $ txInfoInputs info_
+
+{-# INLINEABLE mkPolicyUntyped #-}
+mkPolicyUntyped :: BuiltinData -> BuiltinData -> ScriptContext -> Bool
+mkPolicyUntyped oref = mkPolicy (unsafeFromBuiltinData oref)
+
+
+policyUntyped :: TxOutRef -> MintingPolicy
+policyUntyped oref =
+  mkMintingPolicyScript $
+    $$(PlutusTx.compile [|| (\a -> wrapMintingPolicy (mkPolicyUntyped a)) ||])
+     `PlutusTx.applyCode` PlutusTx.liftCode (PlutusTx.toBuiltinData oref)
+  -- MintingPolicy $
+  --   policyUntypedScript
+  --     `applyArguments` [ toData $ getTxId $ txOutRefId oref,
+  --                        toData $ txOutRefIdx oref
+  --                      ]
+
+policyUntypedScript :: Script
+policyUntypedScript =
+  fromCompiledCode
+    $$(PlutusTx.compile [||(\a -> wrapMintingPolicy (mkPolicyUntyped a))||])
+
 
 policy :: TxOutRef -> MintingPolicy
 policy oref =
@@ -177,14 +202,24 @@ main = do
           , mp'mintPolicy = mintPolicy
           }
 
-  -- in case of types changing, can help with request rewriting
-  Hask.putStr "seabug-mint-request: "
-  ByteString.putStrLn $
-    JSON.encode $
-      Mint (assetClass uCs $ fromString tokenName, mp)
+  Hask.print $ Text.decodeUtf8 . Base16.encode $ serialise policyUntypedScript
 
-  Hask.putStr "unapplied-minting-policy: "
-  ByteString.putStrLn $ JSON.encode Token.policyDataScript
+  let
+    oref = TxOutRef (TxId "00e52d6fdb45e529dda8cfaa4e7f04dc8b94deffd1bd54196193cc2c5c49e418") 5
+    applied = policyUntyped oref
+  Hask.print $ PlutusTx.toBuiltinData oref
+  Hask.putStr "Applied CNFT currency symbol: "
+  Hask.print $ scriptCurrencySymbol applied
+  Hask.print $ Text.decodeUtf8 . Base16.encode $ serialise $ unMintingPolicyScript applied
+
+  -- in case of types changing, can help with request rewriting
+  -- Hask.putStr "seabug-mint-request: "
+  -- ByteString.putStrLn $
+  --   JSON.encode $
+  --     Mint (assetClass uCs $ fromString tokenName, mp)
+
+  -- Hask.putStr "unapplied-minting-policy: "
+  -- ByteString.putStrLn $ JSON.encode Token.policyDataScript
 
   protocolParams <- fromJust . JSON.decode Hask.<$> LazyByteString.readFile "data/testnet-protocol-params.json"
   let pabConf =
