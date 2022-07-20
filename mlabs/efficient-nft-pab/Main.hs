@@ -33,6 +33,7 @@ import Ledger.Value (AssetClass, TokenName (TokenName), singleton)
 import Mlabs.EfficientNFT.Contract.MarketplaceDeposit (marketplaceDeposit)
 import Mlabs.EfficientNFT.Contract.Mint (mintWithCollection)
 import Mlabs.EfficientNFT.Contract.SetPrice (setPrice)
+import Mlabs.EfficientNFT.Lock qualified as Lock
 import Mlabs.EfficientNFT.Token qualified as Token
 import Mlabs.EfficientNFT.Types (MintCnftParams (..), MintParams (..), NFTAppSchema, NftData, SetPriceParams, UserContract)
 import Options.Applicative (
@@ -104,13 +105,13 @@ generateNft tokens = do
                     ( \MintCnftParams {..} ->
                         ( TokenName mc'tokenName
                         , NftMetadataToken
-                            { nmtName = mc'name
-                            , nmtImage = mc'image
-                            , nmtMediaType = Hask.pure "image/png"
-                            , nmtDescription = Just mc'description
-                            , nmtFiles = Hask.mempty
-                            , nmtOtherFields = Hask.mempty
-                            }
+                          { nmtName = mc'name
+                          , nmtImage = mc'image
+                          , nmtMediaType = Hask.pure "image/png"
+                          , nmtDescription = Just mc'description
+                          , nmtFiles = Hask.mempty
+                          , nmtOtherFields = Hask.mempty
+                          }
                         )
                     )
                     tokens
@@ -175,6 +176,9 @@ main = do
 
   Hask.putStr "Unapplied sgNFT minting policy: "
   ByteString.putStrLn $ JSON.encode Token.policyDataScript
+
+  Hask.putStr "Unapplied locking validator: "
+  ByteString.putStrLn $ JSON.encode Lock.lockScriptUntyped
 
   protocolParams <- fromJust . JSON.decode Hask.<$> LazyByteString.readFile "data/testnet-protocol-params.json"
   let pabConf =
