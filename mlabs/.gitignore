@@ -13,4 +13,4 @@ plutus-pab.yaml
 pab-core.db
 .direnv/
 .envrc
-mlabs/pab
+pab/*

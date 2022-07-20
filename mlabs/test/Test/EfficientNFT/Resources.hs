@@ -89,15 +89,15 @@ test cfg =
     [ good "Seabug scripts" 3 seabugActions
     ]
   where
-    good msg n act =
+    good msg n =
       testLimits
         initFunds
         cfg
         msg
         (filterSlot (> n))
-        --  uncomment to see stats, it introduces fake error, script will fail but we can see the results
-        --  $ (>> logError "Show stats")
-        act
+
+--  uncomment to see stats, it introduces fake error, script will fail but we can see the results
+--  . (>> logError "Show stats")
 
 cnftCoinA :: FakeCoin
 cnftCoinA = FakeCoin "aa"

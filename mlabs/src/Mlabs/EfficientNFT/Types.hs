@@ -23,23 +23,23 @@ import PlutusTx qualified
 import PlutusTx.Prelude hiding (decodeUtf8)
 import Prelude qualified as Hask
 
-import Data.Aeson (FromJSON, ToJSON, toJSON, object, (.=))
+import Cardano.Prelude (decodeUtf8)
+import Data.Aeson (FromJSON, ToJSON, object, toJSON, (.=))
+import Data.ByteString.Base16 (encode)
 import Data.Monoid (Last)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Ledger (PaymentPubKeyHash (PaymentPubKeyHash), Slot, ValidatorHash (ValidatorHash), StakePubKeyHash, ScriptHash (getScriptHash), PubKeyHash (getPubKeyHash))
-import Plutus.V1.Ledger.Api (fromBuiltinData, toBuiltinData, unsafeFromBuiltinData, unTokenName, unCurrencySymbol)
+import Ledger (PaymentPubKeyHash (PaymentPubKeyHash), PubKeyHash (getPubKeyHash), ScriptHash (getScriptHash), Slot, StakePubKeyHash, ValidatorHash (ValidatorHash))
+import Plutus.Contract (Contract, Endpoint, type (.\/))
+import Plutus.V1.Ledger.Api (fromBuiltinData, toBuiltinData, unCurrencySymbol, unTokenName, unsafeFromBuiltinData)
 import Plutus.V1.Ledger.Crypto (PubKeyHash (PubKeyHash))
 import Plutus.V1.Ledger.Value (AssetClass (AssetClass), CurrencySymbol (CurrencySymbol), TokenName (TokenName))
 import PlutusTx.Builtins (blake2b_256, matchData', matchList)
-import PlutusTx.Builtins.Internal (equalsInteger, ifThenElse, mkCons, mkConstr, mkNilData, unitval, unsafeDataAsConstr, BuiltinByteString (BuiltinByteString))
-import Plutus.Contract (Contract, Endpoint, type (.\/))
+import PlutusTx.Builtins.Internal (BuiltinByteString (BuiltinByteString), equalsInteger, ifThenElse, mkCons, mkConstr, mkNilData, unitval, unsafeDataAsConstr)
 import PlutusTx.Builtins.Internal qualified as Internal
 import PlutusTx.ErrorCodes (reconstructCaseError)
 import PlutusTx.Natural (Natural)
 import Schema (ToSchema)
-import Cardano.Prelude (decodeUtf8)
-import Data.ByteString.Base16 (encode)
 
 -- | Parameters that need to be submitted when minting a new NFT.
 data MintParams = MintParams
@@ -53,6 +53,7 @@ data MintParams = MintParams
   , mp'fakeAuthor :: Maybe PaymentPubKeyHash
   , mp'feeVaultKeys :: [PubKeyHash]
   , mp'owner :: Maybe (PaymentPubKeyHash, Maybe StakePubKeyHash)
+  , mp'mintPolicy :: Hask.String
   }
   deriving stock (Hask.Show, Generic, Hask.Eq)
   deriving anyclass (FromJSON, ToJSON, ToSchema)
@@ -565,7 +566,10 @@ data MintCnftParams = MintCnftParams
   deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 data SeabugMetadata = SeabugMetadata
-  { sm'mintPolicy :: ScriptHash
+  { -- | applied script hash
+    sm'policyId :: ScriptHash
+  , -- | arbitrary string for mintPolicy version identification
+    sm'mintPolicy :: Hask.String
   , sm'collectionNftCS :: CurrencySymbol
   , sm'collectionNftTN :: TokenName
   , sm'lockingScript :: ValidatorHash
@@ -578,23 +582,26 @@ data SeabugMetadata = SeabugMetadata
   }
 
 instance ToJSON SeabugMetadata where
-  toJSON SeabugMetadata{..} = object
-    [ (toHex . getScriptHash $ sm'mintPolicy) .= object
-      [ "collectionNftCS" .= unCurrencySymbol sm'collectionNftCS
-      , "collectionNftTN" .= unTokenName sm'collectionNftTN
-      , "lockingScript" .= sm'lockingScript
-      , "authorPkh" .= getPubKeyHash sm'authorPkh
-      , "authorShare" .= sm'authorShare
-      , "marketplaceScript" .= sm'marketplaceScript
-      , "marketplaceShare" .= sm'marketplaceShare
-      , "ownerPkh" .= getPubKeyHash sm'ownerPkh
-      , "ownerPrice" .= sm'ownerPrice
+  toJSON SeabugMetadata {..} =
+    object
+      [ (toHex . getScriptHash $ sm'policyId)
+          .= object
+            [ "mintPolicy" .= sm'mintPolicy
+            , "collectionNftCS" .= unCurrencySymbol sm'collectionNftCS
+            , "collectionNftTN" .= unTokenName sm'collectionNftTN
+            , "lockingScript" .= sm'lockingScript
+            , "authorPkh" .= getPubKeyHash sm'authorPkh
+            , "authorShare" .= sm'authorShare
+            , "marketplaceScript" .= sm'marketplaceScript
+            , "marketplaceShare" .= sm'marketplaceShare
+            , "ownerPkh" .= getPubKeyHash sm'ownerPkh
+            , "ownerPrice" .= sm'ownerPrice
+            ]
       ]
-    ]
     where
       toHex :: BuiltinByteString -> Text
       toHex (BuiltinByteString str) = decodeUtf8 (encode str)
-    
+
 -- | A common App schema works for now.
 type NFTAppSchema =
   -- Author Endpoints

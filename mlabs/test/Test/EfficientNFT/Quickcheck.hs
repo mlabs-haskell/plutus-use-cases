@@ -58,8 +58,7 @@ makeLenses ''MockInfo
 data NftModel = NftModel
   { -- | Map of NFTs and owners
     _mNfts :: Map NftData MockInfo
-  , -- |
-    _mMarketplace :: Map NftData MockInfo
+  , _mMarketplace :: Map NftData MockInfo
   , -- | Preminted not used collection NFTs
     _mUnusedCollections :: Set AssetClass
   , _mLockedFees :: Integer

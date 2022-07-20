@@ -1,21 +1,34 @@
 module Mlabs.EfficientNFT.Contract.Mint (mint, mintWithCollection, generateNft) where
 
-import PlutusTx.Prelude hiding (mconcat)
+import PlutusTx.Prelude (
+  Bool (False, True),
+  Maybe (Nothing),
+  Semigroup ((<>)),
+  fromMaybe,
+  fst,
+  return,
+  snd,
+  ($),
+  (.),
+ )
 import Prelude qualified as Hask
 
 import Control.Monad (void)
+import Data.Aeson (toJSON)
 import Data.Default (def)
+import Data.Map qualified as Map
 import Data.Text (pack)
 import Data.Void (Void)
-import Ledger (Datum (Datum), Redeemer (Redeemer), minAdaTxOut, MintingPolicy (getMintingPolicy), scriptHash, unPaymentPubKeyHash)
+import Ledger (Datum (Datum), MintingPolicy (getMintingPolicy), Redeemer (Redeemer), minAdaTxOut, scriptHash, unPaymentPubKeyHash)
 import Ledger.Constraints qualified as Constraints
+import Ledger.Constraints.Metadata (OtherFields (OtherFields), TxMetadata (TxMetadata))
 import Ledger.Contexts (scriptCurrencySymbol)
 import Ledger.TimeSlot (slotToBeginPOSIXTime)
 import Ledger.Typed.Scripts (validatorHash)
 import Plutus.Contract qualified as Contract
 import Plutus.Contracts.Currency (CurrencyError, mintContract)
 import Plutus.Contracts.Currency qualified as MC
-import Plutus.V1.Ledger.Ada (toValue, lovelaceValueOf)
+import Plutus.V1.Ledger.Ada (lovelaceValueOf, toValue)
 import Plutus.V1.Ledger.Api (Extended (Finite, PosInf), Interval (Interval), LowerBound (LowerBound), ToData (toBuiltinData), TokenName (TokenName), UpperBound (UpperBound))
 import Plutus.V1.Ledger.Value (AssetClass, assetClass, assetClassValue, singleton, unAssetClass)
 import Text.Printf (printf)
@@ -23,12 +36,9 @@ import Text.Printf (printf)
 import Mlabs.EfficientNFT.Contract.Aux (getUserUtxos)
 import Mlabs.EfficientNFT.Dao (daoValidator)
 import Mlabs.EfficientNFT.Lock (lockValidator)
-import Mlabs.EfficientNFT.Token (mkTokenName, policy)
-import Mlabs.EfficientNFT.Types
 import Mlabs.EfficientNFT.Marketplace
-import Ledger.Constraints.Metadata (TxMetadata(TxMetadata), OtherFields (OtherFields))
-import qualified Data.Map as Map
-import Data.Aeson (toJSON)
+import Mlabs.EfficientNFT.Token (mkTokenName, policyData)
+import Mlabs.EfficientNFT.Types
 
 mint :: MintParams -> UserContract NftData
 mint mp = do
@@ -62,25 +72,27 @@ mintWithCollection (ac, mp) = do
           , nftCollection'daoScript = validatorHash $ daoValidator $ mp'feeVaultKeys mp
           , nftCollection'daoShare = mp'daoShare mp
           }
-      policy' = policy collection
+      policy' = policyData collection
       curr = scriptCurrencySymbol policy'
       tn = mkTokenName nft
       nftValue = singleton curr tn 1
       mintRedeemer = Redeemer . toBuiltinData . MintToken $ nft
       nftData = NftData collection nft
-      seabugMeta = SeabugMetadata
-                     { sm'mintPolicy = scriptHash . getMintingPolicy $ policy'
-                     , sm'collectionNftCS = nftCollection'collectionNftCs collection
-                     , sm'collectionNftTN = nftId'collectionNftTn nft
-                     , sm'lockingScript = nftCollection'lockingScript collection
-                     , sm'authorPkh = unPaymentPubKeyHash $ nftCollection'author collection
-                     , sm'authorShare = nftCollection'authorShare collection
-                     , sm'marketplaceScript = nftCollection'daoScript collection
-                     , sm'marketplaceShare = nftCollection'daoShare collection
-                     , sm'ownerPkh = unPaymentPubKeyHash $ nftId'owner nft
-                     , sm'ownerPrice = nftId'price nft
-                     }
-  
+      seabugMeta =
+        SeabugMetadata
+          { sm'policyId = scriptHash . getMintingPolicy $ policy'
+          , sm'mintPolicy = mp'mintPolicy mp
+          , sm'collectionNftCS = nftCollection'collectionNftCs collection
+          , sm'collectionNftTN = nftId'collectionNftTn nft
+          , sm'lockingScript = nftCollection'lockingScript collection
+          , sm'authorPkh = unPaymentPubKeyHash $ nftCollection'author collection
+          , sm'authorShare = nftCollection'authorShare collection
+          , sm'marketplaceScript = nftCollection'daoScript collection
+          , sm'marketplaceShare = nftCollection'daoShare collection
+          , sm'ownerPkh = unPaymentPubKeyHash $ nftId'owner nft
+          , sm'ownerPrice = nftId'price nft
+          }
+
       meta = TxMetadata Nothing $ OtherFields $ Map.singleton "727" $ toJSON seabugMeta
       valHash = validatorHash marketplaceValidator
       lookup =

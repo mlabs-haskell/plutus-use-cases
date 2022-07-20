@@ -94,7 +94,7 @@ qReact input = do
       pure . wrap $ uncurry Types.InsolventAccount <$> onlyInsolventUsers
       where
         aux :: (UserId, (User, [Types.Coin])) -> State.St (UserId, [(Types.Coin, Rational)])
-        aux = \(uId, (user, coins)) -> do
+        aux (uId, (user, coins)) = do
           y <- sequence $ flip State.getCurrentHealthCheck user <$> coins
           let coins' = fst <$> filter snd (zip coins y)
           y' <- sequence $ flip State.getCurrentHealth user <$> coins'
@@ -307,7 +307,7 @@ react input = do
               , convert'to = collateralAsset
               }
 
-        getCollateralCovered amount = debtToColateral amount
+        getCollateralCovered = debtToColateral
 
         getBonus amount = do
           rate <- State.getLiquidationBonus collateralAsset

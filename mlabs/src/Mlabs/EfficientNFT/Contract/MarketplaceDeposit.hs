@@ -9,7 +9,7 @@ import Ledger.Constraints qualified as Constraints
 import Ledger.Contexts (scriptCurrencySymbol)
 import Ledger.Typed.Scripts (Any, validatorHash, validatorScript)
 import Plutus.Contract qualified as Contract
-import Plutus.V1.Ledger.Ada (toValue, lovelaceValueOf)
+import Plutus.V1.Ledger.Ada (lovelaceValueOf, toValue)
 import Plutus.V1.Ledger.Api (ToData (toBuiltinData))
 import Plutus.V1.Ledger.Value (assetClass, singleton)
 import Text.Printf (printf)

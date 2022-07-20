@@ -19,7 +19,7 @@ import Mlabs.EfficientNFT.Contract.MarketplaceRedeem (marketplaceRedeem)
 import Mlabs.EfficientNFT.Contract.MarketplaceSetPrice (marketplaceSetPrice)
 import Mlabs.EfficientNFT.Contract.Mint (mint, mintWithCollection)
 import Mlabs.EfficientNFT.Contract.SetPrice (setPrice)
-import Mlabs.EfficientNFT.Types (NftData, NFTAppSchema)
+import Mlabs.EfficientNFT.Types (NFTAppSchema, NftData)
 import Mlabs.Plutus.Contract (selectForever)
 
 type ApiUserContract a = Contract (Last NftData) NFTAppSchema Text a

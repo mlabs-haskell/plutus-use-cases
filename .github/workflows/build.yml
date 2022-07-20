@@ -23,6 +23,7 @@ jobs:
         with:
           name: mlabs
           authToken: "${{ secrets.CACHIXKEY }}"
+          skipPush: true
       - name: Build all project components
         working-directory: ./mlabs
         run: nix build -L .#check.x86_64-linux
