@@ -105,13 +105,13 @@ generateNft tokens = do
                     ( \MintCnftParams {..} ->
                         ( TokenName mc'tokenName
                         , NftMetadataToken
-                          { nmtName = mc'name
-                          , nmtImage = mc'image
-                          , nmtMediaType = Hask.pure "image/png"
-                          , nmtDescription = Just mc'description
-                          , nmtFiles = Hask.mempty
-                          , nmtOtherFields = Hask.mempty
-                          }
+                            { nmtName = mc'name
+                            , nmtImage = mc'image
+                            , nmtMediaType = Hask.pure "image/png"
+                            , nmtDescription = Just mc'description
+                            , nmtFiles = Hask.mempty
+                            , nmtOtherFields = Hask.mempty
+                            }
                         )
                     )
                     tokens
