@@ -7,11 +7,12 @@ import Prelude qualified as Hask hiding (toEnum)
 
 import BotPlutusInterface (runPAB)
 import BotPlutusInterface.Types
-import Codec.Serialise
 import Cardano.Api (NetworkId (Testnet), NetworkMagic (NetworkMagic))
+import Codec.Serialise
 import Control.Monad (void)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Aeson qualified as JSON
+import Data.ByteString.Base16.Lazy qualified as Base16
 import Data.ByteString.Lazy qualified as LazyByteString
 import Data.ByteString.Lazy.Char8 qualified as ByteString
 import Data.Default (def)
@@ -21,18 +22,18 @@ import Data.Monoid (Last (Last))
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Text.Lazy.Encoding qualified as Text
 import Data.Void (Void)
 import GHC.Generics (Generic)
-import Ledger (MintingPolicy (MintingPolicy), PaymentPubKeyHash (PaymentPubKeyHash), ScriptContext, TxInfo, TxOutRef (TxOutRef, txOutRefId, txOutRefIdx), minAdaTxOut, mkMintingPolicyScript, pubKeyHashAddress, scriptContextTxInfo, scriptCurrencySymbol, txInInfoOutRef, txInfoInputs, Script, fromCompiledCode, applyArguments, TxId (TxId, getTxId), unMintingPolicyScript)
+import Ledger (MintingPolicy, Script, ScriptContext, TxInfo, TxOutRef, fromCompiledCode, minAdaTxOut, mkMintingPolicyScript, pubKeyHashAddress, scriptContextTxInfo, scriptCurrencySymbol, txInInfoOutRef, txInfoInputs)
 import Ledger.Constraints qualified as Constraints
 import Ledger.Constraints.Metadata (NftMetadata (..), NftMetadataToken (..), TxMetadata (..))
 import Ledger.Typed.Scripts (wrapMintingPolicy)
-import Ledger.Value (AssetClass, TokenName (TokenName), assetClass, singleton)
+import Ledger.Value (AssetClass, TokenName (TokenName), singleton)
 import Mlabs.EfficientNFT.Contract.MarketplaceDeposit (marketplaceDeposit)
 import Mlabs.EfficientNFT.Contract.Mint (mintWithCollection)
 import Mlabs.EfficientNFT.Contract.SetPrice (setPrice)
 import Mlabs.EfficientNFT.Token qualified as Token
-import Mlabs.EfficientNFT.Lock qualified as Lock
 import Mlabs.EfficientNFT.Types (MintCnftParams (..), MintParams (..), NFTAppSchema, NftData, SetPriceParams, UserContract)
 import Options.Applicative (
   Parser,
@@ -49,11 +50,9 @@ import Options.Applicative (
  )
 import Plutus.Contract qualified as Contract
 import Plutus.V1.Ledger.Ada (lovelaceValueOf, toValue)
-import Plutus.V1.Ledger.Api (Datum (Datum), ToData (toBuiltinData), toData, unsafeFromBuiltinData)
+import Plutus.V1.Ledger.Api (Datum (Datum), ToData (toBuiltinData), unsafeFromBuiltinData)
 import PlutusTx qualified
 import Servant.Client.Core (BaseUrl (BaseUrl), Scheme (Http))
-import qualified Data.Text.Lazy.Encoding as Text
-import qualified Data.ByteString.Base16.Lazy as Base16
 
 {-# INLINEABLE mkPolicy #-}
 mkPolicy :: TxOutRef -> BuiltinData -> ScriptContext -> Bool
@@ -70,23 +69,16 @@ mkPolicy oref _ ctx =
 mkPolicyUntyped :: BuiltinData -> BuiltinData -> ScriptContext -> Bool
 mkPolicyUntyped oref = mkPolicy (unsafeFromBuiltinData oref)
 
-
 policyUntyped :: TxOutRef -> MintingPolicy
 policyUntyped oref =
   mkMintingPolicyScript $
-    $$(PlutusTx.compile [|| (\a -> wrapMintingPolicy (mkPolicyUntyped a)) ||])
-     `PlutusTx.applyCode` PlutusTx.liftCode (PlutusTx.toBuiltinData oref)
-  -- MintingPolicy $
-  --   policyUntypedScript
-  --     `applyArguments` [ toData $ getTxId $ txOutRefId oref,
-  --                        toData $ txOutRefIdx oref
-  --                      ]
+    $$(PlutusTx.compile [||(wrapMintingPolicy . mkPolicyUntyped)||])
+      `PlutusTx.applyCode` PlutusTx.liftCode (PlutusTx.toBuiltinData oref)
 
 policyUntypedScript :: Script
 policyUntypedScript =
   fromCompiledCode
-    $$(PlutusTx.compile [||(\a -> wrapMintingPolicy (mkPolicyUntyped a))||])
-
+    $$(PlutusTx.compile [||(wrapMintingPolicy . mkPolicyUntyped)||])
 
 policy :: TxOutRef -> MintingPolicy
 policy oref =
@@ -164,62 +156,25 @@ mkCollateral = do
     Contract.submitTxConstraintsWith @Void Hask.mempty $
       Constraints.mustPayToPubKey pkh (lovelaceValueOf 5_000_000)
 
-data CliOptions = CliOptions
-  { phk :: Hask.String
-  , authPhk :: Hask.String
-  , currencySymbol :: Hask.String
-  , tokenName :: Hask.String
-  , mintPolicy :: Hask.String
-  }
+newtype CliOptions = CliOptions {phk :: Hask.String} -- Replace with data when more params added
 
 cliOptionsParser :: Parser CliOptions
 cliOptionsParser =
   CliOptions
     Hask.<$> strOption (long "pkh" Hask.<> value "" Hask.<> help "own pub key hash")
-    Hask.<*> strOption (long "auth-pkh" Hask.<> value "" Hask.<> help "author pub key hash")
-    Hask.<*> strOption (long "currency" Hask.<> value "" Hask.<> help "currency symbol")
-    Hask.<*> strOption (long "token" Hask.<> value "" Hask.<> help "tokenName as a string")
-    Hask.<*> strOption (long "mint-policy" Hask.<> value "" Hask.<> help "arbitrary string for mintPolicy version")
 
 getCliOptions :: Hask.IO CliOptions
 getCliOptions = execParser (info (cliOptionsParser <**> helper) (fullDesc Hask.<> header "Efficient NFT PAB"))
 
 main :: Hask.IO ()
 main = do
-  CliOptions {phk, authPhk, currencySymbol, tokenName, mintPolicy} <- getCliOptions
-  let uCs = fromString currencySymbol -- CURRENCY_SYMBOL
-      auth = PaymentPubKeyHash $ fromString authPhk -- YOUR_PKH
-      mp =
-        MintParams
-          { mp'authorShare = toEnum 1000
-          , mp'daoShare = toEnum 500
-          , mp'price = toEnum 100_000_000
-          , mp'lockLockup = 5
-          , mp'lockLockupEnd = 5
-          , mp'owner = Just (auth, Nothing)
-          , mp'fakeAuthor = Just auth
-          , mp'feeVaultKeys = []
-          , mp'mintPolicy = mintPolicy
-          }
+  CliOptions {phk} <- getCliOptions
 
+  Hask.putStr "Unapplied CNFT minting policy: "
   Hask.print $ Text.decodeUtf8 . Base16.encode $ serialise policyUntypedScript
 
-  let
-    oref = TxOutRef (TxId "00e52d6fdb45e529dda8cfaa4e7f04dc8b94deffd1bd54196193cc2c5c49e418") 5
-    applied = policyUntyped oref
-  Hask.print $ PlutusTx.toBuiltinData oref
-  Hask.putStr "Applied CNFT currency symbol: "
-  Hask.print $ scriptCurrencySymbol applied
-  Hask.print $ Text.decodeUtf8 . Base16.encode $ serialise $ unMintingPolicyScript applied
-
-  -- in case of types changing, can help with request rewriting
-  -- Hask.putStr "seabug-mint-request: "
-  -- ByteString.putStrLn $
-  --   JSON.encode $
-  --     Mint (assetClass uCs $ fromString tokenName, mp)
-
-  -- Hask.putStr "unapplied-minting-policy: "
-  -- ByteString.putStrLn $ JSON.encode Token.policyDataScript
+  Hask.putStr "Unapplied sgNFT minting policy: "
+  ByteString.putStrLn $ JSON.encode Token.policyDataScript
 
   protocolParams <- fromJust . JSON.decode Hask.<$> LazyByteString.readFile "data/testnet-protocol-params.json"
   let pabConf =

@@ -2,36 +2,35 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
 
-module Mlabs.EfficientNFT.Lock
-  ( mkValidator,
-    lockValidator,
-    lockScriptUntyped,
-  )
-where
+module Mlabs.EfficientNFT.Lock (
+  mkValidator,
+  lockValidator,
+  lockScriptUntyped,
+) where
 
 import Data.Default (def)
-import Ledger
-  ( CurrencySymbol,
-    Extended (Finite),
-    LowerBound (LowerBound),
-    PaymentPubKeyHash,
-    Script,
-    ScriptContext,
-    Slot (Slot),
-    TxInInfo (txInInfoResolved),
-    TxInfo (txInfoMint, txInfoOutputs, txInfoValidRange),
-    TxOut (txOutDatumHash, txOutValue),
-    findDatum,
-    findOwnInput,
-    fromCompiledCode,
-    getContinuingOutputs,
-    getDatum,
-    ivFrom,
-    mkValidatorScript,
-    scriptContextTxInfo,
-    txSignedBy,
-    unPaymentPubKeyHash,
-  )
+import Ledger (
+  CurrencySymbol,
+  Extended (Finite),
+  LowerBound (LowerBound),
+  PaymentPubKeyHash,
+  Script,
+  ScriptContext,
+  Slot (Slot),
+  TxInInfo (txInInfoResolved),
+  TxInfo (txInfoMint, txInfoOutputs, txInfoValidRange),
+  TxOut (txOutDatumHash, txOutValue),
+  findDatum,
+  findOwnInput,
+  fromCompiledCode,
+  getContinuingOutputs,
+  getDatum,
+  ivFrom,
+  mkValidatorScript,
+  scriptContextTxInfo,
+  txSignedBy,
+  unPaymentPubKeyHash,
+ )
 import Ledger.TimeSlot (posixTimeToEnclosingSlot)
 import Ledger.Typed.Scripts (Any, TypedValidator, unsafeMkTypedValidator, wrapValidator)
 import Ledger.Value (Value (getValue), valueOf)
@@ -164,9 +163,9 @@ lockValidator underlyingCs lockup lockupEnd = unsafeMkTypedValidator v
       mkValidatorScript
         ( $$(PlutusTx.compile [||wrap||])
             `PlutusTx.applyCode` ( $$(PlutusTx.compile [||mkValidator||])
-                                     `PlutusTx.applyCode` PlutusTx.liftCode underlyingCs
-                                     `PlutusTx.applyCode` PlutusTx.liftCode lockup
-                                     `PlutusTx.applyCode` PlutusTx.liftCode lockupEnd
+                                    `PlutusTx.applyCode` PlutusTx.liftCode underlyingCs
+                                    `PlutusTx.applyCode` PlutusTx.liftCode lockup
+                                    `PlutusTx.applyCode` PlutusTx.liftCode lockupEnd
                                  )
         )
     wrap = wrapValidator @LockDatum @LockAct
