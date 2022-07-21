@@ -167,18 +167,21 @@ cliOptionsParser =
 getCliOptions :: Hask.IO CliOptions
 getCliOptions = execParser (info (cliOptionsParser <**> helper) (fullDesc Hask.<> header "Efficient NFT PAB"))
 
+logScript :: Script -> Hask.IO ()
+logScript = Hask.print . Text.decodeUtf8 . Base16.encode . serialise
+
 main :: Hask.IO ()
 main = do
   CliOptions {phk} <- getCliOptions
 
   Hask.putStr "Unapplied CNFT minting policy: "
-  Hask.print $ Text.decodeUtf8 . Base16.encode $ serialise policyUntypedScript
+  logScript policyUntypedScript
 
   Hask.putStr "Unapplied sgNFT minting policy: "
-  ByteString.putStrLn $ JSON.encode Token.policyDataScript
+  logScript Token.policyDataScript
 
   Hask.putStr "Unapplied locking validator: "
-  ByteString.putStrLn $ JSON.encode Lock.lockScriptUntyped
+  logScript Lock.lockScriptUntyped
 
   protocolParams <- fromJust . JSON.decode Hask.<$> LazyByteString.readFile "data/testnet-protocol-params.json"
   let pabConf =
