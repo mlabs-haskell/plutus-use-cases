@@ -99,7 +99,7 @@ mkPolicy collectionNftCs lockingScript author authorShare daoScript daoShare min
       traceIfFalse
         "Exactly one new token must be minted and exactly one old burnt"
         (checkMintAndBurn nft (nftId'price nft) newOwner)
-        && traceIfFalse "Royalities not paid" (checkPartiesGotCorrectPayments nft)
+        && traceIfFalse "Royalities not paid" (zeroPrice nft || checkPartiesGotCorrectPayments nft)
     BurnToken nft ->
       traceIfFalse "NFT must be burned" (checkBurn nft)
         && traceIfFalse "Owner must sign the transaction" (txSignedBy info . unPaymentPubKeyHash . nftId'owner $ nft)
@@ -157,6 +157,9 @@ mkPolicy collectionNftCs lockingScript author authorShare daoScript daoShare min
             txOutAddress tx /= lockingAddress
               && Value.valueOf (txOutValue tx) collectionNftCs (nftId'collectionNftTn nft) == 1
        in any containsCollectonNft (txInfoOutputs info)
+
+    zeroPrice :: NftId -> Bool
+    zeroPrice nft = nftId'price nft == zero
 
     -- Check that all parties received corresponding payments,
     -- and the payment utxos have the correct datum attached
