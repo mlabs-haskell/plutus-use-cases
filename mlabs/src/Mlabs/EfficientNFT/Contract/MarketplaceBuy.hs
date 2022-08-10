@@ -43,7 +43,7 @@ marketplaceBuy nftData = do
       shareToSubtract v
         | v < getLovelace minAdaTxOut = 0
         | otherwise = v
-      ownerShare = lovelaceValueOf (addExtend nftPrice - shareToSubtract authorShare - shareToSubtract daoShare)
+      ownerShare = addExtend nftPrice - shareToSubtract authorShare - shareToSubtract daoShare
       datum = Datum . toBuiltinData $ (curr, oldName)
       filterLowValue v t
         | v < getLovelace minAdaTxOut = mempty
@@ -69,10 +69,12 @@ marketplaceBuy nftData = do
           <> filterLowValue
             authorShare
             (Constraints.mustPayWithDatumToPubKey (nftCollection'author . nftData'nftCollection $ nftData) datum)
+          <> filterLowValue
+            ownerShare
+            (Constraints.mustPayWithDatumToPubKey (nftId'owner nft) datum)
           <> Hask.mconcat
             [ Constraints.mustMintValueWithRedeemer mintRedeemer (newNftValue <> oldNftValue)
             , Constraints.mustSpendScriptOutput utxo (Redeemer $ toBuiltinData ())
-            , Constraints.mustPayWithDatumToPubKey (nftId'owner nft) datum ownerShare
             , Constraints.mustPayToOtherScript
                 valHash
                 (Datum . toBuiltinData . MarketplaceDatum $ assetClass curr newName)
