@@ -2,10 +2,11 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
 
-module Mlabs.EfficientNFT.Lock (mkValidator, lockValidator) where
-
-import PlutusTx qualified
-import PlutusTx.Prelude
+module Mlabs.EfficientNFT.Lock (
+  mkValidator,
+  lockValidator,
+  lockScriptUntyped,
+) where
 
 import Data.Default (def)
 import Ledger (
@@ -13,6 +14,7 @@ import Ledger (
   Extended (Finite),
   LowerBound (LowerBound),
   PaymentPubKeyHash,
+  Script,
   ScriptContext,
   Slot (Slot),
   TxInInfo (txInInfoResolved),
@@ -20,6 +22,7 @@ import Ledger (
   TxOut (txOutDatumHash, txOutValue),
   findDatum,
   findOwnInput,
+  fromCompiledCode,
   getContinuingOutputs,
   getDatum,
   ivFrom,
@@ -31,11 +34,21 @@ import Ledger (
 import Ledger.TimeSlot (posixTimeToEnclosingSlot)
 import Ledger.Typed.Scripts (Any, TypedValidator, unsafeMkTypedValidator, wrapValidator)
 import Ledger.Value (Value (getValue), valueOf)
-import PlutusTx.AssocMap qualified as AssocMap
-import PlutusTx.Natural (Natural)
-
 import Mlabs.EfficientNFT.Token (mkTokenName)
 import Mlabs.EfficientNFT.Types
+import PlutusTx qualified
+import PlutusTx.AssocMap qualified as AssocMap
+import PlutusTx.Natural (Natural)
+import PlutusTx.Prelude
+
+{-# INLINEABLE mkValidatorUntyped #-}
+mkValidatorUntyped ::
+  BuiltinData -> BuiltinData -> BuiltinData -> LockDatum -> LockAct -> ScriptContext -> Bool
+mkValidatorUntyped collectionNftCs lockup lockupEnd =
+  mkValidator
+    (PlutusTx.unsafeFromBuiltinData collectionNftCs)
+    (PlutusTx.unsafeFromBuiltinData lockup)
+    (PlutusTx.unsafeFromBuiltinData lockupEnd)
 
 {-# INLINEABLE mkValidator #-}
 mkValidator :: CurrencySymbol -> Integer -> Slot -> LockDatum -> LockAct -> ScriptContext -> Bool
@@ -156,3 +169,6 @@ lockValidator underlyingCs lockup lockupEnd = unsafeMkTypedValidator v
                                  )
         )
     wrap = wrapValidator @LockDatum @LockAct
+
+lockScriptUntyped :: Script
+lockScriptUntyped = fromCompiledCode $$(PlutusTx.compile [||mkValidatorUntyped||])

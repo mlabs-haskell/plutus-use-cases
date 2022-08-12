@@ -2,7 +2,7 @@
   description = "mlabs-plutus-use-cases";
 
   inputs = {
-    haskell-nix.url = "github:L-as/haskell.nix/ac825b91c202947ec59b1a477003564cc018fcec";
+    haskell-nix.url = "github:L-as/haskell.nix/45c583b5580c130487eb5a342679f0bdbc2b23fc";
     haskell-nix.inputs.nixpkgs.follows = "haskell-nix/nixpkgs-unstable";
 
     nixpkgs.follows = "haskell-nix/nixpkgs";
@@ -17,12 +17,12 @@
     # all inputs below here are for pinning with haskell.nix
     cardano-addresses = {
       url =
-        "github:input-output-hk/cardano-addresses/d2f86caa085402a953920c6714a0de6a50b655ec";
+        "github:input-output-hk/cardano-addresses/71006f9eb956b0004022e80aadd4ad50d837b621";
       flake = false;
     };
     cardano-base = {
       url =
-        "github:input-output-hk/cardano-base/654f5b7c76f7cc57900b4ddc664a82fc3b925fb0";
+        "github:input-output-hk/cardano-base/41545ba3ac6b3095966316a99883d678b5ab8da8";
       flake = false;
     };
     cardano-crypto = {
@@ -32,11 +32,11 @@
     };
     cardano-ledger = {
       url =
-        "github:input-output-hk/cardano-ledger/bf008ce028751cae9fb0b53c3bef20f07c06e333";
+        "github:input-output-hk/cardano-ledger/1a9ec4ae9e0b09d54e49b2a40c4ead37edadcce5";
       flake = false;
     };
     cardano-node = {
-      url = "github:input-output-hk/cardano-node/4f65fb9a27aa7e3a1873ab4211e412af780a3648";
+      url = "github:input-output-hk/cardano-node/814df2c146f5d56f8c35a681fe75e85b905aed5d";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     cardano-prelude = {
@@ -46,7 +46,7 @@
     };
     cardano-wallet = {
       url =
-        "github:j-mueller/cardano-wallet/760140e238a5fbca61d1b286d7a80ece058dc729";
+        "github:input-output-hk/cardano-wallet/a5085acbd2670c24251cf8d76a4e83c77a2679ba";
       flake = false;
     };
     flat = {
@@ -71,17 +71,17 @@
     };
     ouroboros-network = {
       url =
-        "github:input-output-hk/ouroboros-network/d613de3d872ec8b4a5da0c98afb443f322dc4dab";
+        "github:input-output-hk/ouroboros-network/d2d219a86cda42787325bb8c20539a75c2667132";
       flake = false;
     };
     plutus = {
       url =
-        "github:input-output-hk/plutus/65bad0fd53e432974c3c203b1b1999161b6c2dce";
+        "github:input-output-hk/plutus/1a3c3a761cf048371c52a34b004f8b3fcf0dab43";
       flake = false;
     };
     plutus-apps = {
       url =
-        "github:t4ccer/plutus-apps/0d3ad307e5875cd5a90df8aa8cea46962eaa5c85";
+        "github:t4ccer/plutus-apps/82c0725c4d05398ae76d71927cc60aa23db1a11d";
       flake = false;
     };
     plutus-extra = {
@@ -94,19 +94,19 @@
         "gitlab:fresheyeball/plutus-tx-spooky/0c409907fa5b6aee4a2f2d18f871b850a8547fdf";
       flake = false;
     };
-    plutus-simple-model = {
-      url =
-        "github:t4ccer/plutus-simple-model/48c186f96e3a8a07bceb1a4b39a7dfeacddde42b";
-      flake = false;
-    };
+    # plutus-simple-model = {
+    #   url =
+    #     "github:t4ccer/plutus-simple-model/48c186f96e3a8a07bceb1a4b39a7dfeacddde42b";
+    #   flake = false;
+    # };
     purescript-bridge = {
       url =
-        "github:input-output-hk/purescript-bridge/366fc70b341e2633f3ad0158a577d52e1cd2b138";
+        "github:input-output-hk/purescript-bridge/47a1f11825a0f9445e0f98792f79172efef66c00";
       flake = false;
     };
     servant-purescript = {
       url =
-        "github:input-output-hk/servant-purescript/ebea59c7bdfc0338d83fca772b9a57e28560bcde";
+        "github:input-output-hk/servant-purescript/44e7cacf109f84984cd99cd3faf185d161826963";
       flake = false;
     };
     Win32-network = {
@@ -114,14 +114,14 @@
         "github:input-output-hk/Win32-network/3825d3abf75f83f406c1f7161883c438dac7277d";
       flake = false;
     };
-    plutip = {
-      url = "github:mlabs-haskell/plutip/c2d0ed381cda64bc46dbf68f52cb0d05f76f3a86";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.haskell-nix.follows = "haskell-nix";
-      inputs.cardano-node.follows = "cardano-node";
-    };
+    # plutip = {
+    #   url = "github:mlabs-haskell/plutip/c2d0ed381cda64bc46dbf68f52cb0d05f76f3a86";
+    #   inputs.nixpkgs.follows = "nixpkgs";
+    #   inputs.haskell-nix.follows = "haskell-nix";
+    #   inputs.cardano-node.follows = "cardano-node";
+    # };
     bot-plutus-interface = {
-      follows = "plutip/bot-plutus-interface";
+      url = "github:mlabs-haskell/bot-plutus-interface/bdb6f74b2616b637fcba633b46e2f75f68fc7a11";
     };
   };
 

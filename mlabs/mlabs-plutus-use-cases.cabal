@@ -12,10 +12,12 @@ common common-imports
     , aeson
     , ansi-terminal
     , base
+    , base16-bytestring
     , binary
     , bytestring
     , cardano-api
     , cardano-ledger-alonzo
+    , cardano-prelude
     , containers
     , data-default
     , extra
@@ -218,7 +220,7 @@ executable nft-state-machine-demo
   import:        common-imports
   import:        common-language
   import:        common-configs
-  import:        common-ghc-options  
+  import:        common-ghc-options
   main-is:       nft-state-machine-demo/Main.hs
   build-depends: mlabs-plutus-use-cases
 
@@ -226,7 +228,7 @@ executable governance-demo
   import:        common-imports
   import:        common-language
   import:        common-configs
-  import:        common-ghc-options  
+  import:        common-ghc-options
   main-is:       governance-demo/Main.hs
   build-depends: mlabs-plutus-use-cases
 
@@ -234,7 +236,7 @@ executable lendex-demo
   import:        common-imports
   import:        common-language
   import:        common-configs
-  import:        common-ghc-options  
+  import:        common-ghc-options
   main-is:       lendex-demo/Main.hs
   build-depends: mlabs-plutus-use-cases
 
@@ -242,15 +244,28 @@ executable nft-marketplace
   import:        common-imports
   import:        common-language
   import:        common-configs
-  import:        common-ghc-options  
+  import:        common-ghc-options
   main-is:       nft-marketplace/Main.hs
   build-depends: mlabs-plutus-use-cases
+
+executable efficient-nft-pab
+  import:        common-imports
+  import:        common-language
+  import:        common-configs
+  import:        common-ghc-options
+  main-is:       efficient-nft-pab/Main.hs
+  ghc-options:   -Wall -threaded -rtsopts
+  build-depends:
+    , bot-plutus-interface
+    , mlabs-plutus-use-cases
+    , optparse-applicative
+    , servant-client-core
 
 test-suite mlabs-plutus-use-cases-tests
   import:             common-imports
   import:             common-language
   import:             common-configs
-  import:             common-ghc-options  
+  import:             common-ghc-options
   type:               exitcode-stdio-1.0
   hs-source-dirs:     test
   main-is:            Main.hs
@@ -278,9 +293,9 @@ test-suite mlabs-plutus-use-cases-tests
     , plutus-tx
     , plutus-tx-plugin
     , plutus-tx-spooky
-    , plutus-simple-model
+    -- , plutus-simple-model
     , plutus-use-cases
-    , plutip
+    -- , plutip
     , pretty-show
     , prettyprinter
     , QuickCheck
@@ -295,7 +310,7 @@ test-suite mlabs-plutus-use-cases-tests
 
   other-modules:
     Test.Demo.Contract.Mint
-    Test.EfficientNFT.Resources
+    -- Test.EfficientNFT.Resources
     Test.EfficientNFT.Script.TokenBurn
     Test.EfficientNFT.Script.TokenChangeOwner
     Test.EfficientNFT.Script.TokenChangePrice
@@ -309,8 +324,8 @@ test-suite mlabs-plutus-use-cases-tests
     Test.EfficientNFT.Script.Values
     Test.EfficientNFT.Size
     Test.EfficientNFT.Trace
-    Test.EfficientNFT.Quickcheck
-    Test.EfficientNFT.Plutip
+    -- Test.EfficientNFT.Quickcheck
+    -- Test.EfficientNFT.Plutip
     Test.Governance.Contract
     Test.Governance.Init
     Test.Lending.Contract
@@ -319,7 +334,7 @@ test-suite mlabs-plutus-use-cases-tests
     Test.Lending.QuickCheck
     Test.NFT.Contract
     Test.NFT.Init
-    Test.NFT.QuickCheck
+    -- Test.NFT.QuickCheck
     Test.NFT.Script.Auction
     Test.NFT.Script.Dealing
     Test.NFT.Script.Main

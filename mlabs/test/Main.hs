@@ -3,12 +3,12 @@ module Main (main) where
 import PlutusTx.Prelude
 import Prelude (IO)
 
-import Plutus.Test.Model (readDefaultBchConfig)
+-- import Plutus.Test.Model (readDefaultBchConfig)
 import Test.Tasty (defaultMain, testGroup)
 
-import Test.EfficientNFT.Plutip qualified as ENFT.Plutip
-import Test.EfficientNFT.Quickcheck qualified as ENFT.Quickcheck
-import Test.EfficientNFT.Resources qualified as ENFT.Resources
+-- import Test.EfficientNFT.Plutip qualified as ENFT.Plutip
+-- import Test.EfficientNFT.Quickcheck qualified as ENFT.Quickcheck
+-- import Test.EfficientNFT.Resources qualified as ENFT.Resources
 import Test.EfficientNFT.Script.FeeWithdraw qualified as ENFT.FeeWithdraw
 import Test.EfficientNFT.Script.TokenBurn qualified as ENFT.TokenBurn
 import Test.EfficientNFT.Script.TokenChangeOwner qualified as ENFT.TokenChangeOwner
@@ -20,12 +20,13 @@ import Test.EfficientNFT.Script.TokenMint qualified as ENFT.TokenMint
 import Test.EfficientNFT.Script.TokenRestake qualified as ENFT.TokenRestake
 import Test.EfficientNFT.Script.TokenUnstake qualified as ENFT.TokenUnstake
 import Test.EfficientNFT.Size qualified as ENFT.Size
-import Test.EfficientNFT.Trace qualified as ENFT.Trace
+
+-- import Test.EfficientNFT.Trace qualified as ENFT.Trace
 import Test.NFT.Size qualified as NFT.Size
 
 main :: IO ()
 main = do
-  cfg <- readDefaultBchConfig
+  -- cfg <- readDefaultBchConfig
   defaultMain $
     testGroup
       "tests"
@@ -36,8 +37,8 @@ main = do
       , testGroup
           "Efficient NFT"
           [ ENFT.Size.test
-          , ENFT.Resources.test cfg
-          , testGroup
+          , -- , ENFT.Resources.test cfg
+            testGroup
               "Token"
               [ ENFT.TokenMint.test
               , ENFT.TokenChangeOwner.test
@@ -56,7 +57,7 @@ main = do
               , ENFT.TokenMarketplaceRedeem.test
               ]
           , ENFT.FeeWithdraw.test
-          , ENFT.Quickcheck.test
-          , ENFT.Plutip.test
+          -- , ENFT.Quickcheck.test
+          -- , ENFT.Plutip.test
           ]
       ]

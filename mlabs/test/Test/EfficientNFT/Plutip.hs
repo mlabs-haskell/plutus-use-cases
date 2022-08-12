@@ -33,6 +33,7 @@ test =
   withCluster
     "Integration tests"
     [ shouldSucceed "Happy path" (initAda 100 <> initAda 100 <> initAda 100) testValid
+    , shouldSucceed "Gift path" (initAda 100 <> initAda 100) testGift
     , shouldFail "Fail to change price when not owner" (initAda 100 <> initAda 100) testChangePriceNotOwner
     , shouldFail "Fail to redeem when not owner" (initAda 100 <> initAda 100) testRedeemNotOwner
     , shouldFail "Fail unlocking too early" (initAda 100) testBurnTooEarly
@@ -79,6 +80,26 @@ testValid = do
     const $ do
       feeWithdraw pkhs
       void $ waitNSlots 1
+
+testGift :: TestCase
+testGift = do
+  (ExecutionResult (Right ((nft3, pkhs), _)) _) <- withContractAs 0 $ \[_, pkh] -> do
+    let pkhs = pure $ unPaymentPubKeyHash pkh
+    cnft <- generateNft
+    waitNSlots 1
+
+    nft1 <- mintWithCollection (cnft, MintParams (toEnum 0) (toEnum 50_00) (toEnum 0) 5 5 Nothing pkhs)
+    waitNSlots 1
+
+    nft3 <- marketplaceDeposit nft2
+    waitNSlots 1
+
+    pure (nft3, pkhs)
+
+  withContractAs 1 $
+    const $ do
+      nft4 <- marketplaceBuy nft3
+      waitNSlots 1
 
 testChangePriceNotOwner :: TestCase
 testChangePriceNotOwner = do

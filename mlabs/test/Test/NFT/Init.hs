@@ -296,7 +296,7 @@ initialDistribution =
     , (wA, val 1000_000_000)
     ]
   where
-    val x = singleton adaSymbol adaToken x
+    val = singleton adaSymbol adaToken
 
 -- | Check if wallet contains Ada
 ownsAda :: Wallet -> Integer -> Scene

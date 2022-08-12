@@ -4,20 +4,25 @@
 
 module Mlabs.EfficientNFT.Token (
   mkPolicy,
+  unappliedPolicyScript,
   policy,
+  policyDataScript,
+  policyData,
   mkTokenName,
 ) where
 
 import Ledger (
   CurrencySymbol,
   Datum (Datum),
-  MintingPolicy,
+  MintingPolicy (MintingPolicy),
   PaymentPubKeyHash (unPaymentPubKeyHash),
+  Script,
   ScriptContext,
   TxInfo (txInfoMint, txInfoOutputs),
   TxOut (TxOut, txOutAddress, txOutValue),
   ValidatorHash,
   findDatum,
+  fromCompiledCode,
   minAdaTxOut,
   ownCurrencySymbol,
   pubKeyHashAddress,
@@ -29,7 +34,7 @@ import Ledger.Address (
   scriptHashAddress,
  )
 import Ledger.Scripts qualified as Scripts
-import Ledger.Typed.Scripts (wrapMintingPolicy)
+import Ledger.Typed.Scripts (WrappedMintingPolicyType, wrapMintingPolicy)
 import Ledger.Value (TokenName (TokenName), valueOf)
 import Ledger.Value qualified as Value
 import Mlabs.EfficientNFT.Types (
@@ -41,10 +46,33 @@ import Mlabs.EfficientNFT.Types (
   nftId'owner,
   nftId'price,
  )
+import Plutus.V1.Ledger.Scripts qualified as Plutus
 import PlutusTx qualified
 import PlutusTx.AssocMap qualified as Map
 import PlutusTx.Natural (Natural)
 import PlutusTx.Prelude
+
+import PlutusTx (toData)
+
+{-# INLINEABLE mkPolicyData #-}
+mkPolicyData ::
+  BuiltinData ->
+  BuiltinData ->
+  BuiltinData ->
+  BuiltinData ->
+  BuiltinData ->
+  BuiltinData ->
+  MintAct ->
+  ScriptContext ->
+  Bool
+mkPolicyData collectionNftCs lockingScript author authorShare daoScript daoShare =
+  mkPolicy
+    (PlutusTx.unsafeFromBuiltinData collectionNftCs)
+    (PlutusTx.unsafeFromBuiltinData lockingScript)
+    (PlutusTx.unsafeFromBuiltinData author)
+    (PlutusTx.unsafeFromBuiltinData authorShare)
+    (PlutusTx.unsafeFromBuiltinData daoScript)
+    (PlutusTx.unsafeFromBuiltinData daoShare)
 
 {-# INLINEABLE mkPolicy #-}
 mkPolicy ::
@@ -71,7 +99,7 @@ mkPolicy collectionNftCs lockingScript author authorShare daoScript daoShare min
       traceIfFalse
         "Exactly one new token must be minted and exactly one old burnt"
         (checkMintAndBurn nft (nftId'price nft) newOwner)
-        && traceIfFalse "Royalities not paid" (checkPartiesGotCorrectPayments nft)
+        && traceIfFalse "Royalities not paid" (zeroPrice nft || checkPartiesGotCorrectPayments nft)
     BurnToken nft ->
       traceIfFalse "NFT must be burned" (checkBurn nft)
         && traceIfFalse "Owner must sign the transaction" (txSignedBy info . unPaymentPubKeyHash . nftId'owner $ nft)
@@ -130,6 +158,9 @@ mkPolicy collectionNftCs lockingScript author authorShare daoScript daoShare min
               && Value.valueOf (txOutValue tx) collectionNftCs (nftId'collectionNftTn nft) == 1
        in any containsCollectonNft (txInfoOutputs info)
 
+    zeroPrice :: NftId -> Bool
+    zeroPrice nft = nftId'price nft == zero
+
     -- Check that all parties received corresponding payments,
     -- and the payment utxos have the correct datum attached
     checkPartiesGotCorrectPayments :: NftId -> Bool
@@ -170,13 +201,43 @@ mkPolicy collectionNftCs lockingScript author authorShare daoScript daoShare min
 mkTokenName :: NftId -> TokenName
 mkTokenName = TokenName . hash
 
+compiledPolicy ::
+  PlutusTx.CompiledCode
+    ( CurrencySymbol ->
+      ValidatorHash ->
+      PaymentPubKeyHash ->
+      Natural ->
+      ValidatorHash ->
+      Natural ->
+      WrappedMintingPolicyType
+    )
+compiledPolicy = $$(PlutusTx.compile [||\a b c d e f -> wrapMintingPolicy (mkPolicy a b c d e f)||])
+
+unappliedPolicyScript :: Script
+unappliedPolicyScript = fromCompiledCode compiledPolicy
+
 policy :: NftCollection -> MintingPolicy
 policy NftCollection {..} =
   Scripts.mkMintingPolicyScript $
-    $$(PlutusTx.compile [||\a b c d e f -> wrapMintingPolicy (mkPolicy a b c d e f)||])
+    compiledPolicy
       `PlutusTx.applyCode` PlutusTx.liftCode nftCollection'collectionNftCs
       `PlutusTx.applyCode` PlutusTx.liftCode nftCollection'lockingScript
       `PlutusTx.applyCode` PlutusTx.liftCode nftCollection'author
       `PlutusTx.applyCode` PlutusTx.liftCode nftCollection'authorShare
       `PlutusTx.applyCode` PlutusTx.liftCode nftCollection'daoScript
       `PlutusTx.applyCode` PlutusTx.liftCode nftCollection'daoShare
+
+policyDataScript :: Script
+policyDataScript = fromCompiledCode $$(PlutusTx.compile [||\a b c d e f -> wrapMintingPolicy (mkPolicyData a b c d e f)||])
+
+policyData :: NftCollection -> MintingPolicy
+policyData NftCollection {..} =
+  MintingPolicy $
+    policyDataScript
+      `Plutus.applyArguments` [ toData nftCollection'collectionNftCs
+                              , toData nftCollection'lockingScript
+                              , toData nftCollection'author
+                              , toData nftCollection'authorShare
+                              , toData nftCollection'daoScript
+                              , toData nftCollection'daoShare
+                              ]

@@ -7,9 +7,7 @@ module Mlabs.EfficientNFT.Api (
 import Control.Monad (void)
 import Data.Monoid (Last (..))
 import Data.Text (Text)
-import Ledger (PubKeyHash)
-import Plutus.Contract (Contract, Endpoint, Promise, endpoint, type (.\/))
-import Plutus.V1.Ledger.Value (AssetClass)
+import Plutus.Contract (Contract, Promise, endpoint)
 import PlutusTx.Prelude
 
 import Mlabs.EfficientNFT.Contract.Burn (burn)
@@ -21,25 +19,8 @@ import Mlabs.EfficientNFT.Contract.MarketplaceRedeem (marketplaceRedeem)
 import Mlabs.EfficientNFT.Contract.MarketplaceSetPrice (marketplaceSetPrice)
 import Mlabs.EfficientNFT.Contract.Mint (mint, mintWithCollection)
 import Mlabs.EfficientNFT.Contract.SetPrice (setPrice)
-import Mlabs.EfficientNFT.Types (ChangeOwnerParams, MintParams, NftData, SetPriceParams)
+import Mlabs.EfficientNFT.Types (NFTAppSchema, NftData)
 import Mlabs.Plutus.Contract (selectForever)
-
--- | A common App schema works for now.
-type NFTAppSchema =
-  -- Author Endpoints
-  Endpoint "mint" MintParams
-    .\/ Endpoint "mint-with-collection" (AssetClass, MintParams)
-    -- User Action Endpoints
-    .\/ Endpoint "change-owner" ChangeOwnerParams
-    .\/ Endpoint "set-price" SetPriceParams
-    .\/ Endpoint "marketplace-deposit" NftData
-    .\/ Endpoint "marketplace-redeem" NftData
-    .\/ Endpoint "marketplace-buy" NftData
-    .\/ Endpoint "marketplace-set-price" SetPriceParams
-    .\/ Endpoint "burn" NftData
-    .\/ Endpoint "fee-withdraw" [PubKeyHash]
-
--- ENDPOINTS --
 
 type ApiUserContract a = Contract (Last NftData) NFTAppSchema Text a
 

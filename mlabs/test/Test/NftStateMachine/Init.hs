@@ -96,4 +96,4 @@ initialDistribution =
     , (w3, val 1000_000_000)
     ]
   where
-    val x = singleton adaSymbol adaToken x
+    val = singleton adaSymbol adaToken
