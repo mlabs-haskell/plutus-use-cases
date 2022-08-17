@@ -2,57 +2,86 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Mlabs.EfficientNFT.Token (
-  mkPolicy,
-  unappliedPolicyScript,
-  policy,
-  policyDataScript,
-  policyData,
-  mkTokenName,
-) where
+module Mlabs.EfficientNFT.Token
+  ( mkPolicy,
+    unappliedPolicyScript,
+    policy,
+    policyDataScript,
+    policyData,
+    mkTokenName,
+  )
+where
 
-import Ledger (
-  CurrencySymbol,
-  Datum (Datum),
-  MintingPolicy (MintingPolicy),
-  PaymentPubKeyHash (unPaymentPubKeyHash),
-  Script,
-  ScriptContext,
-  TxInfo (txInfoMint, txInfoOutputs),
-  TxOut (TxOut, txOutAddress, txOutValue),
-  ValidatorHash,
-  findDatum,
-  fromCompiledCode,
-  minAdaTxOut,
-  ownCurrencySymbol,
-  pubKeyHashAddress,
-  scriptContextTxInfo,
-  txSignedBy,
- )
+import Ledger
+  ( Address,
+    CurrencySymbol,
+    Datum (Datum),
+    MintingPolicy (MintingPolicy),
+    PaymentPubKeyHash (unPaymentPubKeyHash),
+    Script,
+    ScriptContext,
+    TxInInfo (txInInfoResolved),
+    TxInfo (txInfoInputs, txInfoMint, txInfoOutputs),
+    TxOut (TxOut, txOutAddress, txOutValue),
+    ValidatorHash,
+    findDatum,
+    fromCompiledCode,
+    minAdaTxOut,
+    ownCurrencySymbol,
+    pubKeyHashAddress,
+    scriptContextTxInfo,
+    toPubKeyHash,
+    txSignedBy,
+  )
 import Ledger.Ada qualified as Ada
-import Ledger.Address (
-  scriptHashAddress,
- )
+import Ledger.Address
+  ( scriptHashAddress,
+  )
 import Ledger.Scripts qualified as Scripts
 import Ledger.Typed.Scripts (WrappedMintingPolicyType, wrapMintingPolicy)
 import Ledger.Value (TokenName (TokenName), valueOf)
 import Ledger.Value qualified as Value
-import Mlabs.EfficientNFT.Types (
-  MintAct (..),
-  NftCollection (..),
-  NftId,
-  hash,
-  nftId'collectionNftTn,
-  nftId'owner,
-  nftId'price,
- )
+import Mlabs.EfficientNFT.Types
+  ( MintAct (..),
+    NftCollection (..),
+    NftId,
+    hash,
+    nftId'collectionNftTn,
+    nftId'owner,
+    nftId'price,
+  )
+import Plutus.V1.Ledger.Ada (adaToken)
+import Plutus.V1.Ledger.Api (adaSymbol)
 import Plutus.V1.Ledger.Scripts qualified as Plutus
+import PlutusTx (toData)
 import PlutusTx qualified
 import PlutusTx.AssocMap qualified as Map
 import PlutusTx.Natural (Natural)
 import PlutusTx.Prelude
-
-import PlutusTx (toData)
+  ( AdditiveGroup ((-)),
+    AdditiveSemigroup ((+)),
+    Bool (..),
+    BuiltinData,
+    Enum (fromEnum),
+    Eq ((==)),
+    Maybe (Just, Nothing),
+    MultiplicativeSemigroup ((*)),
+    Ord ((<), (>=)),
+    any,
+    divide,
+    fromMaybe,
+    id,
+    negate,
+    otherwise,
+    traceError,
+    traceIfFalse,
+    ($),
+    (&&),
+    (.),
+    (/=),
+    (<$>),
+    (>>=),
+  )
 
 {-# INLINEABLE mkPolicyData #-}
 mkPolicyData ::
@@ -99,7 +128,7 @@ mkPolicy collectionNftCs lockingScript author authorShare daoScript daoShare min
       traceIfFalse
         "Exactly one new token must be minted and exactly one old burnt"
         (checkMintAndBurn nft (nftId'price nft) newOwner)
-        && traceIfFalse "Royalities not paid" (checkPartiesGotCorrectPayments nft)
+        && traceIfFalse "Royalties not paid" (checkPartiesGotCorrectPayments nft newOwner)
     BurnToken nft ->
       traceIfFalse "NFT must be burned" (checkBurn nft)
         && traceIfFalse "Owner must sign the transaction" (txSignedBy info . unPaymentPubKeyHash . nftId'owner $ nft)
@@ -160,12 +189,30 @@ mkPolicy collectionNftCs lockingScript author authorShare daoScript daoShare min
 
     -- Check that all parties received corresponding payments,
     -- and the payment utxos have the correct datum attached
-    checkPartiesGotCorrectPayments :: NftId -> Bool
-    checkPartiesGotCorrectPayments nft =
+    checkPartiesGotCorrectPayments :: NftId -> PaymentPubKeyHash -> Bool
+    checkPartiesGotCorrectPayments nft newOwner =
       let outs = txInfoOutputs info
+          ins = txInfoInputs info
           price' = fromEnum $ nftId'price nft
           royalty' = fromEnum authorShare
           mpShare = fromEnum daoShare
+          newOwnerPkh = unPaymentPubKeyHash newOwner
+
+          isBuyerAddr :: Address -> Bool
+          isBuyerAddr = (Just newOwnerPkh ==) . toPubKeyHash
+
+          sumBuyerLovelace _ [] = 0
+          sumBuyerLovelace getTxOut (x : xs) =
+            sumBuyerLovelace getTxOut xs
+              + if isBuyerAddr $ txOutAddress txOut
+                then valueOf (txOutValue txOut) adaSymbol adaToken
+                else 0
+            where
+              txOut = getTxOut x
+
+          buyerLovelaceBefore = sumBuyerLovelace txInInfoResolved ins
+
+          buyerLovelaceAfter = sumBuyerLovelace id outs
 
           shareToSubtract v
             | v < Ada.getLovelace minAdaTxOut = 0
@@ -193,6 +240,7 @@ mkPolicy collectionNftCs lockingScript author authorShare daoScript daoShare min
        in filterLowValue daoShareVal daoAddr
             && filterLowValue authorShareVal authorAddr
             && any (checkPaymentTxOut ownerAddr ownerShare) outs
+            && buyerLovelaceBefore - buyerLovelaceAfter >= price'
 
 {-# INLINEABLE mkTokenName #-}
 mkTokenName :: NftId -> TokenName
@@ -231,10 +279,10 @@ policyData :: NftCollection -> MintingPolicy
 policyData NftCollection {..} =
   MintingPolicy $
     policyDataScript
-      `Plutus.applyArguments` [ toData nftCollection'collectionNftCs
-                              , toData nftCollection'lockingScript
-                              , toData nftCollection'author
-                              , toData nftCollection'authorShare
-                              , toData nftCollection'daoScript
-                              , toData nftCollection'daoShare
+      `Plutus.applyArguments` [ toData nftCollection'collectionNftCs,
+                                toData nftCollection'lockingScript,
+                                toData nftCollection'author,
+                                toData nftCollection'authorShare,
+                                toData nftCollection'daoScript,
+                                toData nftCollection'daoShare
                               ]
