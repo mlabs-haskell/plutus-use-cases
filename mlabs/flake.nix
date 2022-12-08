@@ -175,5 +175,6 @@
       # test suite would be included
       checks = perSystem (system: self.flake.${system}.checks);
       hydraJobs.checks.x86_64-linux = self.checks.x86_64-linux;
+      herculesCI.ciSystems = [ "x86_64-linux" ];
     };
 }
